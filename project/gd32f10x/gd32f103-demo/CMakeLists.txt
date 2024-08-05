@@ -1,0 +1,46 @@
+cmake_minimum_required(VERSION 3.1)
+
+
+project(gd32f103-demo LANGUAGES C CXX ASM)
+
+add_compile_options(
+    "$<$<CONFIG:Debug>:-g;-O0>"
+    "$<$<CONFIG:Release>:-g;-O3>"
+    "$<$<CONFIG:MinSizeRel>:-g;-Os>"
+    "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
+)
+
+
+set(TARGET_FLAGS 
+    "-Wall"
+    "-Wextra"
+    "-Wconversion"
+    "-Wsign-conversion"
+    "-Wno-psabi"
+)
+
+target_compile_definitions(arch-gd32f10x PRIVATE -DGD32F10X_HD )
+
+# app程序生成
+
+
+add_executable(gd32f103-demo )
+target_link_libraries(gd32f103-demo  arch-gd32f10x c m gcc  )
+target_link_options(gd32f103-demo  PRIVATE "-Wl,--print-memory-usage")
+
+target_sources(gd32f103-demo PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/boot/main.c"
+)
+target_compile_options(gd32f103-demo PRIVATE "${TARGET_FLAGS}")
+target_link_options(gd32f103-demo  PRIVATE
+    "-T${CMAKE_CURRENT_SOURCE_DIR}/boot/gd32f10x_flash.ld"
+    "-Wl,-Map,gd32f103-demo.map"
+)
+
+add_target_bin(gd32f103-demo)
+
+add_jlink_image( GD32F103_DEMO
+    CHIP_NAME "GD32F103C8"
+    FIRMWARE_LIST "BOOT:V0.0.1:0x08000000:gd32f103-demo.bin"
+    DEPENDS gd32f103-demo
+)

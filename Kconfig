@@ -1,0 +1,10 @@
+# 这个文件定义了一些配置选项
+
+# 顶层菜单
+# menu "Fly Configuration"
+
+# endmenu
+mainmenu "Fly Configuration"
+    source "arch/Kconfig"
+    source "project/Kconfig"
+    source "package/Kconfig"

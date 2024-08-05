@@ -1,0 +1,13 @@
+
+
+config COMMON_PROJECT_SET
+    bool
+    default n
+
+rsource "common/Kconfig"
+
+if !COMMON_PROJECT_SET
+rsource "mcxn947/Kconfig"
+rsource "gd32f10x/Kconfig"
+
+endif

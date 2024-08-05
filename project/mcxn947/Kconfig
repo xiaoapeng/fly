@@ -1,0 +1,24 @@
+
+
+choice
+    prompt "Select a mcxn947 platform project"
+    default PROJECT_MCXN947_NONE
+    depends on ARCH_MCXN947
+
+config PROJECT_MCXN947_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_MCXN947_DEMO
+    bool "MCXN947 demo project"
+    help
+        Select this option to enable Module MCXN947 DEMO.
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "mcxn947-demo" if PROJECT_MCXN947_DEMO
+

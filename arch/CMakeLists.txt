@@ -1,0 +1,5 @@
+
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/${CONFIG_ARCH}")
+
+
+
