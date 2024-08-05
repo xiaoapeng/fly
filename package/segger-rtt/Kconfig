@@ -1,0 +1,6 @@
+
+config PACKAGE_SEGGER_RTT
+        bool "SEGGER RTT Supported"
+    help
+        "SEGGER RTT Supported"
+

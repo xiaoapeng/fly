@@ -1,0 +1,22 @@
+
+choice
+    prompt "Select CPU Architecture"
+    default ARCH_MCXN947 
+
+    config ARCH_MCXN947
+        bool "mcxn947"
+        help
+          Select this option if you are targeting mcxn947 architecture.
+
+    config ARCH_GD32F10X
+        bool "gd32f10x"
+        help
+          Select this option if you are targeting gd32f10x architecture.
+
+endchoice
+
+config ARCH
+    string
+    default "mcxn947" if ARCH_MCXN947
+    default "gd32f10x" if ARCH_GD32F10X
+    

@@ -1,0 +1,6 @@
+
+config PACKAGE_EVENTHUB_OS
+        bool "evnethub os kernel support"
+    help
+        "evnethub os kernel support"
+
