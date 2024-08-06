@@ -8,12 +8,7 @@ set(CMAKE_C_EXTENSIONS ON)
 set(FLY_TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 加载配置 .config
-include("${FLY_TOP_DIR}/cmake/parse_config.cmake")
-load_config_file("${FLY_TOP_DIR}/.config")
-
-
-
-
+include(".config.cmake")
 
 include("${FLY_TOP_DIR}/arch/${CONFIG_ARCH}/gcc-config.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
@@ -28,3 +23,5 @@ arch_build_config()
 add_subdirectory("${FLY_TOP_DIR}/arch/" "${CMAKE_CURRENT_BINARY_DIR}/arch/")
 add_subdirectory("${FLY_TOP_DIR}/package/" "${CMAKE_CURRENT_BINARY_DIR}/package/")
 add_subdirectory("${FLY_TOP_DIR}/project/${CONFIG_ARCH}/${CONFIG_PROJECT}")
+
+

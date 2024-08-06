@@ -3,7 +3,7 @@ set(CROSS_COMPILE_PREFIX arm-none-eabi-)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION  1)
-set(CMAKE_SYSTEM_PROCESSOR  cortex-m33)
+set(CMAKE_SYSTEM_PROCESSOR  arm)
 
 
 find_program(CMAKE_C_COMPILER    ${CROSS_COMPILE_PREFIX}gcc)

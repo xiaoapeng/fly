@@ -143,12 +143,12 @@ if __name__ == '__main__':
     with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('tool\JLinkRTTLogger.exe -Device {} -If swd -Speed 4000  -RTTChannel 0 log.txt\n'.format(args_info.chip_name))
-        f.write('echo "Execution completed, will automatically exit in 10 seconds."\n')
-        f.write('timeout /t 10 /nobreak > nul\n')
+        f.write('echo "Execution completed, will automatically exit in 2 seconds."\n')
+        f.write('timeout /t 2 /nobreak > nul\n')
         f.write('exit 0\n')
         
     # 生成wsl烧写脚本
-    with open(make_firmware_path + '/' + 'wsl_burn.sh', 'w') as f:
+    with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
@@ -156,13 +156,13 @@ if __name__ == '__main__':
         f.write('   JLinkExe -autoconnect 1 -device {} -if swd -speed 4000 -commandfile  $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name))
         f.write('else\n')
         f.write('   echo "Download using windows jlink.."\n')
-        f.write('   $CUR_SH_DIR/tool/JLink.exe -autoconnect 1 -device {} -if swd -speed 2000 -commandfile $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name))
+        f.write('   $CUR_SH_DIR/tool/JLink.exe -autoconnect 1 -device {} -if swd -speed 4000 -commandfile $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name))
         f.write('fi\n')
         f.write('exit 0\n')
-    os.chmod(make_firmware_path + '/' + 'wsl_burn.sh', 0o755)
+    os.chmod(make_firmware_path + '/' + 'burn.sh', 0o755)
 
     # 生成wsl日志查看脚本
-    with open(make_firmware_path + '/' + 'wsl_log.sh', 'w') as f:
+    with open(make_firmware_path + '/' + 'log.sh', 'w') as f:
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
@@ -173,7 +173,7 @@ if __name__ == '__main__':
         f.write('   $CUR_SH_DIR/tool/JLinkRTTLogger.exe -Device {} -If swd -Speed 4000  -RTTChannel 0 $CUR_SH_DIR/log.txt \n'.format(args_info.chip_name))
         f.write('fi\n')
         f.write('exit 0\n')
-    os.chmod(make_firmware_path + '/' + 'wsl_log.sh', 0o755)
+    os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
 
 
     if os.path.exists(firmware_link_path):

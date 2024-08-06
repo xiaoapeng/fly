@@ -1,8 +1,60 @@
+import shutil
 import argparse
 import os
 import sys
 import kconfiglib
 import menuconfig
+
+def check_tool_installed(tool_name):
+    # Check if the tool is in PATH
+    tool_path = shutil.which(tool_name)
+    if tool_path:
+        return True
+    else:
+        return False
+
+def get_file_modification_time(file_path):
+    # 获取文件的最后修改时间戳
+    if not os.path.exists(file_path):
+        return 0
+    return os.path.getmtime(file_path)
+
+def get_build_type(build_dir):
+    with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
+        for line in cache_file:
+            if line.startswith("CMAKE_BUILD_TYPE:"):
+                _, value = line.split("=", 1)
+                return value.strip()
+    return None
+
+def convert_config_to_cmake(config_file, cmake_file):
+    with open(config_file, 'r') as f:
+        lines = f.readlines()
+    
+    cmake_lines = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        
+        # Handle the case where 'm' or 'y' are not treated as booleans but as strings
+        cmake_line = f"set({key} {value})"
+        
+        cmake_lines.append(cmake_line)
+    
+    with open(cmake_file, 'w') as f:
+        f.write("# CMakeLists.txt generated from .config file\n")
+        f.write("\n".join(cmake_lines) + "\n")
+    
+    print(f"Conversion complete. CMake file written to {cmake_file}")
+
+def try_update_cmake_config(source_dir):
+    if get_file_modification_time(f"{source_dir}/.config") > get_file_modification_time(f"{source_dir}/.config.cmake"):
+        convert_config_to_cmake(f"{source_dir}/.config", f"{source_dir}/.config.cmake")
 
 def parse_config_file(file_path):
     config_dict = {}
@@ -27,12 +79,15 @@ def run_loadconfig(source_dir, input_file):
     kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
     kconf.load_config(input_file)
     kconf.write_config(f"{source_dir}/.config")
+    try_update_cmake_config(source_dir)
+
 
 def run_menuconfig(source_dir):
     """启动 menuconfig 界面"""
     kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
     menuconfig.menuconfig(kconf)
-    exit(0)
+    try_update_cmake_config(source_dir)
+
 
 def run_savedefconfig(source_dir, output_file='defconfig'):
     """保存 defconfig 文件到指定路径"""
@@ -58,6 +113,46 @@ def run_savedefconfig(source_dir, output_file='defconfig'):
     kconf.write_min_config(defconfig_file)
     print(f"Defconfig saved to {defconfig_file}")
 
+def run_clean(source_dir):
+    """清理编译目录"""
+    if not check_tool_installed('cmake'):
+        print("cmake not installed!!")
+        exit(1)
+    
+    if os.path.exists(f"{source_dir}/build"):
+        os.system(f"cmake --build {source_dir}/build --target clean")
+
+def run_distclean(source_dir):
+    """ 删除build 和 dl """
+    if os.path.exists(f"{source_dir}/build"):
+        shutil.rmtree(f"{source_dir}/build")
+    if os.path.exists(f"{source_dir}/dl"):
+        shutil.rmtree(f"{source_dir}/dl")
+    
+
+def run_build(source_dir, build_type='Release'):
+    """编译"""
+    if not check_tool_installed('cmake'):
+        print("cmake not installed!!")
+        exit(1)
+    
+    rebuild = False
+
+    if not os.path.exists(f"{source_dir}/build"):
+        os.mkdir(f"{source_dir}/build")
+        rebuild = True
+
+    if rebuild or get_build_type(f"{source_dir}/build") != build_type:
+        """ 如果发现ninja优先使用 """
+        if check_tool_installed('ninja'):
+            os.system(f"cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -GNinja")
+        else:
+            os.system(f"cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build")
+    
+    os.system(f"cmake --build {source_dir}/build --target all --")
+    
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
     #parser.add_argument('source_dir', type=str, help='Directory containing the Kconfig file.')
@@ -76,6 +171,20 @@ if __name__ == "__main__":
     parser_loadconfig = subparsers.add_parser('loadconfig', help='Run loadconfig')
     parser_loadconfig.add_argument('loadfile_name', type=str, help='Input file for loadconfig command.')
 
+    # clean
+    parser_clean = subparsers.add_parser('clean', help='Clean the build directory.')
+
+    # distclean 
+    parser_distclean = subparsers.add_parser('distclean', help='Clean the build directory.')
+
+    # flash
+    
+
+    # Subparser for build
+    parser_build = subparsers.add_parser('build', help='Build the project.')
+    parser_build.add_argument('build_type', type=str, nargs='?', default='Release', help='Build type (e.g., Debug, Release, MinSizeRel, RelWithDebInfo).')
+
+
     all_args = sys.argv[1:]
     source_dir = all_args[0]
 
@@ -88,6 +197,11 @@ if __name__ == "__main__":
         run_savedefconfig(source_dir, args.savefile_name)
     elif args.command == 'loadconfig':
         run_loadconfig(source_dir, args.loadfile_name)
-    
-
-    
+    elif args.command == 'clean':
+        run_clean(source_dir)
+    elif args.command == 'distclean':
+        run_distclean(source_dir)
+    elif args.command == 'build':
+        run_build(source_dir, args.build_type)
+    elif args.command == None:
+        run_build(source_dir)
