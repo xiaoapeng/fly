@@ -6,6 +6,9 @@ project(packge-eventhub-os)
 
 include(FetchContent)
 
+message("Fetching eventhub_os...")
+
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 FetchContent_Declare(
     packge-eventhub-os
@@ -13,7 +16,10 @@ FetchContent_Declare(
     GIT_TAG        main
     SOURCE_DIR     "${FLY_SOURCE_DL_BASE_DIR}/eventhub_os-src"
     BINARY_DIR     "${CMAKE_BINARY_DIR}/package_build/${PROJECT_NAME}"
+    GIT_SHALLOW    ON
 )
+
+
 
 FetchContent_MakeAvailable(packge-eventhub-os)
 

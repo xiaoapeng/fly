@@ -18,13 +18,6 @@ set(TARGET_FLAGS
     "-Wno-psabi"
 )
 
-# add_jlink_image( test_image 
-#     CHIP_NAME "test_chip" 
-#     FIRMWARE_LIST "APP:V0.0.1:0x00000000:test.bin"
-# )
-
-
-
 # app程序生成
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/app/inc")
 target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
@@ -68,8 +61,9 @@ target_link_options(mcxn947_demo_app  PRIVATE
 
 add_target_bin(mcxn947_demo_app)
 
-add_jlink_image( MCXN546_DEMO
-    CHIP_NAME "MCXN546_M33_0"
+add_jlink_image( default
+    IMAGE_NAME "MCXN947_DEMO_APP"
+    CHIP_NAME "MCXN947_M33_0"
     FIRMWARE_LIST "APP:V0.0.1:0x00000000:mcxn947_demo_app.bin"
     DEPENDS mcxn947_demo_app
 )
