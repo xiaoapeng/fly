@@ -25,7 +25,6 @@ target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 
 add_executable(mcxn947_demo_app )
 target_link_libraries(mcxn947_demo_app  arch-mcxn947-core0 eventhub segger-rtt c rdimon m gcc  )
-target_link_options(mcxn947_demo_app  PRIVATE "-Wl,--print-memory-usage")
 target_include_directories( mcxn947_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/general/inc"
@@ -56,10 +55,13 @@ target_sources(mcxn947_demo_app PRIVATE
 target_compile_options(mcxn947_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_options(mcxn947_demo_app  PRIVATE
     "-T${CMAKE_CURRENT_SOURCE_DIR}/app/MCXN947_cm33_core0_flash.ld"
-    "-Wl,-Map,mcxn947_demo_app.map"
 )
-
-add_target_bin(mcxn947_demo_app)
+# 自动生成map
+add_target_make_map(mcxn947_demo_app)
+# 自动生成bin
+add_target_make_bin(mcxn947_demo_app)
+# 自动打印内存/存储占用
+add_target_print_memory_usage(mcxn947_demo_app)
 
 add_jlink_image( default
     IMAGE_NAME "MCXN947_DEMO_APP"

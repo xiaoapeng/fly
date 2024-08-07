@@ -13,19 +13,19 @@ function(add_jlink_image CMAKE_TARGET)
     )
 
     add_custom_command(
-        OUTPUT ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/make_jlink_img.timestamp
+        OUTPUT ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
         COMMAND python3 ${FLY_TOP_DIR}/tool/python/mk_jlink_img.py 
             --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --win-jlink-path 
             ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/
             ${CUSTOM_FUNC_FIRMWARE_LIST}
-        COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/.${CUSTOM_FUNC_IMAGE_NAME}_make_jlink_img.timestamp
+        COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
         DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp
         COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Make a jlink burn package"
     )
 
     # 添加自定义目标来生成 img 文件
     add_custom_target(${CMAKE_TARGET}_make_jlink_img
-        DEPENDS ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/make_jlink_img.timestamp
+        DEPENDS ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
     )
 
     if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
@@ -43,8 +43,6 @@ function(add_jlink_image CMAKE_TARGET)
             COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Flashing the device with JLink"
         )
     endif()
-
-    message(STATUS "CMAKE_HOST_SYSTEM_NAME:${CMAKE_HOST_SYSTEM_NAME}")
 
     add_custom_target(${CMAKE_TARGET}_clean_img
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/

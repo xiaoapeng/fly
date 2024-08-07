@@ -102,12 +102,12 @@ if __name__ == '__main__':
     args_info = parse_args()
     git_field = ''+git_get_hash()
     if not git_is_workspace_clean():
-        git_field = git_field + '_dirty'
+        git_field = 'dirty_' + git_field
     time_field = datetime.now().strftime("%Y%m%d_%H%M%S")
     make_firmware_name = args_info.firmware_name + '_jlink'
     for firmware_part in args_info.firmware_parts:
         make_firmware_name = make_firmware_name + '_' + firmware_part.bin_name + firmware_part.bin_version_str
-    make_firmware_name = make_firmware_name + '_' + git_field + '_' + time_field
+    make_firmware_name = make_firmware_name + '_' + time_field + '_' + git_field
     print('make_firmware_name:', make_firmware_name)
     make_firmware_path = args_info.output_dir + '/' + make_firmware_name
     firmware_link_path = args_info.output_dir + '/CURRENT'
