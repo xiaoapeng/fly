@@ -5,3 +5,4 @@ tool/python/__pycache__/
 .config
 .config.old
 .config.cmake
+.vscode/

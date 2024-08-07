@@ -20,5 +20,5 @@ endchoice
 
 config PROJECT
     string
-    default "mcxn947-demo" if PROJECT_MCXN947_DEMO
+    default "mcxn947/mcxn947-demo" if PROJECT_MCXN947_DEMO
 

@@ -22,6 +22,6 @@ arch_build_config()
 
 add_subdirectory("${FLY_TOP_DIR}/arch/" "${CMAKE_CURRENT_BINARY_DIR}/arch/")
 add_subdirectory("${FLY_TOP_DIR}/package/" "${CMAKE_CURRENT_BINARY_DIR}/package/")
-add_subdirectory("${FLY_TOP_DIR}/project/${CONFIG_ARCH}/${CONFIG_PROJECT}")
+add_subdirectory("${FLY_TOP_DIR}/project/${CONFIG_PROJECT}")
 
 

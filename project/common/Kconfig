@@ -9,16 +9,16 @@ config PROJECT_COMMON_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_COMMON_DEMO
-    bool "COMMON demo project"
-    select  COMMON_PROJECT_SET
-    help
-        Select this option to enable Module COMMON DEMO.
+# config PROJECT_COMMON_DEMO
+#     bool "COMMON demo project"
+#     select  COMMON_PROJECT_SET
+#     help
+#         Select this option to enable Module COMMON DEMO.
 
 endchoice
 
 if COMMON_PROJECT_SET
 config PROJECT
     string
-    default "common-demo" if PROJECT_COMMON_DEMO
+    default "common/common-demo" if PROJECT_COMMON_DEMO
 endif

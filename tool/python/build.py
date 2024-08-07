@@ -97,10 +97,8 @@ def run_savedefconfig(source_dir, output_file='defconfig'):
 
     # 查找 CONFIG_DEFCONFIG_PATH 的值
     try:
-        if 'CONFIG_COMMON_PROJECT_SET' in config and config['CONFIG_COMMON_PROJECT_SET'] == 'y':
-            defconfig_path = f"{source_dir}/project/common/" + config['CONFIG_PROJECT'].strip('"')
-        else:
-            defconfig_path = f"{source_dir}/project/" + config['CONFIG_ARCH'].strip('"') +'/' + config['CONFIG_PROJECT'].strip('"')
+        
+        defconfig_path = f"{source_dir}/project/" + config['CONFIG_PROJECT'].strip('"')
     except Exception as e:
         print(f"Error while accessing : {e}. Using default path: {defconfig_path}")
         exit(1)
@@ -153,6 +151,29 @@ def run_build(source_dir, build_type='Release'):
     
 
 
+def run_flash(source_dir, flash_target='default'):
+    if not check_tool_installed('cmake'):
+        print("cmake not installed!!")
+        exit(1)
+    
+    if not os.path.exists(f"{source_dir}/build"):
+        print("build not exist!!")
+        exit(1)
+    os.system(f"cmake --build {source_dir}/build --target {flash_target}_flash")
+
+
+
+def run_make_jlink_img(source_dir, flash_target='default'):
+    if not check_tool_installed('cmake'):
+        print("cmake not installed!!")
+        exit(1)
+    
+    if not os.path.exists(f"{source_dir}/build"):
+        print("build not exist!!")
+        exit(1)
+    os.system(f"cmake --build {source_dir}/build --target {flash_target}_make_jlink_img")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
     #parser.add_argument('source_dir', type=str, help='Directory containing the Kconfig file.')
@@ -178,7 +199,12 @@ if __name__ == "__main__":
     parser_distclean = subparsers.add_parser('distclean', help='Clean the build directory.')
 
     # flash
-    
+    parser_flash = subparsers.add_parser('flash', help='Flash the project.')
+    parser_flash.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
+
+    # make_jlink_img
+    parser_make_jlink_img = subparsers.add_parser('make_jlink_img', help='Make jlink img.')
+    parser_make_jlink_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
 
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build the project.')
@@ -203,5 +229,9 @@ if __name__ == "__main__":
         run_distclean(source_dir)
     elif args.command == 'build':
         run_build(source_dir, args.build_type)
+    elif args.command == 'flash':
+        run_flash(source_dir, args.flash_target)
+    elif args.command == 'make_jlink_img':
+        run_make_jlink_img(source_dir, args.flash_target)
     elif args.command == None:
         run_build(source_dir)
