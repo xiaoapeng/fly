@@ -16,7 +16,6 @@ FetchContent_Declare(
     GIT_TAG        main
     SOURCE_DIR     "${FLY_SOURCE_DL_BASE_DIR}/eventhub_os-src"
     BINARY_DIR     "${CMAKE_BINARY_DIR}/package_build/${PROJECT_NAME}"
-    GIT_SHALLOW    ON
 )
 
 

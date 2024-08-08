@@ -53,8 +53,8 @@ def convert_config_to_cmake(config_file, cmake_file):
     print(f"Conversion complete. CMake file written to {cmake_file}")
 
 def try_update_cmake_config(source_dir):
-    if get_file_modification_time(f"{source_dir}/.config") > get_file_modification_time(f"{source_dir}/.config.cmake"):
-        convert_config_to_cmake(f"{source_dir}/.config", f"{source_dir}/.config.cmake")
+    if get_file_modification_time(f"{source_dir}/.config") > get_file_modification_time(f"{source_dir}/auto-generate/.config.cmake"):
+        convert_config_to_cmake(f"{source_dir}/.config", f"{source_dir}/auto-generate/.config.cmake")
 
 def parse_config_file(file_path):
     config_dict = {}
@@ -79,14 +79,21 @@ def run_loadconfig(source_dir, input_file):
     kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
     kconf.load_config(input_file)
     kconf.write_config(f"{source_dir}/.config")
-    try_update_cmake_config(source_dir)
+    if not os.path.exists(f"{source_dir}/auto-generate"):
+        os.mkdir(f"{source_dir}/auto-generate")
+    kconf.write_autoconf(f"{source_dir}/auto-generate/autoconf.h")
+    try_update_cmake_config(f"{source_dir}")
 
 
 def run_menuconfig(source_dir):
     """启动 menuconfig 界面"""
     kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
     menuconfig.menuconfig(kconf)
-    try_update_cmake_config(source_dir)
+    
+    if not os.path.exists(f"{source_dir}/auto-generate"):
+        os.mkdir(f"{source_dir}/auto-generate")
+    kconf.write_autoconf(f"{source_dir}/auto-generate/autoconf.h")
+    try_update_cmake_config(f"{source_dir}")
 
 
 def run_savedefconfig(source_dir, output_file='defconfig'):

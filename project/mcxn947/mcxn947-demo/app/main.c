@@ -1,11 +1,14 @@
-/*
- * Copyright (c) 2013 - 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
- * All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
+/**
+ * @file main.c
+ * @brief 
+ * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
+ * @version 1.0
+ * @date 2024-08-08
+ * 
+ * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
+ * 
+ * @par 修改日志:
  */
-
 
 #include "fsl_clock.h"
 #include <stdlib.h>
@@ -15,7 +18,7 @@
 #include "eh_debug.h"
 #include "eh_co.h"
 #include "pfifo.h"
-
+#include "autoconf.h"
 extern void init(void);
 
 extern  int task_main(void);
