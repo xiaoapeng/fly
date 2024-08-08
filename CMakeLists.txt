@@ -8,7 +8,7 @@ set(CMAKE_C_EXTENSIONS ON)
 set(FLY_TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 加载配置 .config
-include(".config.cmake")
+include("${FLY_TOP_DIR}/auto-generate/.config.cmake")
 
 include("${FLY_TOP_DIR}/arch/${CONFIG_ARCH}/gcc-config.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
@@ -19,6 +19,7 @@ include("${FLY_TOP_DIR}/cmake/jlink.cmake")
 project(fly LANGUAGES C CXX ASM)
 
 arch_build_config()
+include_directories("${FLY_TOP_DIR}/auto-generate/")
 
 add_subdirectory("${FLY_TOP_DIR}/arch/" "${CMAKE_CURRENT_BINARY_DIR}/arch/")
 add_subdirectory("${FLY_TOP_DIR}/package/" "${CMAKE_CURRENT_BINARY_DIR}/package/")

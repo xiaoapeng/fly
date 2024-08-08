@@ -6,3 +6,4 @@ tool/python/__pycache__/
 .config.old
 .config.cmake
 .vscode/
+auto-generate/
