@@ -6,12 +6,17 @@ choice
     config ARCH_MCXN947
         bool "mcxn947"
         help
-          Select this option if you are targeting mcxn947 architecture.
+            Select this option if you are targeting mcxn947 architecture.
 
     config ARCH_GD32F10X
         bool "gd32f10x"
         help
-          Select this option if you are targeting gd32f10x architecture.
+            Select this option if you are targeting gd32f10x architecture.
+
+    config ARCH_STM32F0XX
+        bool "stm32f0xx"
+        help
+            Select this option if you are targeting stm32f0xx architecture.
 
 endchoice
 
@@ -19,4 +24,5 @@ config ARCH
     string
     default "mcxn947" if ARCH_MCXN947
     default "gd32f10x" if ARCH_GD32F10X
+    default "st32f0xx" if ARCH_STM32F0XX
     

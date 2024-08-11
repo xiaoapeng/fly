@@ -1,0 +1,24 @@
+
+
+choice
+    prompt "Select a stm32f0xx platform project"
+    default PROJECT_STM32F0XX_NONE
+    depends on ARCH_STM32F0XX
+
+config PROJECT_STM32F0XX_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_STM32F030X8_DEMO
+    bool "STM32F030X8 demo project"
+    help
+        Select this option to enable Module STM32F030X8 DEMO.
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "stm32f0xx/stm32f030x8-demo" if PROJECT_STM32F030X8_DEMO
+
