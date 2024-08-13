@@ -2,14 +2,6 @@ cmake_minimum_required(VERSION 3.1)
 
 project(stm32f030x8-demo LANGUAGES C CXX ASM)
 
-add_compile_options(
-    "$<$<CONFIG:Debug>:-g;-O0>"
-    "$<$<CONFIG:Release>:-g;-O3>"
-    "$<$<CONFIG:MinSizeRel>:-g;-Os>"
-    "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
-)
-
-
 set(TARGET_FLAGS 
     "-Wall"
     "-Wextra"
@@ -21,7 +13,10 @@ set(TARGET_FLAGS
 
 target_include_directories(arch-stm32f030x8 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
 
-target_compile_definitions(segger-rtt PUBLIC "-DBUFFER_SIZE_UP=512")
+target_compile_definitions(segger-rtt PUBLIC 
+    "-DBUFFER_SIZE_UP=512"
+    #"-DSEGGER_RTT_MODE_DEFAULT=SEGGER_RTT_MODE_NO_BLOCK_TRIM"
+)
 
 # app程序生成
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
