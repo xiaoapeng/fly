@@ -24,5 +24,5 @@ config ARCH
     string
     default "mcxn947" if ARCH_MCXN947
     default "gd32f10x" if ARCH_GD32F10X
-    default "st32f0xx" if ARCH_STM32F0XX
+    default "stm32f0xx" if ARCH_STM32F0XX
     
