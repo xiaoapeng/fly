@@ -2,14 +2,6 @@ cmake_minimum_required(VERSION 3.1)
 
 project(mcxn947-demo LANGUAGES C CXX ASM)
 
-add_compile_options(
-    "$<$<CONFIG:Debug>:-g;-O0>"
-    "$<$<CONFIG:Release>:-g;-O3>"
-    "$<$<CONFIG:MinSizeRel>:-g;-Os>"
-    "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
-)
-
-
 set(TARGET_FLAGS 
     "-Wall"
     "-Wextra"

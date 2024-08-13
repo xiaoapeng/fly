@@ -25,7 +25,7 @@ def get_build_type(build_dir):
             if line.startswith("CMAKE_BUILD_TYPE:"):
                 _, value = line.split("=", 1)
                 return value.strip()
-    return None
+    return "Release"
 
 def convert_config_to_cmake(config_file, cmake_file):
     with open(config_file, 'r') as f:
@@ -135,7 +135,7 @@ def run_distclean(source_dir):
         shutil.rmtree(f"{source_dir}/dl")
     
 
-def run_build(source_dir, build_type='Release'):
+def run_build(source_dir, build_type='None'):
     """编译"""
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
@@ -146,6 +146,9 @@ def run_build(source_dir, build_type='Release'):
     if not os.path.exists(f"{source_dir}/build"):
         os.mkdir(f"{source_dir}/build")
         rebuild = True
+
+    if build_type == 'None':
+        build_type = get_build_type(f"{source_dir}/build")
 
     if rebuild or get_build_type(f"{source_dir}/build") != build_type:
         """ 如果发现ninja优先使用 """
@@ -215,7 +218,7 @@ if __name__ == "__main__":
 
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build the project.')
-    parser_build.add_argument('build_type', type=str, nargs='?', default='Release', help='Build type (e.g., Debug, Release, MinSizeRel, RelWithDebInfo).')
+    parser_build.add_argument('build_type', type=str, nargs='?', default='None', help='Build type (e.g., Debug, Release, MinSizeRel).')
 
 
     all_args = sys.argv[1:]
