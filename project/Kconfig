@@ -10,5 +10,6 @@ if !COMMON_PROJECT_SET
 rsource "mcxn947/Kconfig"
 rsource "gd32f10x/Kconfig"
 rsource "stm32f0xx/Kconfig"
+rsource "stm32f1xx/Kconfig"
 
 endif
