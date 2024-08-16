@@ -22,5 +22,5 @@ set(DEMAND_LINK_OPTIONS
     "-Wl,--gc-sections"
 )
 
-set(DEMAND_COMPILE_DEFINITIONS "-D__FPU_USED__=1")
+set(DEMAND_COMPILE_DEFINITIONS "")
 set(DEMAND_COMPILE_TOOL_CHAIN "gcc-arm-none-eabi")

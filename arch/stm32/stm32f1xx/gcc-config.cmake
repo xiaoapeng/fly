@@ -18,4 +18,5 @@ set(DEMAND_LINK_OPTIONS
     "-Wl,--gc-sections"
 )
 
+set(DEMAND_COMPILE_DEFINITIONS "")
 set(DEMAND_COMPILE_TOOL_CHAIN "gcc-arm-none-eabi")
