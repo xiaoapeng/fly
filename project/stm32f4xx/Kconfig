@@ -1,0 +1,24 @@
+
+
+choice
+    prompt "Select a stm32f1xx platform project"
+    default PROJECT_STM32F4XX_NONE
+    depends on ARCH_STM32F4XX
+
+config PROJECT_STM32F4XX_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_STM32F401CB_DEMO
+    bool "STM32F401CB demo project"
+    help
+        Select this option to enable Module STM32F401CB DEMO.
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "stm32f4xx/stm32f401cb-demo" if PROJECT_STM32F401CB_DEMO
+
