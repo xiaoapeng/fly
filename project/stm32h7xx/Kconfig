@@ -1,0 +1,24 @@
+
+
+choice
+    prompt "Select a stm32f1xx platform project"
+    default PROJECT_STM32H7XX_NONE
+    depends on ARCH_STM32H7XX
+
+config PROJECT_STM32H7XX_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_STM32H750VB_DEMO
+    bool "STM32H750VB demo project"
+    help
+        Select this option to enable Module STM32H750VB DEMO.
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "stm32h7xx/stm32h750vb-demo" if PROJECT_STM32H750VB_DEMO
+

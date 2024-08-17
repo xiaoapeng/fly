@@ -20,11 +20,12 @@ def get_file_modification_time(file_path):
     return os.path.getmtime(file_path)
 
 def get_build_type(build_dir):
-    with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
-        for line in cache_file:
-            if line.startswith("CMAKE_BUILD_TYPE:"):
-                _, value = line.split("=", 1)
-                return value.strip()
+    if os.path.exists(f"{build_dir}"):
+        with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
+            for line in cache_file:
+                if line.startswith("CMAKE_BUILD_TYPE:"):
+                    _, value = line.split("=", 1)
+                    return value.strip()
     return "Release"
 
 def convert_config_to_cmake(config_file, cmake_file):
@@ -144,7 +145,6 @@ def run_build(source_dir, build_type='None'):
     rebuild = False
 
     if not os.path.exists(f"{source_dir}/build"):
-        os.mkdir(f"{source_dir}/build")
         rebuild = True
 
     if build_type == 'None':
