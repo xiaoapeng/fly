@@ -27,6 +27,11 @@ choice
         bool "stm32f4xx"
         help
             Select this option if you are targeting stm32f4xx architecture.
+    
+    config ARCH_STM32H7XX
+        bool "stm32h7xx"
+        help
+            Select this option if you are targeting stm32h7xx architecture.
 
 endchoice
 
@@ -37,4 +42,5 @@ config ARCH
     default "stm32/stm32f0xx" if ARCH_STM32F0XX
     default "stm32/stm32f1xx" if ARCH_STM32F1XX
     default "stm32/stm32f4xx" if ARCH_STM32F4XX
+    default "stm32/stm32h7xx" if ARCH_STM32H7XX
     
