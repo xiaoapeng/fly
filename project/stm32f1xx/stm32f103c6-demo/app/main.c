@@ -84,8 +84,8 @@ void task_main(void){
 	eh_signal_slot_connect(&signal_1000ms_timer, &slot_1000ms);
 	eh_timer_start(eh_signal_to_custom_event(&signal_1000ms_timer));
 
-	// eh_task_create("test_switch0", EH_TASK_FLAGS_DETACH, 512, NULL, task_switch_on_test);
-	// eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 512, NULL, task_switch_off_test);
+	eh_task_create("test_switch0", EH_TASK_FLAGS_DETACH, 512, NULL, task_switch_on_test);
+	eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 512, NULL, task_switch_off_test);
 
 	while(1){
 		eh_usleep(1000*1000*60);

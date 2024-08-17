@@ -62,6 +62,6 @@ extern uint32_t SystemCoreClock;
 /**
  *  配置任务调度多少次后进行一次轮询
  */
-#define EH_CONFIG_TASK_DISPATCH_CNT_PER_POLL                    4
+#define EH_CONFIG_TASK_DISPATCH_CNT_PER_POLL                    1
 
 #endif // _EH_USER_CONFIG_H_
