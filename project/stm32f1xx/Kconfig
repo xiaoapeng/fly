@@ -14,6 +14,8 @@ config PROJECT_STM32F103C6_DEMO
     bool "STM32F103C6 demo project"
     help
         Select this option to enable Module STM32F103C6 DEMO.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
     
 endchoice
 

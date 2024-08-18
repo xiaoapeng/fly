@@ -14,6 +14,8 @@ config PROJECT_MCXN947_DEMO
     bool "MCXN947 demo project"
     help
         Select this option to enable Module MCXN947 DEMO.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
     
 endchoice
 
