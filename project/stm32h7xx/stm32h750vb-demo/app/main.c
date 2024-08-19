@@ -88,7 +88,7 @@ int task_float_test(void *parameters){
 void task_main(void){
 	eh_timer_advanced_init(
         eh_signal_to_custom_event(&signal_1000ms_timer), 
-        (eh_sclock_t)eh_msec_to_clock(200), 
+        (eh_sclock_t)eh_msec_to_clock(1000), 
         EH_TIMER_ATTR_AUTO_CIRCULATION
     );
 	eh_signal_register(&signal_1000ms_timer);
