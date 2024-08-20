@@ -80,7 +80,7 @@ static void __exit board_button_exit(void){
     eh_signal_unregister(&button_sw3_signal);
 }
 
-eh_module_export(board_button_init, board_button_exit);
+eh_module_level0_export(board_button_init, board_button_exit);
 
 
 

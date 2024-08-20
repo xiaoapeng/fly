@@ -117,4 +117,4 @@ int __init board_rgb_init(void)
     return 0;
 }
 
-eh_module_export(board_rgb_init, NULL);
+eh_module_level0_export(board_rgb_init, NULL);
