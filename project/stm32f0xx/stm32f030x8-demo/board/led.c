@@ -39,4 +39,4 @@ int __init board_led_init(void)
 
 
 
-eh_module_export(board_led_init, NULL);
+eh_module_level0_export(board_led_init, NULL);
