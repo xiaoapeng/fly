@@ -24,6 +24,7 @@ function(add_jlink_image CMAKE_TARGET)
             ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ --speed ${CUSTOM_FUNC_SPEED}
             ${CUSTOM_FUNC_FIRMWARE_LIST}
         COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/CURRENT ${FLY_TOP_DIR}/image/CURRENT
         DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp
         COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Make a jlink burn package"
     )

@@ -4,6 +4,7 @@ import os
 import sys
 import kconfiglib
 import menuconfig
+import platform
 
 def check_tool_installed(tool_name):
     # Check if the tool is in PATH
@@ -183,6 +184,15 @@ def run_make_jlink_img(source_dir, flash_target='default'):
         exit(1)
     os.system(f"cmake --build {source_dir}/build --target {flash_target}_make_jlink_img")
 
+def run_rttlog(source_dir):
+    # 判断操作系统
+    if not os.path.exists(f"{source_dir}/image/CURRENT/"):
+        print("image not exist!!")
+        exit(1)
+    if platform.system() == 'Windows':
+        os.system(f"cd {source_dir}/image/CURRENT/ && ./log.bat")
+    else :
+        os.system(f"cd {source_dir}/image/CURRENT/ && ./log.sh")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
@@ -220,6 +230,8 @@ if __name__ == "__main__":
     parser_build = subparsers.add_parser('build', help='Build the project.')
     parser_build.add_argument('build_type', type=str, nargs='?', default='None', help='Build type (e.g., Debug, Release, MinSizeRel).')
 
+    # Subparser for rttlog
+    parser_log = subparsers.add_parser('rttlog', help='Capture log.')
 
     all_args = sys.argv[1:]
     source_dir = all_args[0]
@@ -245,3 +257,5 @@ if __name__ == "__main__":
         run_make_jlink_img(source_dir, args.flash_target)
     elif args.command == None:
         run_build(source_dir)
+    elif args.command == 'rttlog':
+        run_rttlog(source_dir)
