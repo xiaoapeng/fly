@@ -56,6 +56,7 @@ add_target_print_memory_usage(stm32h750vb_demo_app)
 add_jlink_image( default
     IMAGE_NAME "STM32H750VB_DEMO_APP"
     CHIP_NAME "STM32H750VB"
+    SPEED "10000"
     FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32h750vb_demo_app.bin"
     DEPENDS stm32h750vb_demo_app
 )
