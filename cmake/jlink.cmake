@@ -6,17 +6,22 @@ include("${CMAKE_CURRENT_LIST_DIR}/git-status.cmake")
 function(add_jlink_image CMAKE_TARGET)
     cmake_parse_arguments(
         CUSTOM_FUNC ""
-        "CHIP_NAME;DEPENDS;IMAGE_NAME"
+        "CHIP_NAME;DEPENDS;IMAGE_NAME;SPEED"
         "FIRMWARE_LIST"
         ""
         ${ARGN}
     )
 
+    # 设置 SPEED 的默认值
+    if(NOT CUSTOM_FUNC_SPEED)
+        set(CUSTOM_FUNC_SPEED "4000")
+    endif()
+
     add_custom_command(
         OUTPUT ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
         COMMAND python3 ${FLY_TOP_DIR}/tool/python/mk_jlink_img.py 
             --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --win-jlink-path 
-            ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/
+            ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ --speed ${CUSTOM_FUNC_SPEED}
             ${CUSTOM_FUNC_FIRMWARE_LIST}
         COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.make_jlink_img.timestamp
         DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp

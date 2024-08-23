@@ -61,9 +61,9 @@ def _parse_version(version_string):
 
     return version_number,"v%d.%d.%d" % (major, minor, patch)
 
-# ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --win-jlink-path ../win/jlink/  --output-dir ../../image/      BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
+# ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --win-jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
-    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'win_jlink_path', 'output_dir', 'firmware_parts'])
+    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'win_jlink_path', 'output_dir', 'firmware_parts', 'speed'])
     FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
@@ -73,6 +73,7 @@ def parse_args():
     parser.add_argument('--win-jlink-path', required=True, help='Path to the J-Link tool.')
     parser.add_argument('--output-dir', required=True, help='Directory to output the generated image.')
     parser.add_argument('--chip-name', required=True, help='Chip models supported by J-Link.')
+    parser.add_argument('--speed', required=True,default=4000, help='J-Link speed.')
 
     # Positional arguments for firmware parts
     parser.add_argument('firmware_parts', nargs='+', help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
@@ -82,7 +83,7 @@ def parse_args():
         print('JLink executable does not exist: {}'.format(args.win_jlink_path))
         sys.exit(1)
 
-    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.win_jlink_path, args.output_dir, [])
+    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.win_jlink_path, args.output_dir, [], args.speed)
     for firmware_part in args.firmware_parts:
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':')
@@ -135,14 +136,14 @@ if __name__ == '__main__':
     # 生成windows烧写脚本
     with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
         f.write('@echo off\n')
-        f.write('tool\JLink.exe -autoconnect 1 -device {} -if swd -speed 4000 -commandfile download.jlink\n'.format(args_info.chip_name))
+        f.write('tool\JLink.exe -autoconnect 1 -device {} -if swd -speed {} -commandfile download.jlink\n'.format(args_info.chip_name, args_info.speed))
         f.write('echo "Execution completed, will automatically exit in 10 seconds."\n')
         f.write('timeout /t 10 /nobreak > nul\n')
         f.write('exit 0\n')
     # 生成windows日志查看脚本
     with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
         f.write('@echo off\n')
-        f.write('tool\JLinkRTTLogger.exe -Device {} -If swd -Speed 4000  -RTTChannel 0 log.txt\n'.format(args_info.chip_name))
+        f.write('tool\JLinkRTTLogger.exe -Device {} -If swd -Speed {}  -RTTChannel 0 log.txt\n'.format(args_info.chip_name, args_info.speed))
         f.write('echo "Execution completed, will automatically exit in 2 seconds."\n')
         f.write('timeout /t 2 /nobreak > nul\n')
         f.write('exit 0\n')
@@ -153,10 +154,10 @@ if __name__ == '__main__':
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Download using WSL jlink.."\n')
-        f.write('   JLinkExe -autoconnect 1 -device {} -if swd -speed 4000 -commandfile  $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name))
+        f.write('   JLinkExe -autoconnect 1 -device {} -if swd -speed {} -commandfile  $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name, args_info.speed))
         f.write('else\n')
         f.write('   echo "Download using windows jlink.."\n')
-        f.write('   $CUR_SH_DIR/tool/JLink.exe -autoconnect 1 -device {} -if swd -speed 4000 -commandfile $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name))
+        f.write('   $CUR_SH_DIR/tool/JLink.exe -autoconnect 1 -device {} -if swd -speed {} -commandfile $CUR_SH_DIR/download.jlink\n'.format(args_info.chip_name, args_info.speed))
         f.write('fi\n')
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'burn.sh', 0o755)
@@ -167,10 +168,10 @@ if __name__ == '__main__':
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Debug using WSL jlink.."\n')
-        f.write('   JLinkRTTLogger -Device  {} -If swd -Speed 4000  -RTTChannel 0 $CUR_SH_DIR/log.txt\n'.format(args_info.chip_name))
+        f.write('   JLinkRTTLogger -Device  {} -If swd -Speed {}  -RTTChannel 0 $CUR_SH_DIR/log.txt\n'.format(args_info.chip_name, args_info.speed))
         f.write('else\n')
         f.write('   echo "Debug using windows jlink.."\n')
-        f.write('   $CUR_SH_DIR/tool/JLinkRTTLogger.exe -Device {} -If swd -Speed 4000  -RTTChannel 0 $CUR_SH_DIR/log.txt \n'.format(args_info.chip_name))
+        f.write('   $CUR_SH_DIR/tool/JLinkRTTLogger.exe -Device {} -If swd -Speed {}  -RTTChannel 0 $CUR_SH_DIR/log.txt \n'.format(args_info.chip_name, args_info.speed))
         f.write('fi\n')
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
