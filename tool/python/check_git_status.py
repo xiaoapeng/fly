@@ -32,7 +32,7 @@ def main():
         with open(status_file, 'r') as f:
             previous_status = f.read().strip()
     
-    if status_str != previous_status:
+    if status_str != previous_status or not os.path.exists(timestamp_file):
         # Write the new status to the status file
         with open(status_file, 'w') as f:
             f.write(status_str)
