@@ -25,66 +25,67 @@ def launch_json_read_or_init(top_path, config_name):
 
     return launch_json
 
-def launch_json_append(launch_json, config_name, chip_name, gdb_path, elf_path, speed):
+def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, elf_path, speed):
+    jlink_gdb_server = ''
     if platform.system() == 'Linux':
-        launch_json['configurations'].append({
-            "name": f'{config_name}-{chip_name} (JLink)',
-            "type": "gnu-debugger",
-            "request": "launch",
-            "program": elf_path,
-            "client": gdb_path,
-            "server": "JLinkGDBServer",
-            "serverArgs": [
-                "-device", chip_name,
-                "-if", "SWD",
-                "-speed", f"{speed}",
-                "-noLocalhostOnly",
-                "-port", "2331", 
-                "-SWOPort", "2332",
-                "-TelnetPort", "2333",
-                "-RTTTelnetPort", "19021"
-            ],
-            "serverHost": "localhost",
-            "serverPort": 2331,
-            "customVariables": [
-            ],
-            "autoRun": False,
-            "debugOutput": False,
-        })
-        launch_json['configurations'].append({
-            "name": f'{config_name}-{chip_name} attach (JLink)',
-            "type": "gnu-debugger",
-            "request": "launch",
-            "program": elf_path,
-            "client": gdb_path,
-            "server": "JLinkGDBServer",
-            "serverArgs": [
-                "-device", chip_name,
-                "-if", "SWD",
-                "-speed", f"{speed}",
-                "-noLocalhostOnly",
-                "-port", "2331", 
-                "-SWOPort", "2332",
-                "-TelnetPort", "2333",
-                "-RTTTelnetPort", "19021"
-            ],
-            "serverHost": "localhost",
-            "serverPort": 2331,
-            "customVariables": [
-            ],
-            "autoRun": False,
-            "debugOutput": False,
-            "gdbCommands":[
-                "-gdb-set target-async on", 
-                "-enable-pretty-printing",
-                "-target-select remote localhost:2331",
-                f"-file-exec-and-symbols \"{elf_path}\"",
-                "-interpreter-exec console \"monitor halt\"",
-            ]
-        })
-    else:
-        print('not support')
-        exit(1)
+        jlink_gdb_server = 'JLinkGDBServer'
+    elif platform.system() == 'Windows':
+        jlink_gdb_server = f'{top_path}/tool/win/jlink/JLinkGDBServerCL.exe'
+    launch_json['configurations'].append({
+        "name": f'{config_name}-{chip_name} (JLink)',
+        "type": "gnu-debugger",
+        "request": "launch",
+        "program": elf_path,
+        "client": gdb_path,
+        "server": jlink_gdb_server,
+        "serverArgs": [
+            "-device", chip_name,
+            "-if", "SWD",
+            "-speed", f"{speed}",
+            "-noLocalhostOnly",
+            "-port", "2331", 
+            "-SWOPort", "2332",
+            "-TelnetPort", "2333",
+            "-RTTTelnetPort", "19021"
+        ],
+        "serverHost": "localhost",
+        "serverPort": 2331,
+        "customVariables": [
+        ],
+        "autoRun": False,
+        "debugOutput": False,
+    })
+    launch_json['configurations'].append({
+        "name": f'{config_name}-{chip_name} attach (JLink)',
+        "type": "gnu-debugger",
+        "request": "launch",
+        "program": elf_path,
+        "client": gdb_path,
+        "server": jlink_gdb_server,
+        "serverArgs": [
+            "-device", chip_name,
+            "-if", "SWD",
+            "-speed", f"{speed}",
+            "-noLocalhostOnly",
+            "-port", "2331", 
+            "-SWOPort", "2332",
+            "-TelnetPort", "2333",
+            "-RTTTelnetPort", "19021"
+        ],
+        "serverHost": "localhost",
+        "serverPort": 2331,
+        "customVariables": [
+        ],
+        "autoRun": False,
+        "debugOutput": False,
+        "gdbCommands":[
+            "-gdb-set target-async on", 
+            "-enable-pretty-printing",
+            "-target-select remote localhost:2331",
+            f"-file-exec-and-symbols \"{elf_path}\"",
+            "-interpreter-exec console \"monitor halt\"",
+        ]
+    })
 
 def launch_json_save(launch_json, top_path):
     launch_json_path = f'{top_path}/.vscode/launch.json'
@@ -106,7 +107,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     launch_json = launch_json_read_or_init(args.top_path, args.config_name)
-    launch_json_append(launch_json, args.config_name, args.chip_name, args.gdb_path, args.elf_path, args.speed)
+    launch_json_append(launch_json, args.top_path, args.config_name, args.chip_name, args.gdb_path, args.elf_path, args.speed)
     launch_json_save(launch_json, args.top_path)
 
 
