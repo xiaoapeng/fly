@@ -178,9 +178,7 @@ def run_build(source_dir, build_type='None', jobs=1):
     
     os.system(f"cmake --build {source_dir}/build --target all -j{jobs} --")
     
-
-
-def run_flash(source_dir, flash_target='default'):
+def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
         exit(1)
@@ -188,9 +186,10 @@ def run_flash(source_dir, flash_target='default'):
     if not os.path.exists(f"{source_dir}/build"):
         print("build not exist!!")
         exit(1)
-    os.system(f"cmake --build {source_dir}/build --target {flash_target}_flash")
+    os.system(f"cmake --build {source_dir}/build --target {target}")
 
-
+def run_flash(source_dir, flash_target='default'):
+    run_target(source_dir, f'{flash_target}_flash')
 
 def run_make_jlink_img(source_dir, flash_target='default'):
     if not check_tool_installed('cmake'):

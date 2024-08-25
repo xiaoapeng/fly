@@ -60,3 +60,10 @@ add_jlink_image( default
     FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32h750vb_demo_app.bin"
     DEPENDS stm32h750vb_demo_app
 )
+
+add_vscode_jlink_gdb( default
+    CHIP_NAME "STM32H750VB"
+    SPEED "10000"
+    ELF_NAME "stm32h750vb_demo_app"
+    DEPENDS stm32h750vb_demo_app
+)
