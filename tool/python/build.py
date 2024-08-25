@@ -137,7 +137,7 @@ def run_distclean(source_dir):
         shutil.rmtree(f"{source_dir}/dl")
     
 
-def run_build(source_dir, build_type='None'):
+def run_build(source_dir, build_type='None', jobs=1):
     """编译"""
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
@@ -154,15 +154,31 @@ def run_build(source_dir, build_type='None'):
     if rebuild or get_build_type(f"{source_dir}/build") != build_type:
         """ 如果发现ninja优先使用 """
         if check_tool_installed('ninja'):
-            os.system(f'cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -GNinja')
+            os.system(
+                f'cmake '
+                f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
+                f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
+                f'--no-warn-unused-cli '
+                f'-S{source_dir} '
+                f'-B{source_dir}/build '
+                f'-GNinja'
+            )
         elif check_tool_installed('make'):
-            os.system(f'cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -G "Unix Makefiles"')
+            os.system(
+                f'cmake '
+                f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
+                f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
+                f'--no-warn-unused-cli '
+                f'-S{source_dir} '
+                f'-B{source_dir}/build '
+                f'-G "Unix Makefiles"'
+            )
         else:
             # 请安装 make 或者 ninja
             print("Please install make or ninja.")
             exit(1)
     
-    os.system(f"cmake --build {source_dir}/build --target all --")
+    os.system(f"cmake --build {source_dir}/build --target all -j{jobs} --")
     
 
 
@@ -233,7 +249,9 @@ if __name__ == "__main__":
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build the project.')
     parser_build.add_argument('build_type', type=str, nargs='?', default='None', help='Build type (e.g., Debug, Release, MinSizeRel).')
-
+    parser_build.add_argument('-j', '--jobs', type=int, default=1, help='Number of jobs to run simultaneously.')
+    parser.add_argument('-j', '--jobs', type=int, default=1, help='Number of jobs to run simultaneously.')
+    
     # Subparser for rttlog
     parser_log = subparsers.add_parser('rttlog', help='Capture log.')
 
@@ -254,12 +272,12 @@ if __name__ == "__main__":
     elif args.command == 'distclean':
         run_distclean(source_dir)
     elif args.command == 'build':
-        run_build(source_dir, args.build_type)
+        run_build(source_dir, args.build_type, args.jobs)
     elif args.command == 'flash':
         run_flash(source_dir, args.flash_target)
     elif args.command == 'make_jlink_img':
         run_make_jlink_img(source_dir, args.flash_target)
     elif args.command == None:
-        run_build(source_dir)
+        run_build(source_dir, jobs = args.jobs)
     elif args.command == 'rttlog':
         run_rttlog(source_dir)
