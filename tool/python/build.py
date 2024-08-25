@@ -154,9 +154,13 @@ def run_build(source_dir, build_type='None'):
     if rebuild or get_build_type(f"{source_dir}/build") != build_type:
         """ 如果发现ninja优先使用 """
         if check_tool_installed('ninja'):
-            os.system(f"cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -GNinja")
+            os.system(f'cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -GNinja')
+        elif check_tool_installed('make'):
+            os.system(f'cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build -G "Unix Makefiles"')
         else:
-            os.system(f"cmake -DCMAKE_BUILD_TYPE:STRING={build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE --no-warn-unused-cli -S{source_dir} -B{source_dir}/build")
+            # 请安装 make 或者 ninja
+            print("Please install make or ninja.")
+            exit(1)
     
     os.system(f"cmake --build {source_dir}/build --target all --")
     
@@ -190,9 +194,9 @@ def run_rttlog(source_dir):
         print("image not exist!!")
         exit(1)
     if platform.system() == 'Windows':
-        os.system(f"cd {source_dir}/image/CURRENT/ && ./log.bat")
+        os.system(f"{source_dir}/image/CURRENT/log.bat")
     else :
-        os.system(f"cd {source_dir}/image/CURRENT/ && ./log.sh")
+        os.system(f"{source_dir}/image/CURRENT/log.sh")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
