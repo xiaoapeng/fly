@@ -133,8 +133,6 @@ def run_distclean(source_dir):
     """ 删除build 和 dl """
     if os.path.exists(f"{source_dir}/build"):
         shutil.rmtree(f"{source_dir}/build")
-    if os.path.exists(f"{source_dir}/dl"):
-        shutil.rmtree(f"{source_dir}/dl")
     
 
 def run_build(source_dir, build_type='None', jobs=1):
@@ -236,7 +234,7 @@ if __name__ == "__main__":
     parser_clean = subparsers.add_parser('clean', help='Clean the build directory.')
 
     # distclean 
-    parser_distclean = subparsers.add_parser('distclean', help='Clean the build directory.')
+    parser_distclean = subparsers.add_parser('distclean', help='Delete the build directory.')
 
     # flash
     parser_flash = subparsers.add_parser('flash', help='Flash the project.')
