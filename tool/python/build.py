@@ -21,7 +21,7 @@ def get_file_modification_time(file_path):
     return os.path.getmtime(file_path)
 
 def get_build_type(build_dir):
-    if os.path.exists(f"{build_dir}"):
+    if os.path.exists(f"{build_dir}/CMakeCache.txt"):
         with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
             for line in cache_file:
                 if line.startswith("CMAKE_BUILD_TYPE:"):
