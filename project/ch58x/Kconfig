@@ -1,0 +1,26 @@
+
+
+choice
+    prompt "Select a ch58x platform project"
+    default PROJECT_CH58X_NONE
+    depends on ARCH_CH58X
+
+config PROJECT_CH58X_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_CH583_DEMO
+    bool "CH583 demo project"
+    help
+        Select this option to enable Module CH583 DEMO.
+    #select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "ch58x/ch583-demo" if PROJECT_CH583_DEMO
+
