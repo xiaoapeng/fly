@@ -13,5 +13,6 @@ rsource "stm32f0xx/Kconfig"
 rsource "stm32f1xx/Kconfig"
 rsource "stm32f4xx/Kconfig"
 rsource "stm32h7xx/Kconfig"
+rsource "ch58x/Kconfig"
 
 endif
