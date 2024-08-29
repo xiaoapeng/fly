@@ -5,6 +5,7 @@ import sys
 import kconfiglib
 import menuconfig
 import platform
+import json
 
 K_CONFIG_FILR_PATH = 'Kconfig'
 DOT_CONFIG_FILE_PATH = '.config'
@@ -13,7 +14,7 @@ AUTO_GENERATE_DIR_PATH = 'auto-generate'
 AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/.config.cmake'
 AUTO_GENERATE_C_HEADER_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/autoconf.h'
 CURRENT_IMAGE_DIR_PATH = 'image/CURRENT'
-
+ENV_PATH_CONFIG_JSON_FILE_PATH = '.PATH.evn.json'
 
 def check_tool_installed(tool_name):
     # Check if the tool is in PATH
@@ -223,6 +224,31 @@ def run_rttlog(source_dir):
     else :
         os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.sh")
 
+def run_append_path_env(source_dir, env_path):
+    env_PATH_data = []
+    env_path = os.path.abspath(env_path)
+    env_path_config_json_path = f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"
+    if not os.path.exists(env_path):
+        print(f"{env_path} not exist!!")
+        exit(1)
+    if os.path.exists(env_path_config_json_path):
+        with open(env_path_config_json_path, 'r') as f:
+            env_PATH_data = json.load(f)
+    env_PATH_data.append(env_path)
+    with open(env_path_config_json_path, 'w') as f:
+        json.dump(env_PATH_data, f, indent=4)
+
+def load_env(source_dir):
+    if not os.path.exists(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"):
+        return None
+    with open(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}", 'r') as f:
+        env_PATH_data = json.load(f)
+    path = os.environ.get('PATH', '')
+    for path_item in env_PATH_data:
+        path = path + os.pathsep + path_item
+    os.environ['PATH'] = path
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
     #parser.add_argument('source_dir', type=str, help='Directory containing the Kconfig file.')
@@ -263,12 +289,19 @@ if __name__ == "__main__":
     # Subparser for rttlog
     parser_log = subparsers.add_parser('rttlog', help='Capture log.')
 
+    # Add the PATH environment variable
+    parser_add_path = subparsers.add_parser('add_path_env', help='Add the PATH environment variable.')
+    parser_add_path.add_argument('env_path', type=str, help='Environment variable path')
+
     all_args = sys.argv[1:]
     source_dir = all_args[0]
 
     args = parser.parse_args(all_args[1:])
     
     os.chdir(source_dir)
+
+    load_env(source_dir)
+
     if args.command == 'menuconfig':
         run_menuconfig(source_dir)
     elif args.command == 'savedefconfig':
@@ -284,8 +317,10 @@ if __name__ == "__main__":
     elif args.command == 'flash':
         run_flash(source_dir, args.flash_target)
     elif args.command == 'make_jlink_img':
-        run_make_jlink_img(source_dir, args.flash_target)
-    elif args.command == None:
-        run_build(source_dir, jobs = args.jobs)
+        run_make_jlink_img(source_dir, args.flash_target)    
     elif args.command == 'rttlog':
         run_rttlog(source_dir)
+    elif args.command == 'add_path_env':
+        run_append_path_env(source_dir, args.env_path)
+    else:
+        run_build(source_dir, jobs = args.jobs)
