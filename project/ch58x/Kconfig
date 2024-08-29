@@ -10,10 +10,10 @@ config PROJECT_CH58X_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_CH583_DEMO
-    bool "CH583 demo project"
+config PROJECT_CH582_DEMO
+    bool "CH582 demo project"
     help
-        Select this option to enable Module CH583 DEMO.
+        Select this option to enable Module CH582 DEMO.
     #select PACKAGE_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
     
@@ -22,5 +22,5 @@ endchoice
 
 config PROJECT
     string
-    default "ch58x/ch583-demo" if PROJECT_CH583_DEMO
+    default "ch58x/ch582-demo" if PROJECT_CH582_DEMO
 
