@@ -7,3 +7,4 @@ tool/python/__pycache__/
 .config.cmake
 .vscode/
 auto-generate/
+*.evn.json
