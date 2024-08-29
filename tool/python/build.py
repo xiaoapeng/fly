@@ -6,6 +6,15 @@ import kconfiglib
 import menuconfig
 import platform
 
+K_CONFIG_FILR_PATH = 'Kconfig'
+DOT_CONFIG_FILE_PATH = '.config'
+CMAKE_BUILD_DIR_PATH = 'build'
+AUTO_GENERATE_DIR_PATH = 'auto-generate'
+AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/.config.cmake'
+AUTO_GENERATE_C_HEADER_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/autoconf.h'
+CURRENT_IMAGE_DIR_PATH = 'image/CURRENT'
+
+
 def check_tool_installed(tool_name):
     # Check if the tool is in PATH
     tool_path = shutil.which(tool_name)
@@ -55,8 +64,8 @@ def convert_config_to_cmake(config_file, cmake_file):
     print(f"Conversion complete. CMake file written to {cmake_file}")
 
 def try_update_cmake_config(source_dir):
-    if get_file_modification_time(f"{source_dir}/.config") > get_file_modification_time(f"{source_dir}/auto-generate/.config.cmake"):
-        convert_config_to_cmake(f"{source_dir}/.config", f"{source_dir}/auto-generate/.config.cmake")
+    if get_file_modification_time(f"{source_dir}/{DOT_CONFIG_FILE_PATH}") > get_file_modification_time(f"{source_dir}/{AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH}"):
+        convert_config_to_cmake(f"{source_dir}/{DOT_CONFIG_FILE_PATH}", f"{source_dir}/{AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH}")
 
 def parse_config_file(file_path):
     config_dict = {}
@@ -78,31 +87,31 @@ def parse_config_file(file_path):
 
 def run_loadconfig(source_dir, input_file):
     """加载配置文件"""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     kconf.load_config(input_file)
-    kconf.write_config(f"{source_dir}/.config")
-    if not os.path.exists(f"{source_dir}/auto-generate"):
-        os.mkdir(f"{source_dir}/auto-generate")
-    kconf.write_autoconf(f"{source_dir}/auto-generate/autoconf.h")
+    kconf.write_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
+    if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
+        os.mkdir(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
+    kconf.write_autoconf(f"{source_dir}/{AUTO_GENERATE_C_HEADER_FILE_PATH}")
     try_update_cmake_config(f"{source_dir}")
 
 
 def run_menuconfig(source_dir):
     """启动 menuconfig 界面"""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     menuconfig.menuconfig(kconf)
     
-    if not os.path.exists(f"{source_dir}/auto-generate"):
-        os.mkdir(f"{source_dir}/auto-generate")
-    kconf.write_autoconf(f"{source_dir}/auto-generate/autoconf.h")
+    if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
+        os.mkdir(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
+    kconf.write_autoconf(f"{source_dir}/{AUTO_GENERATE_C_HEADER_FILE_PATH}")
     try_update_cmake_config(f"{source_dir}")
 
 
 def run_savedefconfig(source_dir, output_file='defconfig'):
     """保存 defconfig 文件到指定路径"""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/Kconfig")
-    kconf.load_config(f"{source_dir}/.config")
-    config = parse_config_file(f"{source_dir}/.config")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
+    kconf.load_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
+    config = parse_config_file(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
 
     # 查找 CONFIG_DEFCONFIG_PATH 的值
     try:
@@ -126,14 +135,17 @@ def run_clean(source_dir):
         print("cmake not installed!!")
         exit(1)
     
-    if os.path.exists(f"{source_dir}/build"):
+    if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         os.system(f"cmake --build {source_dir}/build --target clean")
 
 def run_distclean(source_dir):
     """ 删除build 和 dl """
-    if os.path.exists(f"{source_dir}/build"):
-        shutil.rmtree(f"{source_dir}/build")
-    
+    if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
+        shutil.rmtree(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
+    if os.path.exists(f"{source_dir}/{DOT_CONFIG_FILE_PATH}"):
+        os.remove(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
+    if os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
+        shutil.rmtree(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
 
 def run_build(source_dir, build_type='None', jobs=1):
     """编译"""
@@ -143,13 +155,13 @@ def run_build(source_dir, build_type='None', jobs=1):
     
     rebuild = False
 
-    if not os.path.exists(f"{source_dir}/build"):
+    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         rebuild = True
 
     if build_type == 'None':
-        build_type = get_build_type(f"{source_dir}/build")
+        build_type = get_build_type(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
 
-    if rebuild or get_build_type(f"{source_dir}/build") != build_type:
+    if rebuild or get_build_type(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}") != build_type:
         """ 如果发现ninja优先使用 """
         if check_tool_installed('ninja'):
             os.system(
@@ -176,17 +188,17 @@ def run_build(source_dir, build_type='None', jobs=1):
             print("Please install make or ninja.")
             exit(1)
     
-    os.system(f"cmake --build {source_dir}/build --target all -j{jobs} --")
+    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
     
 def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
         exit(1)
     
-    if not os.path.exists(f"{source_dir}/build"):
+    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("build not exist!!")
         exit(1)
-    os.system(f"cmake --build {source_dir}/build --target {target}")
+    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
 
 def run_flash(source_dir, flash_target='default'):
     run_target(source_dir, f'{flash_target}_flash')
@@ -196,26 +208,25 @@ def run_make_jlink_img(source_dir, flash_target='default'):
         print("cmake not installed!!")
         exit(1)
     
-    if not os.path.exists(f"{source_dir}/build"):
+    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("build not exist!!")
         exit(1)
-    os.system(f"cmake --build {source_dir}/build --target {flash_target}_make_jlink_img")
+    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_jlink_img")
 
 def run_rttlog(source_dir):
-    # 判断操作系统
-    if not os.path.exists(f"{source_dir}/image/CURRENT/"):
+    if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
         print("image not exist!!")
         exit(1)
+    # 判断操作系统
     if platform.system() == 'Windows':
-        os.system(f"{source_dir}/image/CURRENT/log.bat")
+        os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.bat")
     else :
-        os.system(f"{source_dir}/image/CURRENT/log.sh")
+        os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.sh")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile script.')
     #parser.add_argument('source_dir', type=str, help='Directory containing the Kconfig file.')
     
-
     subparsers = parser.add_subparsers(dest='command', help='Command to execute.', required=False)
 
     # Subparser for menuconfig
