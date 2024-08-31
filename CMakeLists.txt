@@ -15,8 +15,8 @@ include("${FLY_TOP_DIR}/cmake/python3.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
 include("${FLY_TOP_DIR}/cmake/gcc-make-output.cmake")
 include("${FLY_TOP_DIR}/cmake/git-status.cmake")
-include("${FLY_TOP_DIR}/cmake/jlink.cmake")
-include("${FLY_TOP_DIR}/cmake/jlink-gdb.cmake")
+include("${FLY_TOP_DIR}/cmake/jlink-make-image.cmake")
+include("${FLY_TOP_DIR}/cmake/vscode-cortex-debug-gdb.cmake")
 
 project(fly LANGUAGES C CXX ASM)
 
