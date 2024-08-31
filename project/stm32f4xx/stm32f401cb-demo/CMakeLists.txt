@@ -60,9 +60,10 @@ add_jlink_image( default
     DEPENDS stm32f401cb_demo_app
 )
 
-add_vscode_jlink_gdb( default
+add_vscode_cortex_debug_gdb( default
     CHIP_NAME "STM32F401CB"
-    SPEED "10000"
-    ELF_NAME "stm32f401cb_demo_app"
+    ELF_NAME_LIST "stm32f401cb_demo_app"
+    SERVER_TYPE "jlink"
+    RTT_DEBUG  ON
     DEPENDS stm32f401cb_demo_app
 )

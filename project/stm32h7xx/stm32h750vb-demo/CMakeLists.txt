@@ -61,9 +61,10 @@ add_jlink_image( default
     DEPENDS stm32h750vb_demo_app
 )
 
-add_vscode_jlink_gdb( default
+add_vscode_cortex_debug_gdb( default
     CHIP_NAME "STM32H750VB"
-    SPEED "10000"
-    ELF_NAME "stm32h750vb_demo_app"
+    ELF_NAME_LIST "stm32h750vb_demo_app"
+    SERVER_TYPE "jlink"
+    RTT_DEBUG  ON
     DEPENDS stm32h750vb_demo_app
 )
