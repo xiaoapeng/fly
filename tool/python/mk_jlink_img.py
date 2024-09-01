@@ -73,10 +73,10 @@ def parse_args():
     parser.add_argument('--win-jlink-path', required=True, help='Path to the J-Link tool.')
     parser.add_argument('--output-dir', required=True, help='Directory to output the generated image.')
     parser.add_argument('--chip-name', required=True, help='Chip models supported by J-Link.')
-    parser.add_argument('--speed', required=True,default=4000, help='J-Link speed.')
+    parser.add_argument('--speed', required=True, default=4000, help='J-Link speed.')
 
     # Positional arguments for firmware parts
-    parser.add_argument('firmware_parts', nargs='+', help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
+    parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
 
     args = parser.parse_args()
     if not os.path.exists(args.win_jlink_path):
