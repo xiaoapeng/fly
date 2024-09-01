@@ -59,3 +59,11 @@ add_jlink_image( default
     FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
     DEPENDS stm32f030x8_demo_app
 )
+
+add_vscode_cortex_debug_gdb( default
+    CHIP_NAME "STM32F030C8"
+    ELF_NAME_LIST "stm32f030x8_demo_app"
+    SERVER_TYPE "jlink"
+    RTT_DEBUG  ON
+    DEPENDS stm32f030x8_demo_app
+)
