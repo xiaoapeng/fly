@@ -244,8 +244,8 @@ def load_env(source_dir):
     with open(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}", 'r') as f:
         env_PATH_data = json.load(f)
     path = os.environ.get('PATH', '')
-    for path_item in env_PATH_data:
-        path = path + os.pathsep + path_item
+    for path_item in reversed(env_PATH_data):
+        path =  path_item + os.pathsep + path
     os.environ['PATH'] = path
 
 
