@@ -15,6 +15,7 @@ target_include_directories(arch-ch58x PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/confi
 
 target_compile_definitions(segger-rtt PUBLIC 
     "-DBUFFER_SIZE_UP=512"
+    "-DSEGGER_RTT_DISABLE_LOCK"
     #"-DSEGGER_RTT_MODE_DEFAULT=SEGGER_RTT_MODE_NO_BLOCK_TRIM"
 )
 
@@ -37,6 +38,7 @@ set(BOARD_SOURCES ""
 target_sources(ch582_demo_app PRIVATE 
     "${BOARD_SOURCES}"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/init.c"
 )
 target_compile_options(ch582_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_options(ch582_demo_app  PRIVATE
@@ -49,9 +51,20 @@ add_target_make_bin(ch582_demo_app)
 # 自动打印内存/存储占用
 add_target_print_memory_usage(ch582_demo_app)
 
-# add_jlink_image( default
-#     IMAGE_NAME "STM32F030X8_DEMO_APP"
-#     CHIP_NAME "STM32F030C8"
-#     FIRMWARE_LIST "APP:V0.0.1:0x8000000:ch582_demo_app.bin"
-#     DEPENDS ch582_demo_app
-# )
+add_openocd_image( default
+    IMAGE_NAME "CH582_DEMO_APP"
+    FIRMWARE_LIST "APP:V0.0.1:0x0000000:ch582_demo_app.bin"
+    CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/wch-riscv.cfg"
+    DEPENDS ch582_demo_app
+)
+
+add_vscode_cortex_debug_gdb( default
+    CHIP_NAME "CH582"
+    ELF_NAME_LIST "ch582_demo_app"
+    SERVER_TYPE "openocd"
+    CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/wch-riscv.cfg"
+    RTT_DEBUG  ON
+    DEPENDS ch582_demo_app
+)
+
+

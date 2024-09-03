@@ -16,6 +16,7 @@ include("${FLY_TOP_DIR}/cmake/gcc-tool-chain-general.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
 include("${FLY_TOP_DIR}/cmake/git-status.cmake")
 include("${FLY_TOP_DIR}/cmake/jlink-make-image.cmake")
+include("${FLY_TOP_DIR}/cmake/openocd-make-image.cmake")
 include("${FLY_TOP_DIR}/cmake/vscode-cortex-debug-gdb.cmake")
 
 project(fly LANGUAGES C CXX ASM)

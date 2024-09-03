@@ -204,7 +204,7 @@ def run_target(source_dir, target):
 def run_flash(source_dir, flash_target='default'):
     run_target(source_dir, f'{flash_target}_flash')
 
-def run_make_jlink_img(source_dir, flash_target='default'):
+def run_make_img(source_dir, flash_target='default'):
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
         exit(1)
@@ -212,7 +212,7 @@ def run_make_jlink_img(source_dir, flash_target='default'):
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("build not exist!!")
         exit(1)
-    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_jlink_img")
+    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
 
 def run_rttlog(source_dir):
     if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
@@ -276,9 +276,9 @@ if __name__ == "__main__":
     parser_flash = subparsers.add_parser('flash', help='Flash the project.')
     parser_flash.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
 
-    # make_jlink_img
-    parser_make_jlink_img = subparsers.add_parser('make_jlink_img', help='Make jlink img.')
-    parser_make_jlink_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
+    # make_img
+    parser_make_img = subparsers.add_parser('make_img', help='Make image.')
+    parser_make_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
 
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build the project.')
@@ -316,8 +316,8 @@ if __name__ == "__main__":
         run_build(source_dir, args.build_type, args.jobs)
     elif args.command == 'flash':
         run_flash(source_dir, args.flash_target)
-    elif args.command == 'make_jlink_img':
-        run_make_jlink_img(source_dir, args.flash_target)    
+    elif args.command == 'make_img':
+        run_make_img(source_dir, args.flash_target)    
     elif args.command == 'rttlog':
         run_rttlog(source_dir)
     elif args.command == 'add_path_env':

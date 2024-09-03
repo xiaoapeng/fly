@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file init.c
  * @brief 
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
  * @version 1.0
@@ -10,14 +10,11 @@
  * @par 修改日志:
  */
 
-#include "SEGGER_RTT.h"
+#include "CH58x_common.h"
+#include "core_riscv.h"
 
-extern int init(void);
-int a = 0;
-int main(void){
-    init();
-    while(1){
-        
-    }
+int init(void){
+    
+    SetSysClock(CLK_SOURCE_PLL_60MHz);
     return 0;
 }
