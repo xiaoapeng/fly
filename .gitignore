@@ -8,3 +8,4 @@ tool/python/__pycache__/
 .vscode/
 auto-generate/
 *.evn.json
+.clangd
