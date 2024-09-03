@@ -1,5 +1,5 @@
 # the name of the target operating system
-set(CROSS_COMPILE_PREFIX riscv-none-embed-)
+set(CROSS_COMPILE_PREFIX riscv-none-elf-)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION  1)

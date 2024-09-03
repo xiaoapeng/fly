@@ -87,7 +87,6 @@ def launch_json_save(launch_json, top_path):
 
 
 if __name__ == '__main__':
-    # ['/home/simon/project/fly/tool/python/mk_vscode_jlink_gnu_gdb.py', '--chip-name', 'STM32H750VB', '--gdb-path', '/usr/bin/gdb-multiarch', '--elf-path', '/home/simon/project/fly/build/project/stm32h7xx/stm32h750vb-demo/stm32h750vb_demo_app', '--speed', '10000']
     parser = argparse.ArgumentParser()
     parser.add_argument('--server-type', type=str, required=True, help='GDB Server type - supported types are jlink, openocd, pyocd, pe, stlink, stutil, qemu, bmp and external. For \"external\", [please read our Wiki](https://github.com/Marus/cortex-debug/wiki/External-gdb-server-configuration). The executable in your PATH is used by default, to override this use serverpath.')
     parser.add_argument('--config-name', type=str, required=True, help='config name')

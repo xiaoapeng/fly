@@ -153,7 +153,8 @@ Revision: $Rev: 24316 $
 *       RTT lock configuration for SEGGER Embedded Studio,
 *       Rowley CrossStudio and GCC
 */
-#if ((defined(__SES_ARM) || defined(__SES_RISCV) || defined(__CROSSWORKS_ARM) || defined(__GNUC__) || defined(__clang__)) && !defined (__CC_ARM) && !defined(WIN32))
+
+#if ((defined(__SES_ARM) || defined(__SES_RISCV) || defined(__CROSSWORKS_ARM) || defined(__GNUC__) || defined(__clang__)) && !defined (__CC_ARM) && !defined(WIN32) && !defined(SEGGER_RTT_DISABLE_LOCK) )
   #if (defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__))
     #define SEGGER_RTT_LOCK()   {                                                                   \
                                     unsigned int _SEGGER_RTT__LockState;                                         \
@@ -238,6 +239,9 @@ Revision: $Rev: 24316 $
     #define SEGGER_RTT_LOCK()
     #define SEGGER_RTT_UNLOCK()
   #endif
+#else 
+# define SEGGER_RTT_LOCK()
+# define SEGGER_RTT_UNLOCK()
 #endif
 
 /*********************************************************************
