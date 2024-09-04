@@ -4,35 +4,39 @@ import platform
 import json
 
 def launch_json_read_or_init(top_path, config_name):
-    # launch_json_path = f'{top_path}/.vscode/launch.json'
+    launch_json_path = f'{top_path}/.vscode/launch.json'
     launch_json = {
         "version": "0.2.0",
         "configurations": [
         ]
     }
-    # if not os.path.exists(launch_json_path):
-    #     return launch_json
+    if not os.path.exists(launch_json_path):
+        return launch_json
 
-    # try:
-    #     with open(launch_json_path, 'r') as file:
-    #         launch_json = json.load(file)
-    # except:
-    #     return launch_json
-    
-    # for config in launch_json['configurations']:
-    #     if config['name'] == config_name:
-    #         # 删除这一项
-    #         launch_json['configurations'].remove(config)
+    try:
+        with open(launch_json_path, 'r') as file:
+            launch_json = json.load(file)
+    except:
+        return launch_json
 
     return launch_json
 
 def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, objdump_path, 
     elf_path_list, server_type, config_file_list, rtt_enabled):
 
+    
     for elf_path in elf_path_list:
         file_name = os.path.basename(elf_path)
+        attach_all_config_name = f'{config_name}-{file_name} (attach)'
+        all_config_name = f'{config_name}-{file_name}'
+
+        # 如果 launch_json 中已经有 attach_config_name了就将那一项删除掉
+        for i in range(len(launch_json['configurations']) - 1, -1, -1):
+            if launch_json['configurations'][i]['name'] == attach_all_config_name or launch_json['configurations'][i]['name'] == all_config_name:
+                del launch_json['configurations'][i]
+
         launch_json['configurations'].append({
-            "name": f'{config_name}-{file_name} (attach)',
+            "name": attach_all_config_name,
             "cwd": "${workspaceFolder}",
             "type": "cortex-debug",
             "executable": elf_path,
@@ -55,7 +59,7 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
             "configFiles": config_file_list
         })
         launch_json['configurations'].append({
-            "name": f'{config_name}-{file_name}',
+            "name": all_config_name,
             "cwd": "${workspaceFolder}",
             "type": "cortex-debug",
             "executable": elf_path,

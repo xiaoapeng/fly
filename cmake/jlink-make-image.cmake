@@ -5,8 +5,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/git-status.cmake")
 function(add_jlink_image CMAKE_TARGET)
     cmake_parse_arguments(
         CUSTOM_FUNC ""
-        "CHIP_NAME;DEPENDS;IMAGE_NAME;SPEED"
-        "FIRMWARE_LIST"
+        "CHIP_NAME;IMAGE_NAME;SPEED"
+        "FIRMWARE_LIST;DEPENDS"
         ""
         ${ARGN}
     )
