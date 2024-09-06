@@ -63,7 +63,7 @@ def _parse_version(version_string):
 
 # ./mk_openocd_img.py --firmware-name TEST --chip-name GD32F103C8 --win-openocd-path ../win/openocd/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
-    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'output_dir', 'firmware_parts', 'config_file_list', "symlink_name"])
+    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'output_dir', 'firmware_parts', 'config_file_list', "symlink_name", "rtt_setting"])
     FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
@@ -73,13 +73,14 @@ def parse_args():
     parser.add_argument('--output-dir', required=True, help='Directory to output the generated image.')
     parser.add_argument('--symlink-name', default='CURRENT' ,required=False, help='Chip models supported by J-Link.')
     parser.add_argument('--config-file-list', nargs='+', type=str, required=True, help='OpenOCD/PE GDB Server configuration file(s) to use when debugging (OpenOCD -f option)')
+    parser.add_argument('--rtt-setting', nargs=2, type=lambda x: str(x), default=["0x20000000", "0x8000"], help='RTT setting values in hexadecimal')
 
     # Positional arguments for firmware parts
     parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
 
     args = parser.parse_args()
 
-    args_info = ArgsInfo(args.firmware_name, args.output_dir, [], args.config_file_list, args.symlink_name)
+    args_info = ArgsInfo(args.firmware_name, args.output_dir, [], args.config_file_list, args.symlink_name, args.rtt_setting)
     for firmware_part in args.firmware_parts:
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':')
@@ -113,31 +114,33 @@ if __name__ == '__main__':
     os.makedirs(make_firmware_path)
     os.makedirs(f'{make_firmware_path}/openocd_config')
 
-    # openocd -f burn/wch-riscv.cfg -c "init; halt; flash write_image erase /home/simon/project/usbbb/usbbb/build/usbbb.bin 0x0000000; reset; exit"
 
     # 拷贝自定义的配置文件
     for config_file_path in args_info.config_file_list:
         if os.path.isfile(config_file_path):
             openocd_config_path = f'openocd_config/{os.path.basename(config_file_path)}'
             shutil.copyfile(config_file_path, f'{make_firmware_path}/{openocd_config_path}')
-            config_option = f'{config_option} -f {openocd_config_path}'
+            config_option = f'{config_option} -f "{openocd_config_path}"'
         else:
-            config_option = f'{config_option} -f {config_file_path}'
+            config_option = f'{config_option} -f "{config_file_path}"'
     
-    config_option = f'{config_option} -c init -c halt'
+    config_option = f'{config_option} -c "init"'
 
+    burn_script_option = f'{config_option} -c "halt"'
     # 拷贝bin文件
     for firmware_part in args_info.firmware_parts:
-        config_option = f'{config_option} -c "flash write_image erase {firmware_part.bin_name}.bin {firmware_part.start_addr}"'
-        config_option = f'{config_option} -c "verify_image {firmware_part.bin_name}.bin {firmware_part.start_addr}"'
+        burn_script_option = f'{burn_script_option} -c "flash write_image erase {firmware_part.bin_name}.bin {firmware_part.start_addr}"'
+        burn_script_option = f'{burn_script_option} -c "verify_image {firmware_part.bin_name}.bin {firmware_part.start_addr}"'
         dst_bin_path = make_firmware_path + '/' + firmware_part.bin_name + '.bin'
         shutil.copyfile(firmware_part.file_path, dst_bin_path)
         # bin文件添加尾部信息
         append_factory_data_to_bin(dst_bin_path, firmware_part.bin_version_uint32, 
             firmware_part.bin_name, args_info.firmware_name, 'git@' + git_field + ' ' + 'time@' + time_field)
 
-    config_option = f'{config_option} -c reset -c resume -c exit'
+    burn_script_option = f'{burn_script_option} -c reset -c resume -c exit'
     
+    log_script_option = f'{config_option} -c "rtt server start 19021 0" -c "rtt setup {args_info.rtt_setting[0]} {args_info.rtt_setting[1]} \\"SEGGER RTT\\""  -c "rtt start"  &'
+
     
 
     # # 生成windows烧写脚本
@@ -174,22 +177,29 @@ if __name__ == '__main__':
     with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('cd $CUR_SH_DIR\n')
-        f.write('echo "Download using WSL openocd.."\n')
+        f.write('echo "Download firmware using openocd.."\n')
 
-        f.write(f'openocd {config_option}\n')
+        f.write(f'openocd {burn_script_option}\n')
 
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'burn.sh', 0o755)
 
     # 生成wsl日志查看脚本
-    # openocd -f interface/jlink.cfg -c "transport select swd; adapter speed 4000" -f target/stm32f0x.cfg -c init -c "rtt server start 19021 0" -c "rtt setup 0x20000000 0x8000 \"SEGGER RTT\""  -c "rtt start"
     with open(make_firmware_path + '/' + 'log.sh', 'w') as f:
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('cd $CUR_SH_DIR\n')
-        f.write('echo "Debug using WSL openocd.."\n')
+        f.write('echo "Use openocd to obtain RTT logs.."\n')
 
-        #f.write(f'JLinkRTTLogger -Device  {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 $CUR_SH_DIR/log.txt\n')
+        f.write(f'openocd {log_script_option}\n')
 
+        f.write('OPENOCD_PID=$!\n')
+        f.write('cleanup() {\n')
+        f.write('    kill $OPENOCD_PID\n')
+        f.write('}\n')
+        f.write('trap cleanup  EXIT\n')
+        f.write('sleep 1\n')
+        f.write('telnet localhost 19021 | awk \'{ cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0; fflush() }\' | tee -a log.txt\n')
+        f.write('trap - EXIT\n')
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
 

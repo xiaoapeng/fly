@@ -56,6 +56,7 @@ add_target_print_memory_usage(stm32f030x8_demo_app)
 
 add_openocd_image( openocd_image
     IMAGE_NAME "STM32F030X8_DEMO_APP"
+    RTT_ADDR_AND_SIZE 0x20000000 0x3000
     CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/openocd/jlink.cfg"
     FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
     DEPENDS stm32f030x8_demo_app
