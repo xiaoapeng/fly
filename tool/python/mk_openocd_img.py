@@ -139,40 +139,83 @@ if __name__ == '__main__':
 
     burn_script_option = f'{burn_script_option} -c reset -c resume -c exit'
     
-    log_script_option = f'{config_option} -c "rtt server start 19021 0" -c "rtt setup {args_info.rtt_setting[0]} {args_info.rtt_setting[1]} \\"SEGGER RTT\\""  -c "rtt start"  &'
+    log_script_option = f'{config_option} -c "rtt server start 19021 0" -c "rtt setup {args_info.rtt_setting[0]} {args_info.rtt_setting[1]} \\"SEGGER RTT\\""  -c "rtt start" '
 
     
 
     # # 生成windows烧写脚本
-    # with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
-    #     f.write('@echo off\n')
-    #     f.write('set "script_dir=%~dp0"\n')
-    #     f.write('\n')
-    #     f.write('set "nowait_option="\n')
-    #     f.write('if "%1" == "--nowait" (\n')
-    #     f.write('    set "nowait_option=--nowait"\n')
-    #     f.write(')\n')
-    #     f.write('\n')
-    #     f.write('cd "%script_dir%"\n')
-    #     f.write(f'tool\\JLink.exe -autoconnect 1 -device {args_info.chip_name} -if swd -speed {args_info.speed} -commandfile download.openocd\n')
-    #     f.write('\n')
-    #     f.write('if not defined nowait_option (\n')
-    #     f.write('    echo "Execution completed, will automatically exit in 10 seconds."\n')
-    #     f.write('    timeout /t 10 /nobreak > nul\n')
-    #     f.write(')\n')
-    #     f.write('\n')
-    #     f.write('exit 0\n')
+    with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
+        f.write('@echo off\n')
+        f.write('set "script_dir=%~dp0"\n')
+        f.write('\n')
+        f.write('set "nowait_option="\n')
+        f.write('if "%1" == "--nowait" (\n')
+        f.write('    set "nowait_option=--nowait"\n')
+        f.write(')\n')
+        f.write('\n')
+        f.write('cd "%script_dir%"\n')
+        f.write(f'openocd {burn_script_option}\n')
+        f.write('\n')
+        f.write('if not defined nowait_option (\n')
+        f.write('    echo "Execution completed, will automatically exit in 10 seconds."\n')
+        f.write('    timeout /t 10 /nobreak > nul\n')
+        f.write(')\n')
+        f.write('\n')
+        f.write('exit 0\n')
     # # 生成windows日志查看脚本
-    # with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
-    #     f.write('@echo off\n')
-    #     f.write('set "script_dir=%~dp0"\n')
-    #     f.write('cd "%script_dir%"\n')
-    #     f.write(f'tool\\JLinkRTTLogger.exe -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "%script_dir%\\log.txt"\n')
-    #     f.write('echo "Execution completed, will automatically exit in 2 seconds."\n')
-    #     f.write('timeout /t 2 /nobreak > nul\n')
-    #     f.write('exit 0\n')
+    '''
+    @echo off
 
+    set CUR_SH_DIR=%~dp0
+    cd /d %CUR_SH_DIR%
+
+    powershell -ExecutionPolicy Bypass -File "log.ps1"
+    '''
+    with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
+        f.write('@echo off\n')
+        f.write('set "script_dir=%~dp0"\n')
+        f.write('cd %script_dir%\n\n')
+        f.write('powershell -ExecutionPolicy Bypass -File "log.ps1"\n')
+
+    with open(make_firmware_path + '/' + 'log.ps1', 'w') as f:
+        f.write(f'''
+Write-Output "Use openocd to obtain RTT logs..."
+$openocdArgs = @"
+{log_script_option}
+"@
+# Start OpenOCD and store its PID
+Start-Process -FilePath "openocd" -ArgumentList $openocdArgs -NoNewWindow -PassThru
+
+Start-Sleep -Seconds 1
+
+$tcpClient = New-Object System.Net.Sockets.TcpClient
+$tcpClient.Connect("localhost", 19021)
+$stream = $tcpClient.GetStream()
+$reader = New-Object System.IO.StreamReader($stream)
+$writer = New-Object System.IO.StreamWriter("log.txt", $true)
+
+Write-Output "Waiting for RTT log..."
+while ($tcpClient.Connected) {{
+    $line = $reader.ReadLine()
     
+    if ($line -ne $null) {{
+        $date_str = (Get-Date).ToString("[yyyy-MM-dd HH:mm:ss.fff]")
+        $logLine = "$date_str $line"
+        Write-Output $logLine
+        $writer.WriteLine($logLine)
+        $writer.Flush()
+    }}
+}}
+
+# Close resources
+$reader.Close()
+$writer.Close()
+$tcpClient.Close()
+
+# 
+''')
+    os.chmod(make_firmware_path + '/' + 'log.ps1', 0o755)
+
     # 生成wsl烧写脚本
     with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
@@ -190,7 +233,7 @@ if __name__ == '__main__':
         f.write('cd $CUR_SH_DIR\n')
         f.write('echo "Use openocd to obtain RTT logs.."\n')
 
-        f.write(f'openocd {log_script_option}\n')
+        f.write(f'openocd {log_script_option} &\n')
 
         f.write('OPENOCD_PID=$!\n')
         f.write('cleanup() {\n')
