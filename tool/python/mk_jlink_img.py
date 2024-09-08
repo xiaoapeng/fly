@@ -157,13 +157,69 @@ if __name__ == '__main__':
     with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
-        f.write('cd "%script_dir%"\n')
-        f.write(f'tool\\JLinkRTTLogger.exe -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "%script_dir%\\log.txt"\n')
-        f.write('echo "Execution completed, will automatically exit in 2 seconds."\n')
-        f.write('timeout /t 2 /nobreak > nul\n')
-        f.write('exit 0\n')
+        f.write('cd "%script_dir%"\n\n')
+        f.write('powershell -ExecutionPolicy Bypass -File "log.ps1"')
+    with open(make_firmware_path + '/' + 'log.ps1', 'w') as f:
+        f.write(f'''
+$CUR_SH_DIR = (Get-Location).Path
+                
+# Set the log file path
+$OUTPUT_LOG = "log.txt"
 
-        
+# Remove old log files and create new ones
+Write-Host "log path: $CUR_SH_DIR\\$OUTPUT_LOG"
+
+Write-Host "Debug using windows jlink.."
+$tmpLogFile = [System.IO.Path]::GetTempFileName()
+$outputFile = [System.IO.Path]::GetTempFileName()
+$erroroutputFile = [System.IO.Path]::GetTempFileName()
+$nulFile = [System.IO.Path]::GetTempFileName()
+New-Item -Path $nulFile -ItemType File -Force | Out-Null
+
+
+
+# Define the script block for processing the log file
+$scriptBlock = {{
+    param ($tmpLogFilePath, $outputFilePath)
+
+    # Continuously read the log file
+    Get-Content -Path $tmpLogFilePath -Wait | ForEach-Object {{
+        # Process each line, for example, by adding a timestamp
+        $date_str = Get-Date -Format "[yyyy-MM-dd HH:mm:ss.fff]"
+        Write-Output "$date_str $_"
+        Add-Content -Path $outputFilePath -Value "$date_str $_"
+    }}
+}}
+
+# Save the script block to a temporary PowerShell script file
+$scriptFile = [System.IO.Path]::GetTempFileName() + ".ps1"
+$scriptBlock | Out-File -FilePath $scriptFile -Encoding UTF8
+
+# Start a new PowerShell process to run the log processing script
+$logProcess = Start-Process powershell -ArgumentList "-File `"$scriptFile`" -outputFilePath `"$OUTPUT_LOG`" -tmpLogFilePath `"$tmpLogFile`"" -NoNewWindow -PassThru
+
+# Start the JLinkRTTLogger tool
+$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If swd -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
+    -PassThru -NoNewWindow `
+    -RedirectStandardOutput $outputFile -RedirectStandardError $erroroutputFile -RedirectStandardInput $nulFile
+
+$jLinkRTTLoggerProcess.WaitForExit()
+
+Write-Output "Debug finished.."
+# kill the logProcess
+Stop-Process -Id $logProcess.Id -Force
+
+# Clean up temporary files
+Remove-Item $tmpLogFile
+Remove-Item $nulFile
+Remove-Item $outputFile
+Remove-Item $erroroutputFile
+Remove-Item $scriptFile
+
+exit 0
+
+''')
+
     # 生成wsl烧写脚本
     with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
         f.write('#!/bin/bash\n\n')
