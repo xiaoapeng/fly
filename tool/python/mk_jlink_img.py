@@ -166,6 +166,7 @@ if __name__ == '__main__':
         
     # 生成wsl烧写脚本
     with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
+        f.write('#!/bin/bash\n\n')
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n\n')
         f.write('cd $CUR_SH_DIR\n')
@@ -181,6 +182,7 @@ if __name__ == '__main__':
 
     # 生成wsl日志查看脚本
     with open(make_firmware_path + '/' + 'log.sh', 'w') as f:
+        f.write('#!/bin/bash\n\n')
         f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
         f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n\n')
         f.write('cd $CUR_SH_DIR\n')
@@ -189,13 +191,7 @@ if __name__ == '__main__':
         f.write('rm -rf "$LOG_FILE"\n')
         f.write('touch "$LOG_FILE"\n')
         f.write('echo "log path: $CUR_SH_DIR/$OUTPUT_LOG"\n')
-        f.write('(tail -F "$LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0;}\' | tee -a "$OUTPUT_LOG") &')
-        f.write('\n')
-        f.write('SHOWLOG_PID=$!\n')
-        f.write('cleanup() {\n')
-        f.write('  kill $SHOWLOG_PID\n')
-        f.write('}\n')
-        f.write('trap cleanup  EXIT\n')
+        f.write('(tail -F "$LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0;}\' | tee -a "$OUTPUT_LOG") &\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Debug using WSL jlink.."\n')
         f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "$LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
@@ -203,7 +199,7 @@ if __name__ == '__main__':
         f.write('   echo "Debug using windows jlink.."\n')
         f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "$LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
         f.write('fi\n')
-        f.write('trap - EXIT\n')
+        f.write('echo "Debug finished.."\n')
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
 
