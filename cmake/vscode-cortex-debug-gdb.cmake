@@ -52,8 +52,7 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
             --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE}  --top-path ${FLY_TOP_DIR} 
             --chip-name ${CUSTOM_FUNC_CHIP_NAME} --gdb-path "${CMAKE_GDB}" --objdump-path "${CMAKE_OBJDUMP}" ${RTT_EN_FLAGS}
             --elf-path ${ELF_PATH_LIST} --config-file ${CUSTOM_FUNC_CONFIGFILE_LIST} 
-        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/.${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb.timestamp
-        DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp
+        DEPENDS ${CUSTOM_FUNC_DEPENDS}
         COMMENT "${CUSTOM_FUNC_ELF_NAME}:Make vscode jlink gnu gdb"
     )
 
