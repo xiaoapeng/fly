@@ -24,7 +24,7 @@ target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 
 
 add_executable(stm32h750vb_demo_app )
-target_link_libraries(stm32h750vb_demo_app arch-stm32h750xx eventhub segger-rtt c m gcc  )
+target_link_libraries(stm32h750vb_demo_app factory-data arch-stm32h750xx eventhub segger-rtt c m gcc  )
 target_include_directories( stm32h750vb_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"

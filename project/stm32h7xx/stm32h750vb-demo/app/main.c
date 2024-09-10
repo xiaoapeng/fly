@@ -5,6 +5,7 @@
 #include "eh_debug.h"
 #include "eh_signal.h"
 #include "eh_timer.h"
+#include "factory-data.h"
 #include "led.h"
 
 extern int init(void);
@@ -16,11 +17,31 @@ void stdout_write(void *stream, const uint8_t *buf, size_t size){
 
 void task_main(void);
 
+
+void print_factory_data(void){
+	const FactoryData* factory_data = factory_data_detect((void*)0x8000000, 128*1024);
+	if(factory_data == NULL){
+		eh_infoln("no factory data!");
+		return ;
+	}
+	eh_infoln("firmware_name:%s", factory_data->firmware_name);
+	eh_infoln("part_name:%s", factory_data->part_name);
+	eh_infoln("version:V%d.%d.%d",factory_data->software_version.major, factory_data->software_version.minor, factory_data->software_version.patch);
+	eh_infoln("generated_description:%s", factory_data->generated_description);
+	eh_infoln("software_len:%d", factory_data->software_len);
+
+	if(factory_data->factory_len - sizeof(FactoryData)){
+		eh_infoln("factory_len:%d", factory_data->factory_len);
+		eh_infohex(factory_data->oter_data, factory_data->factory_len - sizeof(FactoryData));
+	}
+}
+
 int main(void)
 {
 	init();
-	eh_debugln("hello world!");
-	
+	eh_inforaw(".\n.\n.\n.\n.\n");
+	print_factory_data();
+	eh_inforaw("\n\n\n");
 	
 	eh_global_init();
 	task_main();

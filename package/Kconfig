@@ -1,5 +1,4 @@
 
 menu "Target Packages"
-    rsource "eventhub-os/Kconfig"
-    rsource "segger-rtt/Kconfig"
+    rsource "*/Kconfig"
 endmenu
