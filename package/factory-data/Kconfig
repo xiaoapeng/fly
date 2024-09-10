@@ -1,0 +1,17 @@
+config FACTORY_DATA_SUPPORTED
+    bool "Factory Data Support"
+    default y
+    help
+        This option enables support for accessing factory data in the MCU firmware.
+
+        Factory data is embedded at the end of the binary file and contains important information such as:
+        - Software version
+        - Partition name
+        - Firmware name
+        - Generation description (e.g., git hash, build date)
+
+        Enabling this option will:
+        - Allow the program to detect and read factory data from the firmware.
+        - Provide a structured way to access and use the factory data.
+
+        If you do not need access to factory data, you can disable this option.
