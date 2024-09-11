@@ -108,7 +108,7 @@ def run_menuconfig(source_dir):
     try_update_cmake_config(f"{source_dir}")
 
 
-def run_savedefconfig(source_dir, output_file='defconfig'):
+def run_saveconfig(source_dir, output_file='defconfig'):
     """保存 defconfig 文件到指定路径"""
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     kconf.load_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
@@ -258,9 +258,9 @@ if __name__ == "__main__":
     # Subparser for menuconfig
     parser_menuconfig = subparsers.add_parser('menuconfig', help='Start menuconfig interface.')
 
-    # Subparser for savedefconfig
-    parser_savedefconfig = subparsers.add_parser('savedefconfig', help='Run savedefconfig')
-    parser_savedefconfig.add_argument('savefile_name', type=str,nargs='?', default="defconfig", help='Output file for savedefconfig command.')
+    # Subparser for saveconfig
+    parser_saveconfig = subparsers.add_parser('saveconfig', help='Run saveconfig')
+    parser_saveconfig.add_argument('savefile_name', type=str,nargs='?', default="defconfig", help='Output file for saveconfig command.')
 
     # Subparser for loadconfig
     parser_loadconfig = subparsers.add_parser('loadconfig', help='Run loadconfig')
@@ -304,8 +304,8 @@ if __name__ == "__main__":
 
     if args.command == 'menuconfig':
         run_menuconfig(source_dir)
-    elif args.command == 'savedefconfig':
-        run_savedefconfig(source_dir, args.savefile_name)
+    elif args.command == 'saveconfig':
+        run_saveconfig(source_dir, args.savefile_name)
     elif args.command == 'loadconfig':
         run_loadconfig(source_dir, args.loadfile_name)
     elif args.command == 'clean':
