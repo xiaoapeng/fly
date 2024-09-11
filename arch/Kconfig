@@ -43,7 +43,7 @@ endchoice
 config ARCH
     string
     default "mcxn947" if ARCH_MCXN947
-    default "gd32f10x" if ARCH_GD32F10X
+    default "gd32/arm/gd32f10x" if ARCH_GD32F10X
     default "stm32/stm32f0xx" if ARCH_STM32F0XX
     default "stm32/stm32f1xx" if ARCH_STM32F1XX
     default "stm32/stm32f4xx" if ARCH_STM32F4XX
