@@ -1,7 +1,7 @@
 
 
 choice
-    prompt "Select a mcxn947 platform project"
+    prompt "Select a gd32f10x platform project"
     default PROJECT_GD32F10X_NONE
     depends on ARCH_GD32F10X
 
