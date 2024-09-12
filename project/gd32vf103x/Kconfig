@@ -1,0 +1,24 @@
+
+
+choice
+    prompt "Select a gd32vf103x platform project"
+    default PROJECT_GD32VF103X_NONE
+    depends on ARCH_GD32VF103X
+
+config PROJECT_GD32VF103X_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_GD32VF103C_DEMO
+    bool "GD32VF103C demo project"
+    help
+        Select this option to enable Module GD32VF103C DEMO.
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "gd32vf103x/gd32vf103c-demo" if PROJECT_GD32VF103C_DEMO
+

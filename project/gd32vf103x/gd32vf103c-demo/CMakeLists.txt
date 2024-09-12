@@ -1,0 +1,43 @@
+cmake_minimum_required(VERSION 3.5)
+
+
+project(gd32vf103c-demo LANGUAGES C CXX ASM)
+
+set(TARGET_FLAGS 
+    "-Wall"
+    "-Wextra"
+    "-Wconversion"
+    "-Wsign-conversion"
+    "-Wno-psabi"
+)
+
+target_include_directories(arch-gd32vf103c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+# app程序生成
+add_executable(gd32vf103c-demo)
+target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+target_link_libraries(gd32vf103c-demo  arch-gd32vf103c c m gcc)
+
+target_sources(gd32vf103c-demo PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+)
+
+target_compile_options(gd32vf103c-demo PRIVATE "${TARGET_FLAGS}")
+target_link_options(gd32vf103c-demo  PRIVATE
+    "-T${CMAKE_CURRENT_SOURCE_DIR}/app/GD32VF103xB.lds"
+)
+
+# 自动生成map
+add_target_make_map(gd32vf103c-demo)
+# 自动生成bin
+add_target_make_bin(gd32vf103c-demo)
+# 自动打印内存/存储占用
+add_target_print_memory_usage(gd32vf103c-demo)
+
+add_jlink_image( default
+    IMAGE_NAME "GD32VF103C_DEMO"
+    CHIP_NAME "GD32VF103CBT6"
+    FIRMWARE_LIST "APP:V0.0.1:0x08000000:gd32vf103c-demo.bin"
+    DEPENDS gd32vf103c-demo
+)
