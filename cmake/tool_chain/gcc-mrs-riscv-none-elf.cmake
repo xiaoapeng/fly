@@ -1,4 +1,5 @@
 # the name of the target operating system
+# http://file-oss.mounriver.com/upgrade/MounRiver_Studio_Setup_V192.zip
 set(CROSS_COMPILE_PREFIX riscv-none-elf-)
 
 set(CMAKE_SYSTEM_NAME Generic)
