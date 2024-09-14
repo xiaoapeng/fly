@@ -24,4 +24,4 @@ set(DEMAND_LINK_OPTIONS
 )
 
 set(DEMAND_COMPILE_DEFINITIONS "")
-set(DEMAND_COMPILE_TOOL_CHAIN "gcc-riscv-none-elf")
+set(DEMAND_COMPILE_TOOL_CHAIN "gcc-mrs-riscv-none-elf")
