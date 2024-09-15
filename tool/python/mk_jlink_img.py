@@ -201,7 +201,7 @@ $scriptBlock | Out-File -FilePath $scriptFile -Encoding UTF8
 $logProcess = Start-Process powershell -ArgumentList "-File `"$scriptFile`" -outputFilePath `"$OUTPUT_LOG`" -tmpLogFilePath `"$tmpLogFile`"" -NoNewWindow -PassThru
 
 # Start the JLinkRTTLogger tool
-$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
+$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
     -PassThru -NoNewWindow `
     -RedirectStandardOutput $outputFile -RedirectStandardError $erroroutputFile -RedirectStandardInput $nulFile
 
@@ -250,10 +250,10 @@ exit 0
         f.write('(tail -F "$TMP_LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0;}\' | tee -a "$OUTPUT_LOG") &\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Debug using WSL jlink.."\n')
-        f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
+        f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
         f.write('else\n')
         f.write('   echo "Debug using windows jlink.."\n')
-        f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
+        f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
         f.write('fi\n')
         f.write('rm -f "$TMP_LOG_FILE"')
         f.write('echo "Debug finished.."\n')
