@@ -5,7 +5,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/git-status.cmake")
 function(add_jlink_image CMAKE_TARGET)
     cmake_parse_arguments(
         CUSTOM_FUNC ""
-        "CHIP_NAME;IMAGE_NAME;SPEED"
+        "CHIP_NAME;IMAGE_NAME;SPEED;INTERFACE;JTAGCONF"
         "FIRMWARE_LIST;DEPENDS"
         ""
         ${ARGN}
@@ -16,11 +16,20 @@ function(add_jlink_image CMAKE_TARGET)
         set(CUSTOM_FUNC_SPEED "4000")
     endif()
     
+    if(NOT CUSTOM_FUNC_INTERFACE)
+        # swd jtag cjtag
+        set(CUSTOM_FUNC_INTERFACE "swd")
+    endif()
+
+    if(NOT CUSTOM_FUNC_JTAGCONF)
+        set(CUSTOM_FUNC_JTAGCONF "-1,-1")
+    endif()
+    
     add_custom_command(
         OUTPUT ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
         COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/mk_jlink_img.py 
-            --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} 
-            --win-jlink-path  ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ 
+            --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --interface-name ${CUSTOM_FUNC_INTERFACE}
+            --win-jlink-path  ${FLY_TOP_DIR}/tool/win/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ --jtagconf=${CUSTOM_FUNC_JTAGCONF}
             --speed ${CUSTOM_FUNC_SPEED} --symlink-name ${CMAKE_TARGET}_jlink_CURRENT --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST} 
         COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_jlink_CURRENT ${FLY_TOP_DIR}/image/CURRENT

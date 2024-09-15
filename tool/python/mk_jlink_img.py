@@ -63,7 +63,7 @@ def _parse_version(version_string):
 
 # ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --win-jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
-    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'win_jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name"])
+    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'win_jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf'])
     FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
@@ -75,6 +75,8 @@ def parse_args():
     parser.add_argument('--chip-name', required=True, help='Chip models supported by J-Link.')
     parser.add_argument('--symlink-name', default='CURRENT' ,required=False, help='Chip models supported by J-Link.')
     parser.add_argument('--speed', required=True, default=4000, help='J-Link speed.')
+    parser.add_argument('--interface-name', default='swd', required=False, help='J-Link interface name.')
+    parser.add_argument('--jtagconf', default='-1,-1', required=True, help='Configures the JTAG scan configuration of the target device.\nIRPre==-1 and DRPre==-1 can be passed to use auto-detection (=> first known device will be used).')
 
     # Positional arguments for firmware parts
     parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
@@ -83,8 +85,8 @@ def parse_args():
     if not os.path.exists(args.win_jlink_path):
         print('JLink executable does not exist: {}'.format(args.win_jlink_path))
         sys.exit(1)
-
-    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.win_jlink_path, args.output_dir, [], args.speed, args.symlink_name)
+        
+    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.win_jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf)
     for firmware_part in args.firmware_parts:
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':')
@@ -145,7 +147,7 @@ if __name__ == '__main__':
         f.write(')\n')
         f.write('\n')
         f.write('cd "%script_dir%"\n')
-        f.write(f'tool\\JLink.exe -autoconnect 1 -device {args_info.chip_name} -if swd -speed {args_info.speed} -commandfile download.jlink\n')
+        f.write(f'tool\\JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink\n')
         f.write('\n')
         f.write('if not defined nowait_option (\n')
         f.write('    echo "Execution completed, will automatically exit in 10 seconds."\n')
@@ -199,7 +201,7 @@ $scriptBlock | Out-File -FilePath $scriptFile -Encoding UTF8
 $logProcess = Start-Process powershell -ArgumentList "-File `"$scriptFile`" -outputFilePath `"$OUTPUT_LOG`" -tmpLogFilePath `"$tmpLogFile`"" -NoNewWindow -PassThru
 
 # Start the JLinkRTTLogger tool
-$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If swd -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
+$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
     -PassThru -NoNewWindow `
     -RedirectStandardOutput $outputFile -RedirectStandardError $erroroutputFile -RedirectStandardInput $nulFile
 
@@ -228,10 +230,10 @@ exit 0
         f.write('cd $CUR_SH_DIR\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Download using WSL jlink.."\n')
-        f.write(f'   JLinkExe -autoconnect 1 -device {args_info.chip_name} -if swd -speed {args_info.speed} -commandfile  download.jlink\n')
+        f.write(f'   JLinkExe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile  download.jlink\n')
         f.write('else\n')
         f.write('   echo "Download using windows jlink.."\n')
-        f.write(f'   tool/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if swd -speed {args_info.speed} -commandfile download.jlink\n')
+        f.write(f'   tool/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink\n')
         f.write('fi\n')
         f.write('exit 0\n')
     os.chmod(make_firmware_path + '/' + 'burn.sh', 0o755)
@@ -248,10 +250,10 @@ exit 0
         f.write('(tail -F "$TMP_LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0;}\' | tee -a "$OUTPUT_LOG") &\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Debug using WSL jlink.."\n')
-        f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
+        f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
         f.write('else\n')
         f.write('   echo "Debug using windows jlink.."\n')
-        f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If swd -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
+        f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If {args_info.interface_name} -JTAGConf {args_info.jtagconf} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
         f.write('fi\n')
         f.write('rm -f "$TMP_LOG_FILE"')
         f.write('echo "Debug finished.."\n')

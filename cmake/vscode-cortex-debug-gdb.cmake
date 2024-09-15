@@ -4,7 +4,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/git-status.cmake")
 function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
     cmake_parse_arguments(
         CUSTOM_FUNC ""
-        "CHIP_NAME;DEPENDS;SPEED;SERVER_TYPE;RTT_DEBUG"
+        "CHIP_NAME;DEPENDS;SPEED;SERVER_TYPE;RTT_DEBUG;INTERFACE"
         "CONFIGFILE_LIST;ELF_NAME_LIST"
         ""
         ${ARGN}
@@ -21,6 +21,11 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
 
     if(NOT CUSTOM_FUNC_SERVER_TYPE)
         set(CUSTOM_FUNC_SERVER_TYPE "jlink")
+    endif()
+    
+    if(NOT CUSTOM_FUNC_INTERFACE)
+        # swd jtag cjtag
+        set(CUSTOM_FUNC_INTERFACE "swd")
     endif()
 
     if(NOT CUSTOM_FUNC_CONFIGFILE_LIST )
@@ -49,7 +54,7 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/.${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb.timestamp
         COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/mk_vscode_cortex_debug_gdb.py
-            --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE}  --top-path ${FLY_TOP_DIR} 
+            --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE}  --top-path ${FLY_TOP_DIR} --interface ${CUSTOM_FUNC_INTERFACE}
             --chip-name ${CUSTOM_FUNC_CHIP_NAME} --gdb-path "${CMAKE_GDB}" --objdump-path "${CMAKE_OBJDUMP}" ${RTT_EN_FLAGS}
             --elf-path ${ELF_PATH_LIST} --config-file ${CUSTOM_FUNC_CONFIGFILE_LIST} 
         DEPENDS ${CUSTOM_FUNC_DEPENDS}
