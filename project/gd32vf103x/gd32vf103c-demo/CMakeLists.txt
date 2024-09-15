@@ -38,6 +38,16 @@ add_target_print_memory_usage(gd32vf103c-demo)
 add_jlink_image( default
     IMAGE_NAME "GD32VF103C_DEMO"
     CHIP_NAME "GD32VF103CBT6"
+    INTERFACE "jtag"
     FIRMWARE_LIST "APP:V0.0.1:0x08000000:gd32vf103c-demo.bin"
+    DEPENDS gd32vf103c-demo
+)
+
+add_vscode_cortex_debug_gdb( jlink
+    CHIP_NAME "GD32VF103CBT6"
+    ELF_NAME_LIST "gd32vf103c-demo"
+    SERVER_TYPE "jlink"
+    INTERFACE "jtag"
+    RTT_DEBUG  ON
     DEPENDS gd32vf103c-demo
 )

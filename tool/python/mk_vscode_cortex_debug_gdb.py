@@ -22,9 +22,8 @@ def launch_json_read_or_init(top_path, config_name):
     return launch_json
 
 def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, objdump_path, 
-    elf_path_list, server_type, config_file_list, rtt_enabled):
+    elf_path_list, server_type, config_file_list, rtt_enabled, interface):
 
-    
     for elf_path in elf_path_list:
         file_name = os.path.basename(elf_path)
         attach_all_config_name = f'{config_name}-{file_name} (attach)'
@@ -34,8 +33,7 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
         for i in range(len(launch_json['configurations']) - 1, -1, -1):
             if launch_json['configurations'][i]['name'] == attach_all_config_name or launch_json['configurations'][i]['name'] == all_config_name:
                 del launch_json['configurations'][i]
-
-        launch_json['configurations'].append({
+        attach_all_config = {
             "name": attach_all_config_name,
             "cwd": "${workspaceFolder}",
             "type": "cortex-debug",
@@ -57,8 +55,9 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
                 ]
             },
             "configFiles": config_file_list
-        })
-        launch_json['configurations'].append({
+        }
+        
+        all_config = {
             "name": all_config_name,
             "cwd": "${workspaceFolder}",
             "type": "cortex-debug",
@@ -81,7 +80,15 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
                 ]
             },
             "configFiles": config_file_list
-        })
+        }
+        
+        if server_type == 'jlink':
+            attach_all_config['interface'] = interface
+            all_config['interface'] = interface
+        
+        launch_json['configurations'].append(attach_all_config)
+        launch_json['configurations'].append(all_config)
+        
 
 def launch_json_save(launch_json, top_path):
     launch_json_path = f'{top_path}/.vscode/launch.json'
@@ -93,6 +100,7 @@ def launch_json_save(launch_json, top_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--server-type', type=str, required=True, help='GDB Server type - supported types are jlink, openocd, pyocd, pe, stlink, stutil, qemu, bmp and external. For \"external\", [please read our Wiki](https://github.com/Marus/cortex-debug/wiki/External-gdb-server-configuration). The executable in your PATH is used by default, to override this use serverpath.')
+    parser.add_argument('--interface',default='swd', type=str, required=False, help='interface type')
     parser.add_argument('--config-name', type=str, required=True, help='config name')
     parser.add_argument('--top-path', type=str, required=True, help='top path')
     parser.add_argument('--chip-name', type=str, required=True, help='chip name')
@@ -107,7 +115,8 @@ if __name__ == '__main__':
 
     launch_json = launch_json_read_or_init(args.top_path, args.config_name)
     launch_json_append(launch_json, args.top_path, args.config_name, args.chip_name, 
-                        args.gdb_path, args.objdump_path, args.elf_path_list, args.server_type, args.config_file_list, args.rtt_enabled)
+                        args.gdb_path, args.objdump_path, args.elf_path_list, args.server_type, 
+                        args.config_file_list, args.rtt_enabled, args.interface)
     launch_json_save(launch_json, args.top_path)
 
 
