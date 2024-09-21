@@ -247,7 +247,7 @@ exit 0
         f.write('TMP_LOG_FILE=$(mktemp)\n')
         f.write('OUTPUT_LOG="log.txt"\n')
         f.write('echo "log path: $CUR_SH_DIR/$OUTPUT_LOG"\n')
-        f.write('(tail -F "$TMP_LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0;}\' | tee -a "$OUTPUT_LOG") &\n')
+        f.write('(tail -F "$TMP_LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0; fflush();}\' | tee -a "$OUTPUT_LOG") &\n')
         f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
         f.write('   echo "Debug using WSL jlink.."\n')
         f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
