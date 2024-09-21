@@ -11,16 +11,22 @@ set(TARGET_FLAGS
     "-Wno-psabi"
 )
 
+
 target_include_directories(arch-gd32vf103c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+target_include_directories(eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
 
 # app程序生成
 add_executable(gd32vf103c-demo)
 target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
 
-target_link_libraries(gd32vf103c-demo  arch-gd32vf103c segger-rtt c m gcc)
+target_link_libraries(gd32vf103c-demo  arch-gd32vf103c segger-rtt eventhub c )
 
 target_sources(gd32vf103c-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
 )
 
 target_compile_options(gd32vf103c-demo PRIVATE "${TARGET_FLAGS}")
@@ -39,6 +45,7 @@ add_jlink_image( default
     IMAGE_NAME "GD32VF103C_DEMO"
     CHIP_NAME "GD32VF103CBT6"
     INTERFACE "jtag"
+    SPEED "10000"
     FIRMWARE_LIST "APP:V0.0.1:0x08000000:gd32vf103c-demo.bin"
     DEPENDS gd32vf103c-demo
 )

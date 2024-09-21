@@ -21,7 +21,7 @@
 #include "button.h"
 #include "led.h"
 
-EH_DEFINE_SIGNAL(button_sw3_signal);
+EH_DEFINE_SIGNAL(button_pb4_signal);
 
 #define PCR_IBE_ibe1 0x01u /*!<@brief Input Buffer Enable: Enables */
 #define PCR_PE_pe0 0x00u   /*!<@brief Pull Enable: Disables */
@@ -30,7 +30,7 @@ EH_DEFINE_SIGNAL(button_sw3_signal);
 
 void GPIO00_IRQHandler(void){
     GPIO_GpioClearInterruptFlags(GPIO0, BOARD_BUTTON_PINS_SW3_GPIO_PIN_MASK);
-    eh_signal_notify(&button_sw3_signal);
+    eh_signal_notify(&button_pb4_signal);
 }
 
 
@@ -38,7 +38,7 @@ static int __init board_button_init(void)
 {
 
     //event_button_sw3
-    eh_signal_register(&button_sw3_signal);
+    eh_signal_register(&button_pb4_signal);
 
     /* Enables the clock for GPIO0: Enables clock */
     CLOCK_EnableClock(kCLOCK_Gpio0);
@@ -77,7 +77,7 @@ static int __init board_button_init(void)
 }
 
 static void __exit board_button_exit(void){
-    eh_signal_unregister(&button_sw3_signal);
+    eh_signal_unregister(&button_pb4_signal);
 }
 
 eh_module_level0_export(board_button_init, board_button_exit);
