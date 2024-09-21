@@ -6,7 +6,6 @@ set(GD32VF103_INCLUDE_DIRS
 )
 
 set(GD32VF103_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/GD32VF103_standard_peripheral/system_gd32vf103.c"
     "${CMAKE_CURRENT_LIST_DIR}/GD32VF103_standard_peripheral/Source/gd32vf103_adc.c"
     "${CMAKE_CURRENT_LIST_DIR}/GD32VF103_standard_peripheral/Source/gd32vf103_bkp.c"
     "${CMAKE_CURRENT_LIST_DIR}/GD32VF103_standard_peripheral/Source/gd32vf103_can.c"
