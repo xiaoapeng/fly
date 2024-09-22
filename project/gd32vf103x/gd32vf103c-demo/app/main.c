@@ -70,7 +70,7 @@ void run(void){
     
 
     while(1){
-        eh_usleep(1000*1000*20);
+        eh_usleep(1000*1000*30);
     }
 
 

@@ -62,7 +62,7 @@ add_vscode_cortex_debug_gdb( default
     CHIP_NAME "CH582"
     ELF_NAME_LIST "ch582_demo_app"
     SERVER_TYPE "openocd"
-    CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/wch-riscv.cfg"
+    OPENOCD_CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/wch-riscv.cfg"
     RTT_DEBUG  ON
     DEPENDS ch582_demo_app
 )

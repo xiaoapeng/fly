@@ -22,7 +22,8 @@ def launch_json_read_or_init(top_path, config_name):
     return launch_json
 
 def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, objdump_path, 
-    elf_path_list, server_type, config_file_list, rtt_enabled, interface):
+    elf_path_list, server_type, openocd_config_file_list, rtt_enabled, interface, ext_config_json):
+    
 
     for elf_path in elf_path_list:
         file_name = os.path.basename(elf_path)
@@ -54,10 +55,10 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
                     }
                 ]
             },
-            "configFiles": config_file_list
+            "configFiles": openocd_config_file_list
         }
         
-        all_config = {
+        launch_all_config = {
             "name": all_config_name,
             "cwd": "${workspaceFolder}",
             "type": "cortex-debug",
@@ -79,15 +80,27 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
                     }
                 ]
             },
-            "configFiles": config_file_list
+            "configFiles": openocd_config_file_list
         }
         
         if server_type == 'jlink':
             attach_all_config['interface'] = interface
-            all_config['interface'] = interface
+            launch_all_config['interface'] = interface
         
+        ext_launch_config = None
+        ext_attach_config = None
+        if os.path.exists(ext_config_json):
+            with open(ext_config_json, 'r') as file:
+                ext_config_json_obj = json.load(file)
+                ext_launch_config = ext_config_json_obj.get('ext-launch-config', None)
+                ext_attach_config = ext_config_json_obj.get('ext-attach-config', None)
+
+        # 合并扩展的配置项
+        launch_all_config.update(ext_launch_config)
+        attach_all_config.update(ext_attach_config)
+
         launch_json['configurations'].append(attach_all_config)
-        launch_json['configurations'].append(all_config)
+        launch_json['configurations'].append(launch_all_config)
         
 
 def launch_json_save(launch_json, top_path):
@@ -109,14 +122,16 @@ if __name__ == '__main__':
     parser.add_argument('--elf-path-list', nargs='+', type=str, required=True, help='elf path')
     #是否启用rtt
     parser.add_argument('--rtt-enabled', action='store_true', default=False, help='Enable RTT logging')
-    parser.add_argument('--config-file-list', nargs='+', type=str, required=False, help='OpenOCD/PE GDB Server configuration file(s) to use when debugging (OpenOCD -f option)')
+    parser.add_argument('--openocd-config-file-list', nargs='+', type=str, required=False, help='OpenOCD/PE GDB Server configuration file(s) to use when debugging (OpenOCD -f option)')
+    parser.add_argument('--ext-config-json', type=str,  help='Path to external configuration JSON file')
     
     args = parser.parse_args()
 
     launch_json = launch_json_read_or_init(args.top_path, args.config_name)
     launch_json_append(launch_json, args.top_path, args.config_name, args.chip_name, 
                         args.gdb_path, args.objdump_path, args.elf_path_list, args.server_type, 
-                        args.config_file_list, args.rtt_enabled, args.interface)
+                        args.openocd_config_file_list, args.rtt_enabled, args.interface, args.ext_config_json)
+    
     launch_json_save(launch_json, args.top_path)
 
 

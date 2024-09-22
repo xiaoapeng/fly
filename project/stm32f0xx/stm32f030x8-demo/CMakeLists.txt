@@ -81,7 +81,7 @@ add_vscode_cortex_debug_gdb( openocd
     CHIP_NAME "STM32F030C8"
     ELF_NAME_LIST "stm32f030x8_demo_app"
     SERVER_TYPE "openocd"
-    CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/openocd/jlink.cfg"
+    OPENOCD_CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/openocd/jlink.cfg"
     RTT_DEBUG  ON
     DEPENDS stm32f030x8_demo_app
 )
