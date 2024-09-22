@@ -19,7 +19,7 @@ target_include_directories(eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-i
 add_executable(gd32vf103c-demo)
 target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
 
-target_link_libraries(gd32vf103c-demo  arch-gd32vf103c segger-rtt eventhub c )
+target_link_libraries(gd32vf103c-demo  arch-gd32vf103c segger-rtt factory-data eventhub c )
 
 target_sources(gd32vf103c-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
