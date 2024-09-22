@@ -1,5 +1,5 @@
 /**
- * @file factory_data.h
+ * @file factory-data.h
  * @brief 通用的MCU出厂信息获取，
     通过脚本，在bin文件尾部增加,然后本程序遍历全部的固件，来找到该信息。
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
