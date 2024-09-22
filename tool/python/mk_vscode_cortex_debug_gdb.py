@@ -87,17 +87,17 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
             attach_all_config['interface'] = interface
             launch_all_config['interface'] = interface
         
-        ext_launch_config = None
-        ext_attach_config = None
-        if os.path.exists(ext_config_json):
+        if ext_config_json and os.path.exists(ext_config_json):
             with open(ext_config_json, 'r') as file:
                 ext_config_json_obj = json.load(file)
                 ext_launch_config = ext_config_json_obj.get('ext-launch-config', None)
                 ext_attach_config = ext_config_json_obj.get('ext-attach-config', None)
+                # 合并扩展的配置项
+                if ext_launch_config:
+                    launch_all_config.update(ext_launch_config)
+                if ext_attach_config:
+                    attach_all_config.update(ext_attach_config)
 
-        # 合并扩展的配置项
-        launch_all_config.update(ext_launch_config)
-        attach_all_config.update(ext_attach_config)
 
         launch_json['configurations'].append(attach_all_config)
         launch_json['configurations'].append(launch_all_config)
