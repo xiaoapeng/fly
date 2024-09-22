@@ -1,0 +1,17 @@
+{
+    "ext-attach-config":{
+        
+    },
+    "ext-launch-config":{
+        "overrideResetCommands": [
+            "monitor halt",
+            "monitor reset",
+            "set $pc = 0x08000000"
+        ],
+        "postLaunchCommands": [
+            "monitor halt",
+            "monitor reset",
+            "set $pc = 0x08000000"
+        ]
+    }
+}

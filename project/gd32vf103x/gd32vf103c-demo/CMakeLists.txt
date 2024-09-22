@@ -55,6 +55,7 @@ add_vscode_cortex_debug_gdb( jlink
     ELF_NAME_LIST "gd32vf103c-demo"
     SERVER_TYPE "jlink"
     INTERFACE "jtag"
+    OTHER_EXT_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/debugconfig/ext-cortex-debug-config.json"
     RTT_DEBUG  ON
     DEPENDS gd32vf103c-demo
 )
