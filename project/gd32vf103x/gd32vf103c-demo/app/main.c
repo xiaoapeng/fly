@@ -1,15 +1,11 @@
-#include "SEGGER_RTT.h"
 #include "eh.h"
 #include "eh_event.h"
 #include "eh_sleep.h"
 #include "eh_timer.h"
 #include "eh_debug.h"
-#include "eh_platform.h"
 #include "eh_signal.h"
+#include "factory-data.h"
 
-
-#include "n200_func.h"
-#include "system_gd32vf103.h"
 #include "led.h"
 #include "button.h"
 
@@ -89,13 +85,30 @@ void run(void){
 
 
 
+static void print_factory_data(void){
+	const FactoryData* factory_data = factory_data_detect((void*)0x8000000, 128*1024);
+	if(factory_data == NULL){
+		eh_infoln("no factory data!");
+		return ;
+	}
+	eh_infoln("firmware_name:%s", factory_data->firmware_name);
+	eh_infoln("part_name:%s", factory_data->part_name);
+	eh_infoln("version:V%d.%d.%d",factory_data->software_version.major, factory_data->software_version.minor, factory_data->software_version.patch);
+	eh_infoln("generated_description:%s", factory_data->generated_description);
+	eh_infoln("software_len:%d", factory_data->software_len);
+
+	if(factory_data->factory_len - sizeof(FactoryData)){
+		eh_infoln("factory_len:%d", factory_data->factory_len);
+		eh_infohex(factory_data->oter_data, factory_data->factory_len - sizeof(FactoryData));
+	}
+}
 
 
 int main(void){
     init();
-    // while( eh_clock_to_msec(eh_get_clock_monotonic_time()) < 10000 ){
-        
-    // }
+    
+    print_factory_data();
+
     eh_infofl("app start!");
     eh_global_init();
     

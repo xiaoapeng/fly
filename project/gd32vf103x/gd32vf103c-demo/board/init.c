@@ -15,7 +15,6 @@
 #include "eh_debug.h"
 #include "gd32vf103.h"
 #include "n200_func.h"
-#include "n200_timer.h"
 
 
 void stdout_write(void *stream, const uint8_t *buf, size_t size){
