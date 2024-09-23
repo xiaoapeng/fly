@@ -30,14 +30,14 @@ def get_file_modification_time(file_path):
         return 0
     return os.path.getmtime(file_path)
 
-def get_build_type(build_dir):
+def get_cmake_cache_value(build_dir, key):
     if os.path.exists(f"{build_dir}/CMakeCache.txt"):
         with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
             for line in cache_file:
-                if line.startswith("CMAKE_BUILD_TYPE:"):
+                if line.startswith(f'{key}:'):
                     _, value = line.split("=", 1)
                     return value.strip()
-    return "Release"
+    return None
 
 def convert_config_to_cmake(config_file, cmake_file):
     with open(config_file, 'r') as f:
@@ -148,21 +148,33 @@ def run_distclean(source_dir):
     if os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
         shutil.rmtree(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
 
-def run_build(source_dir, build_type='None', jobs=1):
+def run_build(source_dir, build_type=None, jobs=None):
     """编译"""
     if not check_tool_installed('cmake'):
         print("cmake not installed!!")
         exit(1)
     
+    if jobs == None:
+        jobs = os.cpu_count()
+    
     rebuild = False
 
+    build_program = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_MAKE_PROGRAM")
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         rebuild = True
+    elif build_program == None:
+        rebuild = True
+    elif 'ninja' in build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/build.ninja"):
+        rebuild = True
+    elif 'make' in build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/Makefile"):
+        rebuild = True
 
-    if build_type == 'None':
-        build_type = get_build_type(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
+    if build_type == None:
+        build_type = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE")
+        if build_type == None:
+            build_type = "Release"
 
-    if rebuild or get_build_type(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}") != build_type:
+    if rebuild or get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE") != build_type:
         """ 如果发现ninja优先使用 """
         if check_tool_installed('ninja'):
             os.system(
@@ -188,8 +200,10 @@ def run_build(source_dir, build_type='None', jobs=1):
             # 请安装 make 或者 ninja
             print("Please install make or ninja.")
             exit(1)
-    
-    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
+
+    cmake_ret = os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
+    if cmake_ret != 0:
+        print(f'Build failed:{cmake_ret}')
     
 def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
@@ -282,9 +296,9 @@ if __name__ == "__main__":
 
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build the project.')
-    parser_build.add_argument('build_type', type=str, nargs='?', default='None', help='Build type (e.g., Debug, Release, MinSizeRel).')
-    parser_build.add_argument('-j', '--jobs', type=int, default=1, help='Number of jobs to run simultaneously.')
-    parser.add_argument('-j', '--jobs', type=int, default=1, help='Number of jobs to run simultaneously.')
+    parser_build.add_argument('build_type', type=str, nargs='?', default=None, help='Build type (e.g., Debug, Release, MinSizeRel).')
+    parser_build.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of jobs to run simultaneously.')
+    parser.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of jobs to run simultaneously.')
     
     # Subparser for rttlog
     parser_log = subparsers.add_parser('rttlog', help='Capture log.')
