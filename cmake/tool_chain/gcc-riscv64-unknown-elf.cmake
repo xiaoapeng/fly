@@ -1,5 +1,4 @@
-# the name of the target operating system
-# https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2024.09.03/riscv64-elf-ubuntu-22.04-gcc-nightly-2024.09.03-nightly.tar.gz
+# https://github.com/riscv-collab/riscv-gnu-toolchain/releases/tag/2024.09.03
 set(CROSS_COMPILE_PREFIX riscv64-unknown-elf-)
 
 set(CMAKE_SYSTEM_NAME Generic)

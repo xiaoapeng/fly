@@ -1,4 +1,4 @@
-# the name of the target operating system
+# https://developer.arm.com/downloads/-/gnu-rm
 set(CROSS_COMPILE_PREFIX arm-none-eabi-)
 
 set(CMAKE_SYSTEM_NAME Generic)
