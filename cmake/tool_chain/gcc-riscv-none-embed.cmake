@@ -1,4 +1,4 @@
-# the name of the target operating system
+# https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/tag/v10.2.0-1.2
 set(CROSS_COMPILE_PREFIX riscv-none-embed-)
 
 set(CMAKE_SYSTEM_NAME Generic)
