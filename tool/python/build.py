@@ -160,13 +160,14 @@ def run_build(source_dir, build_type=None, jobs=None):
     rebuild = False
 
     build_program = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_MAKE_PROGRAM")
+    build_program = os.path.basename(build_program) if build_program else  build_program
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         rebuild = True
     elif build_program == None:
         rebuild = True
-    elif 'ninja' in build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/build.ninja"):
+    elif 'ninja' == build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/build.ninja"):
         rebuild = True
-    elif 'make' in build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/Makefile"):
+    elif ('make' == build_program or 'gmake' == build_program) and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/Makefile"):
         rebuild = True
 
     if build_type == None:
@@ -175,31 +176,14 @@ def run_build(source_dir, build_type=None, jobs=None):
             build_type = "Release"
 
     if rebuild or get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE") != build_type:
-        """ 如果发现ninja优先使用 """
-        if check_tool_installed('ninja'):
-            os.system(
-                f'cmake '
-                f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
-                f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
-                f'--no-warn-unused-cli '
-                f'-S{source_dir} '
-                f'-B{source_dir}/build '
-                f'-GNinja'
-            )
-        elif check_tool_installed('make'):
-            os.system(
-                f'cmake '
-                f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
-                f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
-                f'--no-warn-unused-cli '
-                f'-S{source_dir} '
-                f'-B{source_dir}/build '
-                f'-G "Unix Makefiles"'
-            )
-        else:
-            # 请安装 make 或者 ninja
-            print("Please install make or ninja.")
-            exit(1)
+        os.system(
+            f'cmake '
+            f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
+            f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
+            f'--no-warn-unused-cli '
+            f'-S{source_dir} '
+            f'-B{source_dir}/build '
+        )
 
     cmake_ret = os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
     if cmake_ret != 0:
