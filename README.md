@@ -52,8 +52,7 @@ cd fly
 |ch58x|riscv-none-elf|[下载](http://www.mounriver.com/download/)|
 |gd32vfx|riscv-none-embed|[下载](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/tag/v10.2.0-1.2)|
 
-### 5. 根据项目需要下载调试器
-#### Jlink 安装
+### 5. 根据项目需要下载调试器-Jlink
 - [下载](https://www.segger.com/downloads/jlink/)
 后进行安装，不同平台直接安装方式略有差别，请自行百度(谷歌)。
 
@@ -70,11 +69,9 @@ cd fly
     Connecting to J-Link via USB...FAILED: Cannot connect to J-Link.
     J-Link>
     ```
-
-#### openocd 安装
-
-ubuntu  安装方式
-
+    
+### 6. 根据项目需要下载调试器-openocd
+#### ubuntu  安装方式
 - 使用如下命令
     ```
     sudo apt install  openocd
@@ -89,7 +86,7 @@ ubuntu  安装方式
             http://openocd.org/doc/doxygen/bugs.html
     ```
 
-windows 安装方式
+#### windows 安装方式
 
 - [下载](https://github.com/xpack-dev-tools/openocd-xpack/releases)后解压到你自定义的安装目录。
 - 添加进环境变量并重启设备
@@ -103,7 +100,7 @@ windows 安装方式
             http://openocd.org/doc/doxygen/bugs.html
     PS C:\Users\user>
     ```
-### 6.选择芯片，开始构建、打包、烧写
+### 7. 选择芯片，开始构建、打包、烧写
 <p><span style="color: yellow;">构建过程中windows使用./build.bat，linux使用./build.sh</span></p>
 
 ####  构建前准备，只需要执行一次（./build.sh distclean后需要重新执行）
@@ -178,7 +175,7 @@ windows 安装方式
     ```
 
     
-### 7.配合VS Code插件使用-插件安装
+### 8. 配合VS Code插件使用-插件安装
 - 安装插件调试插件[Cortex-Debug](https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)、插件栏搜索安装或者使用命令安装 
     ```
     code --install-extension marus25.cortex-debug
@@ -191,14 +188,14 @@ windows 安装方式
     ```
     code --install-extension llvm-vs-code-extensions.vscode-clangd
     ```
-### 8.配合VS Code插件使用-编译、烧写、打包
+### 9. 配合VS Code插件使用-编译、烧写、打包
 - 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用CAMKE Tools插件直接进行编译。
 - 可以通过cmake插件旁边的项目大纲来一键烧写或一键打包固件
 ![alt text](resource/image2.png)
 - 请不要使用cmake tools插件进行配置，可能会找不到编译器(除非编译器在全局环境变量)，如果发生配置失败的情况，请删除./build目录，再使用./build.sh进行重新构建。
 ![alt text](resource/image3.png)
 
-### 9.配合VS Code插件使用-调试
+### 10. 配合VS Code插件使用-调试
 - 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用Cortex-Debug插件直接进行调试。
 ![alt text](resource/image4.png)
 - 调试文件launch.json是由cmake函数调用python脚本生成的,如果想要编译时自动生成launch.json，需要在项目的CMakeLists.txt调用add_vscode_cortex_debug_gdb
@@ -217,7 +214,7 @@ windows 安装方式
         DEPENDS gd32vf103c-demo
     )
     ```
-### 9.配合VS Code插件使用-LSP语法提示、跳转、代码补全
+### 11. 配合VS Code插件使用-LSP语法提示、跳转、代码补全
 - 想用 c/c++ 插件请自行配置，略过此章。
 - 如果你已经使用./build.sh 完成了项目的初次构建，应该可以使用clangd进行代码补全。
 - 先在.vscode下建立.vscode/settings.json,添加如下内容。
