@@ -219,9 +219,42 @@ cd fly
 - 如果你已经使用./build.sh 完成了项目的初次构建，应该可以使用clangd进行代码补全。
 - 先在.vscode下建立.vscode/settings.json,添加如下内容。
     ```
-    "gcovViewer.buildDirectories": [
-        "${workspaceFolder}/build"
-    ]
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.onConfigChanged": "restart",
+    "clangd.checkUpdates": false,
+    "clangd.arguments": [
+        // 在后台自动分析文件（基于complie_commands）
+        "--background-index",
+        // 同时开启的任务数量
+        "-j=6",
+        // 标记compelie_commands.json文件的目录位置
+        "--compile-commands-dir=${workspaceFolder}/build",
+        // 使用的编译器，通过编译器来寻找系统头文件位置,这里必须使用绝对路径，不能使用链接路径
+        //"--query-driver=",
+        // 补充头文件的形式
+        /* iwyu:自动补充  never：不自动补充*/
+        "--header-insertion=iwyu",
+        //"--header-insertion=never",
+        // pch优化的位置
+        "--pch-storage=disk",
+        // 全局补全（会自动补充头文件）
+        "--all-scopes-completion",
+        // clang-tidy功能
+        "--clang-tidy",
+        "--clang-tidy-checks=performance-*,bugprone-*",
+        // 建议风格：打包(重载函数只会给出一个建议）
+        // 相反可以设置为bundled 
+        "--completion-style=detailed",
+        // 跨文件重命名变量
+        "--cross-file-rename",
+        // 使能.cland文件
+        // .clangd示例:
+        //  CompileFlags:                     # Tweak the parse settings
+        //      Remove: [-march=rv32imac, -mabi=ilp32] 
+        //
+        //"--enable-config",
+    ],
+    "editor.inlayHints.enabled": "off",
     ```
 - 然后使用vs code顶部命令 >clangd:Restart language server 重启clangd服务，即可支持代码补全。
 - 对于一些新架构，比如riscv，clangd会出现报错，使用.clangd文件(移除clangd不能识别的选项)可以解决问题，比如下面的。
