@@ -35,7 +35,7 @@ int init(void){
 
     eclic_priority_group_set(ECLIC_PRIGROUP_LEVEL3_PRIO1);
 
-    eh_infoln("get_cpu_freq: %d", get_cpu_freq());
+    // eh_infoln("get_cpu_freq: %d", get_cpu_freq());
     
     return 0;
 }
