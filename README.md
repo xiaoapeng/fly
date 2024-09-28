@@ -45,6 +45,7 @@ cd fly
     ```
 
 ### 4. 根据项目需要下载交叉编译器
+下载后请自行解压到你自定义的安装目录。
 
 |平台|交叉编译器前缀|下载链接|
 | --- | --- | --- |
@@ -101,14 +102,14 @@ cd fly
     PS C:\Users\user>
     ```
 ### 7. 选择芯片，开始构建、打包、烧写
-<p><span style="color: yellow;">构建过程中windows使用./build.bat，linux使用./build.sh</span></p>
+<p><span style="color: yellow;">构建时中windows使用./build.bat，linux使用./build.sh</span></p>
 
-####  构建前准备，只需要执行一次（./build.sh distclean后需要重新执行）
+####  构建前准备，只需要执行一次（执行后环境变量会存储到 .PATH.evn.json中）
 - 添加编译器路径到FLY,添加的路径请根据你安装的路径进行添加，若路径有空格，请用引号包裹路径。(注意，路径应该要加上bin目录)
     ```
     ./build.sh add_path_env /home/xxx/xxxx/toolchain/riscv-none-embed-gcc-10.1.0-1.1/bin/
     ```
-    - 若没有添加仿真器程序到全局路径，请将他们也使用add_path_env添加到FLY环境中。
+- 若没有添加仿真器程序到全局路径，请将他们也使用add_path_env添加到FLY环境中。
     ```
     ./build.sh add_path_env   /xxxx/xxx/openocd/
     ```
@@ -194,7 +195,7 @@ cd fly
 ![alt text](resource/image2.png)
 - 请不要使用cmake tools插件进行配置，可能会找不到编译器(除非编译器在全局环境变量)，如果发生配置失败的情况，请删除./build目录，再使用./build.sh进行重新构建。
 ![alt text](resource/image3.png)
-- 打包固件使用 命令规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 比如：
+- 打包固件使用命名规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 该命名在CMAKE文件中指定比如：
     ```
     # JLINK固件
     STM32F030X8_DEMO_APP__jlink_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd
@@ -218,7 +219,7 @@ cd fly
     )
 
     ```
-- 打包后，IMG文件解释(jlink包为例)
+- 打包img包各文件解释(jlink包为例)
     ```
     ├── APP.bin                                             # 分区固件
     ├── burn.bat                                            # 在windows下的烧写脚本
@@ -309,8 +310,8 @@ cd fly
     ],
     "editor.inlayHints.enabled": "off",
     ```
-- 然后使用vs code顶部命令 >clangd:Restart language server 重启clangd服务，即可支持代码补全。
-- 对于一些新架构，比如riscv，clangd会出现报错，使用.clangd文件(移除clangd不能识别的选项)可以解决问题，比如下面的。
+- 然后使用vs code顶部命令（或者直接重启VS Code） >clangd:Restart language server 重启clangd服务，即可支持代码补全。
+- 对于一些新架构，比如riscv，clangd会出现报错，在fly目录下建立.clangd文件(指定命令来移除clangd不能识别的选项)可以解决问题，比如下面的。
     ```
     # 这里就是移除了 -march=rv32imac, -mabi=ilp32，防止clangd报错
     CompileFlags:                     # Tweak the parse settings
