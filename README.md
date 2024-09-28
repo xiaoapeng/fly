@@ -102,7 +102,7 @@ cd fly
     PS C:\Users\user>
     ```
 ### 7. 选择芯片，开始构建、打包、烧写
-<p><span style="color: yellow;">构建时中windows使用./build.bat，linux使用./build.sh</span></p>
+<p><span style="color: yellow;">构建时 windows使用build.bat脚本，linux使用build.sh脚本</span></p>
 
 ####  构建前准备，只需要执行一次（执行后环境变量会存储到 .PATH.evn.json中）
 - 添加编译器路径到FLY,添加的路径请根据你安装的路径进行添加，若路径有空格，请用引号包裹路径。(注意，路径应该要加上bin目录)
