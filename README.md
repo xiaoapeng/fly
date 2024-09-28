@@ -194,7 +194,44 @@ cd fly
 ![alt text](resource/image2.png)
 - 请不要使用cmake tools插件进行配置，可能会找不到编译器(除非编译器在全局环境变量)，如果发生配置失败的情况，请删除./build目录，再使用./build.sh进行重新构建。
 ![alt text](resource/image3.png)
+- 打包固件使用 命令规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 比如：
+    ```
+    # JLINK固件
+    STM32F030X8_DEMO_APP__jlink_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd
+    在cmake中调用这个函数生成的
+    add_jlink_image( default
+        IMAGE_NAME "STM32F030X8_DEMO_APP"
+        CHIP_NAME "STM32F030C8"
+        FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
+        DEPENDS stm32f030x8_demo_app openocd_image_make_img
+    )
 
+    
+    # OPENOCD固件
+    STM32F030X8_DEMO_APP__openocd_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd
+    add_vscode_cortex_debug_gdb( jlink
+        CHIP_NAME "STM32F030C8"
+        ELF_NAME_LIST "stm32f030x8_demo_app"
+        SERVER_TYPE "jlink"
+        RTT_DEBUG  ON
+        DEPENDS stm32f030x8_demo_app
+    )
+
+    ```
+- 打包后，IMG文件解释(jlink包为例)
+    ```
+    ├── APP.bin                                             # 分区固件
+    ├── burn.bat                                            # 在windows下的烧写脚本
+    ├── burn.sh                                             # 在linux下的烧写脚本
+    ├── download.jlink
+    ├── log.bat                                             # 在windows下日志抓取脚本
+    ├── log.ps1
+    ├── log.sh                                              # 在linux下日志烧写脚本
+    └── tool
+        ├── JLinkARM.dll
+        ├── JLink.exe
+        ├── 
+    ```
 ### 10. 配合VS Code插件使用-调试
 - 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用Cortex-Debug插件直接进行调试。
 ![alt text](resource/image4.png)
@@ -214,6 +251,22 @@ cd fly
         DEPENDS gd32vf103c-demo
     )
     ```
+- 调试已经支持了RTT日志的查看，你要使能RTT相关包，然后配置eventhub-os包提供的格式化输出，就能看到相关日志的输出。
+    ```
+    #include "SEGGER_RTT.h"
+    #include "eh.h"
+    #include "eh_debug.h"
+
+    void stdout_write(void *stream, const uint8_t *buf, size_t size){
+        (void)stream;
+        SEGGER_RTT_Write(0, buf, (unsigned)size);
+    }
+    int main(void){
+        eh_infoln("hello fly!");
+        return 0;
+    }
+    ```
+
 ### 11. 配合VS Code插件使用-LSP语法提示、跳转、代码补全
 - 想用 c/c++ 插件请自行配置，略过此章。
 - 如果你已经使用./build.sh 完成了项目的初次构建，应该可以使用clangd进行代码补全。
