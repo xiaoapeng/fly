@@ -223,6 +223,442 @@ cd fly
     ./build.sh loadconfig ./project/gd32f10x/gd32f103-demo/defconfig
     ```
 
+### 8. 新建项目
+
+以新建一个gd32vf103x的项目为例
+
+- 进入project/gd32vf103x目录
+- 修改Kconfig,新建一个项 PROJECT_TEST_DEMO
+
+    ```Kconfig
+    choice
+    prompt "Select a gd32vf103x platform project"
+    default PROJECT_GD32VF103X_NONE
+    depends on ARCH_GD32VF103X
+
+    config PROJECT_GD32VF103X_NONE
+        bool "None"
+        help
+        Select this if you do not want to set any project.
+
+    config PROJECT_GD32VF103C_DEMO
+        bool "GD32VF103C demo project"
+        help
+            Select this option to enable Module GD32VF103C DEMO.
+        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SEGGER_RTT
+
+    # 新建 TEST_DEMO
+    config PROJECT_TEST_DEMO
+        bool "TEST demo project"
+        help
+            Select this option to enable Module TEST DEMO.
+    # 这里根据需要的包来添加默认依赖(包名请去看package/xxx/Kconfig里面有定义包的名称)
+        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SEGGER_RTT
+
+        
+    endchoice
+
+    config PROJECT
+        string
+        default "gd32vf103x/gd32vf103c-demo" if PROJECT_GD32VF103C_DEMO
+    # 设置 TEST_DEMO 的项目路径，项目路径以project文件夹的路径为基路径
+        default "gd32vf103x/test-demo" if PROJECT_TEST_DEMO
+    ```
+
+- 复制gd32vf103c-demo 为 test-demo
+
+    虽然复制了gd32vf103c-demo,但是项目名称和目标名称还是没有变，需要进入test-demo来进行修改project/gd32vf103x/test-demo/CMakeLists.txt，需要了解一些cmake语法。
+
+    ```cmake
+    cmake_minimum_required(VERSION 3.5)
+
+    project(test-demo LANGUAGES C CXX ASM)
+
+    set(TARGET_FLAGS 
+        "-Wall"
+        "-Wextra"
+        "-Wconversion"
+        "-Wsign-conversion"
+        "-Wno-psabi"
+    )
+
+
+    target_include_directories(arch-gd32vf103c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+    target_include_directories(eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
+
+    # app程序生成
+    add_executable(test-demo)
+    target_include_directories(test-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+    target_link_libraries(test-demo  arch-gd32vf103c segger-rtt factory-data eventhub c )
+
+    target_sources(test-demo PRIVATE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
+    )
+
+    target_compile_options(test-demo PRIVATE "${TARGET_FLAGS}")
+    target_link_options(test-demo  PRIVATE
+        "-T${CMAKE_CURRENT_SOURCE_DIR}/app/GD32VF103xB.lds"
+    )
+        
+    # 自动生成map
+    add_target_make_map(test-demo)
+    # 自动生成bin
+    add_target_make_bin(test-demo)
+    # 自动打印内存/存储占用
+    add_target_print_memory_usage(test-demo)
+
+    add_jlink_image( default
+        IMAGE_NAME "TEST_DEMO"
+        CHIP_NAME "GD32VF103CBT6"
+        INTERFACE "jtag"
+        SPEED "10000"
+        FIRMWARE_LIST "APP:V0.0.1:0x08000000:test-demo.bin"
+        DEPENDS test-demo
+    )
+
+    add_vscode_cortex_debug_gdb( jlink
+        CHIP_NAME "GD32VF103CBT6"
+        ELF_NAME_LIST "test-demo"
+        SERVER_TYPE "jlink"
+        INTERFACE "jtag"
+        OTHER_EXT_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/debugconfig/ext-cortex-debug-config.json"
+        RTT_DEBUG  ON
+        DEPENDS test-demo
+    )
+    ```
+
+- 回到顶层目录，重新使用./build.sh menuconfig选择刚刚新增的项目，再开始编译
+
+    ```bash
+    # ./build.sh
+    simon@:~/project/fly$ ./build.sh  
+    [  8%] Building C object package/segger-rtt/CMakeFiles/segger-rtt.dir/SEGGER_RTT.c.obj
+    [  8%]  
+    [  8%] Building C object package/factory-data/CMakeFiles/factory-data.dir/factory-data.c.obj
+    [  8%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/coroutine/riscv32-bumblebee-n200/coroutine.c.obj
+    [ 11%] Building ASM object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/coroutine/riscv32-bumblebee-n200/coroutine.S.obj
+    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_rbtree.c.obj
+    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/platform/riscv32-bumblebee-n200/platform.c.obj
+    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_formatio.c.obj
+    [ 17%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_debug.c.obj
+    [ 20%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_ringbuf.c.obj
+    [ 20%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_core.c.obj
+    [ 22%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_timer.c.obj
+    [ 25%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_sleep.c.obj
+    [ 25%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_event.c.obj
+    [ 28%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_event_cb.c.obj
+    [ 28%] Building ASM object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/start.S.obj
+    Git status changed to 'dirty'. Timestamp updated.
+    [ 28%] Built target check_git_status
+    [ 28%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_mutex.c.obj
+    [ 31%] Building ASM object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/entry.S.obj
+    [ 34%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_sem.c.obj
+    [ 34%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_adc.c.obj
+    [ 34%] Built target factory-data
+    [ 34%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_mem.c.obj
+    [ 37%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_bkp.c.obj
+    [ 37%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_can.c.obj
+    [ 40%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_crc.c.obj
+    [ 42%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dac.c.obj
+    [ 42%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dbg.c.obj
+    [ 45%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dma.c.obj
+    [ 45%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_eclic.c.obj
+    [ 48%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_exmc.c.obj
+    [ 48%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_exti.c.obj
+    [ 51%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_fmc.c.obj
+    [ 54%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_fwdgt.c.obj
+    [ 54%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_gpio.c.obj
+    [ 57%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_i2c.c.obj
+    [ 60%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_rcu.c.obj
+    [ 60%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_pmu.c.obj
+    [ 62%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_rtc.c.obj
+    [ 62%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_spi.c.obj
+    [ 62%] Built target segger-rtt
+    [ 65%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_timer.c.obj
+    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_usart.c.obj
+    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_wwdgt.c.obj
+    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/drivers/n200_func.c.obj
+    [ 71%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/your_printf.c.obj
+    [ 74%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/_exit.c.obj
+    [ 77%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/init.c.obj
+    [ 71%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/handlers.c.obj
+    [ 80%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/close.c.obj
+    [ 80%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/fstat.c.obj
+    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/isatty.c.obj
+    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/sbrk.c.obj
+    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/lseek.c.obj
+    [ 85%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/read.c.obj
+    [ 85%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/write_hex.c.obj
+    [ 88%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/write.c.obj
+    [ 88%] Built target arch-gd32vf103c
+    [ 88%] Built target eventhub
+    [ 88%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/init.c.obj
+    [ 91%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/app/main.c.obj
+    [ 94%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/system_gd32vf103.c.obj
+    [ 94%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/led.c.obj
+    [ 97%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/button.c.obj
+    [100%] Linking C executable test-demo
+    Memory region         Used Size  Region Size  %age Used
+            flash:       48084 B       128 KB     36.69%
+                ram:         32 KB        32 KB    100.00%
+    Building test-demo
+    Building test-demo.bin
+    text    data     bss     dec     hex filename
+    46718    1360   16508   64586    fc4a /home/simon/project/fly/build/project/gd32vf103x/test-demo/test-demo
+    [100%] Built target test-demo
+    [100%] :Make vscode jlink gnu gdb
+    [100%] Built target jlink_make_vscode_jlink_gnu_gdb
+    ```
+
+### 9. 新建一个可被复用的源码包
+
+#### 包的结构
+
+一个包是由CMakeLists.txt 和 Kconfig组成的一系列文件,下面是segger-rtt包的结构
+
+```txt
+simon@:~/fly/package/segger-rtt$ tree 
+.
+├── CMakeLists.txt               # CMakeList.txt 提供给CMake使用
+├── inc
+│   ├── SEGGER_RTT_Conf.h
+│   └── SEGGER_RTT.h
+├── Kconfig                      # Kconfig 提供给menuconfig来提供配置项
+└── SEGGER_RTT.c
+```
+
+#### 新建一个可复用的源码包
+
+- 假设有以下源码想作为一个可复用的包
+
+    ```c
+    /* add.h */
+    #ifndef _ADD_H_
+    #define _ADD_H_
+
+    extern int      add_int(int a, int b);
+    extern double   add_double(double a, double b);
+
+    #endif /* _ADD_H_ */
+    ```
+
+    ```c
+    /* add.c */
+
+    int add_int(int a, int b){
+        return a+b;
+    }
+
+    double add_double(double a, double b){
+        return a+b;
+    }
+
+    ```
+
+- 在fly/package下新建一个名为add的包
+
+    ```bash
+    mkdir add
+    cd add
+    touch Kconfig CMakeLists.txt add.c 
+    mkdir inc
+    touch inc/add.h
+    ```
+
+- 编写源码add.h和add.c
+- 编写Kconfig，这里包名为PACKAGE_TEST_ADD
+
+    ```Kconfig
+    config PACKAGE_TEST_ADD
+            bool "TEST ADD Supported"
+        help
+            "TEST ADD Supported"
+    ```
+
+- 编写CMakeLists.txt
+
+    ```cmake
+    cmake_minimum_required(VERSION 3.5)
+
+    # 如果没有使能这个配置，就不要add_library
+    if(CONFIG_PACKAGE_TEST_ADD)
+
+        # 相当于向全局声明test-add这个库，test-add的属性为编译单元(.o)
+        add_library(test-add OBJECT)
+
+        # 为test-add库添加源码
+        target_sources(test-add PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/add.c
+        )
+
+        # 为test-add库添加头文件，这里使用PUBLIC，意味着依赖这个库的都可以访问到这个文件夹下的头文件
+        target_include_directories(test-add PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc/")
+
+    endif(CONFIG_PACKAGE_TEST_ADD)
+    ```
+
+- 测试menuconfig中是否存在我们的自定义包,如果看到我们的测试包，那么说明建包成功。
+
+    ```txt
+    Target Packages -->
+        [ ] TEST ADD Supported (NEW)
+    ```
+
+    ![alt text](resource/image5.png)
+
+- 在项目中使用包，这里以project/gd32vf103x/gd32vf103c-demo为例，来使用test-add这个包
+  - 修改项目目录下的target_link_libraries添加test-add这个包
+  
+    这里的包名使用上面add_library(test-add OBJECT)定义的test-add。(这里的包名不是包文件夹名称，而是cmake中add_library的名称哦)。
+
+    ```cmake
+    ...
+
+    # app程序生成
+    add_executable(gd32vf103c-demo)
+    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
+
+    target_sources(gd32vf103c-demo PRIVATE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
+    )
+
+    ...
+    ```
+
+  - 假如有些包需要用户来提供某个头文件给它(例子中不需要，下面只是演示)，可是使用target_include_directories给包传递你的头文件目录
+
+    ```cmake
+    ...
+
+    # 在项目的CMakeLists.txt中给外部的包添加include目录
+    target_include_directories(test-add PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
+
+    # app程序生成
+    add_executable(gd32vf103c-demo)
+    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
+
+    target_sources(gd32vf103c-demo PRIVATE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
+    )
+
+    ...
+    ```
+
+  - 假如有些包需要用户定义一些宏，可以使用target_compile_definitions给包传递你宏定义
+
+    ```cmake
+    ...
+
+    # 在项目的CMakeLists.txt中给外部的包添加宏定义
+    target_compile_definitions(test-add PUBLIC -DTEST1=1 -DTEST_STR="test-str" )
+
+    # app程序生成
+    add_executable(gd32vf103c-demo)
+    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+
+    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
+
+    target_sources(gd32vf103c-demo PRIVATE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
+    )
+
+    ...
+    ```
+
+  - 在源码中使用test-add包提供的函数
+
+    ```c
+    ...
+    
+    #include "add.h"
+    ...
+        print_factory_data();
+        eh_infofl("test add int 3+4=%d", add_int(3, 4));
+        eh_infofl("test add double 3.3+4.4=%f", add_double(3.3, 4.4));
+        eh_global_init();
+    ...
+
+    ```
+
+  - 添加依赖项PACKAGE_TEST_ADD，使代码编译时自动选上test-add包。修改项目上级目录的Kconfig
+
+    ```Kconfig
+    choice
+        prompt "Select a gd32vf103x platform project"
+        default PROJECT_GD32VF103X_NONE
+        depends on ARCH_GD32VF103X
+
+    config PROJECT_GD32VF103X_NONE
+        bool "None"
+        help
+        Select this if you do not want to set any project.
+
+    config PROJECT_GD32VF103C_DEMO
+        bool "GD32VF103C demo project"
+        help
+            Select this option to enable Module GD32VF103C DEMO.
+        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SEGGER_RTT
+    # 添加依赖包 PACKAGE_TEST_ADD
+        select PACKAGE_TEST_ADD
+        
+    endchoice
+
+
+    config PROJECT
+        string
+        default "gd32vf103x/gd32vf103c-demo" if PROJECT_GD32VF103C_DEMO
+
+    ```
+
+  - 由于修改了Kconfig,刷新一下menuconfig，如果没有选gd32vf103c-demo请选中gd32vf103c-demo使其生成正确的配置
+
+    ```bash
+    ./build.sh menuconfig #进入后选择gd32vf103c-demo后 按ESC 选Y后退出
+    ```
+
+  - 使用./build.sh 开始编译
+
+    ```bash
+    ./build.sh
+    ```
+
+  - 使用./build.sh flash烧写后使用 ./build.sh rttlog查看日志
+
+    ```log
+    [2024-09-29 23:36:30.305] [    0.091618] [INFO] firmware_name:GD32VF103C_DEMO_Debug
+    [2024-09-29 23:36:30.306] [    0.091750] [INFO] part_name:APP
+    [2024-09-29 23:36:30.307] [    0.091857] [INFO] version:V0.0.1
+    [2024-09-29 23:36:30.308] [    0.091994] [INFO] generated_description:git@dirty_b02e985287 time@20240929_233524
+    [2024-09-29 23:36:30.309] [    0.092150] [INFO] software_len:48344
+    [2024-09-29 23:36:30.310] [    0.092296] [INFO] [main, 113]: app start!
+    [2024-09-29 23:36:30.311] [    0.092435] [INFO] [main, 114]: test add int 3+4=7
+    [2024-09-29 23:36:30.312] [    0.092592] [INFO] [main, 115]: test add double 3.3+4.4=7.700000
+    [2024-09-29 23:36:30.574] [    1.092904] [INFO] slot_test_function timer-1000ms
+    ```
 
 ### 8. 配合VS Code插件使用-插件安装
 
