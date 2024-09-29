@@ -660,7 +660,7 @@ simon@:~/fly/package/segger-rtt$ tree
     [2024-09-29 23:36:30.574] [    1.092904] [INFO] slot_test_function timer-1000ms
     ```
 
-### 8. 配合VS Code插件使用-插件安装
+### 10. 配合VS Code插件使用-插件安装
 
 - 安装插件调试插件[Cortex-Debug](https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug)、插件栏搜索安装或者使用命令安装 
 
@@ -680,7 +680,7 @@ simon@:~/fly/package/segger-rtt$ tree
     code --install-extension llvm-vs-code-extensions.vscode-clangd
     ```
 
-### 9. 配合VS Code插件使用-编译、烧写、打包
+### 11. 配合VS Code插件使用-编译、烧写、打包
 
 - 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用CAMKE Tools插件直接进行编译。
 - 可以通过cmake插件旁边的项目大纲来一键烧写或一键打包固件
@@ -729,7 +729,7 @@ simon@:~/fly/package/segger-rtt$ tree
         ├── 
     ```
 
-### 10. 配合VS Code插件使用-调试
+### 12. 配合VS Code插件使用-调试
 
 - 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用Cortex-Debug插件直接进行调试。
 ![alt text](resource/image4.png)
@@ -768,7 +768,7 @@ simon@:~/fly/package/segger-rtt$ tree
     }
     ```
 
-### 11. 配合VS Code插件使用-LSP语法提示、跳转、代码补全
+### 13. 配合VS Code插件使用-LSP语法提示、跳转、代码补全
 
 - 想用 c/c++ 插件请自行配置，略过此章。
 - 如果你已经使用./build.sh 完成了项目的初次构建，应该可以使用clangd进行代码补全。
