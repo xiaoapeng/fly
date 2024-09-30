@@ -687,29 +687,36 @@ simon@:~/fly/package/segger-rtt$ tree
 ![alt text](resource/image2.png)
 - 请不要使用cmake tools插件进行配置，可能会找不到编译器(除非编译器在全局环境变量)，如果发生配置失败的情况，请删除./build目录，再使用./build.sh进行重新构建。
 ![alt text](resource/image3.png)
-- 打包固件使用命名规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 该命名在CMAKE文件中指定比如：
+- 打包固件使用命名规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 该这些内容在项目的CMakeLists.txt文件中指定：
 
     ```cmake
+
+    # OPENOCD固件
+    # STM32F030X8_DEMO_APP__openocd_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd 是 在cmake中调用这个函数生成的
+    add_openocd_image( openocd_image
+        IMAGE_NAME "STM32F030X8_DEMO_APP"
+        RTT_ADDR_AND_SIZE 0x20000000 0x3000
+        CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/openocd/jlink.cfg"
+        # 固件表，可以包含不止一个固件多个固件用空格隔开即可,比如
+        # FIRMWARE_LIST "BOOT:V0.0.1:0x8000000:stm32f030x8_demo_boot.bin" "APP:V0.0.1:0x8004000:stm32f030x8_demo_app.bin"
+        FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
+        DEPENDS stm32f030x8_demo_app
+    )
+
     # JLINK固件
-    STM32F030X8_DEMO_APP__jlink_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd
-    在cmake中调用这个函数生成的
+    # STM32F030X8_DEMO_APP__jlink_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd 是 在cmake中调用这个函数生成的
+    # 这里的目标名称叫default，意味着./build.sh make_img会依赖该目标，该目标又依赖了openocd_image_make_img(上面openocd目标)，所以
     add_jlink_image( default
         IMAGE_NAME "STM32F030X8_DEMO_APP"
         CHIP_NAME "STM32F030C8"
+        # 固件表，可以包含不止一个固件多个固件用空格隔开即可,比如
+        # FIRMWARE_LIST "BOOT:V0.0.1:0x8000000:stm32f030x8_demo_boot.bin" "APP:V0.0.1:0x8004000:stm32f030x8_demo_app.bin"
         FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
+        # 依赖上面的openocd_image目标，当该目标被生成时上面的目标也可以被生成。
         DEPENDS stm32f030x8_demo_app openocd_image_make_img
     )
 
     
-    # OPENOCD固件
-    STM32F030X8_DEMO_APP__openocd_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd
-    add_vscode_cortex_debug_gdb( jlink
-        CHIP_NAME "STM32F030C8"
-        ELF_NAME_LIST "stm32f030x8_demo_app"
-        SERVER_TYPE "jlink"
-        RTT_DEBUG  ON
-        DEPENDS stm32f030x8_demo_app
-    )
 
     ```
 
@@ -809,8 +816,7 @@ simon@:~/fly/package/segger-rtt$ tree
         //      Remove: [-march=rv32imac, -mabi=ilp32] 
         //
         //"--enable-config",
-    ],
-    "editor.inlayHints.enabled": "off",
+    ]
     ```
 
 - 然后使用vs code顶部命令（或者直接重启VS Code） >clangd:Restart language server 重启clangd服务，即可支持代码补全。
