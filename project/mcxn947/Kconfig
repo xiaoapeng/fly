@@ -16,11 +16,19 @@ config PROJECT_MCXN947_DEMO
         Select this option to enable Module MCXN947 DEMO.
     select PACKAGE_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
-    
+
+config PROJECT_MCXN947_ETH_DEMO
+    bool "MCXN947 eth demo project"
+    help
+        Select this option to enable Module MCXN947 eth DEMO.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
+
 endchoice
 
 
 config PROJECT
     string
     default "mcxn947/mcxn947-demo" if PROJECT_MCXN947_DEMO
+    default "mcxn947/mcxn947-eth-demo" if PROJECT_MCXN947_ETH_DEMO
 
