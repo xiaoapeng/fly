@@ -1,0 +1,9 @@
+
+config PACKAGE_EHIP
+        bool "Network protocol stack support"
+    help
+        Enable support for the network protocol stack.
+        Selecting this option will add support for specific network protocols to the system. 
+        This is important for applications that require networking capabilities. 
+        If networking is not needed, disabling this option can reduce the size of the program and decrease boot time.
+    select PACKAGE_EVENTHUB_OS
