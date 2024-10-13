@@ -11,21 +11,19 @@
  */
 
 #include "eh.h"
-#include "eh_list.h"
 #include "eh_module.h"
 
 #include "ehip_netdev.h"
 
 struct eh_list_head s_netdev_head;
 
-struct ehip_netdev{
-    struct eh_list_head node;
-    struct ehip_netdev_param *param;
-};
+
+
+
 
 static int __init eh_ehipcore_init(void){
     eh_list_head_init(&s_netdev_head);
-
+    
     return 0;
 }
 
