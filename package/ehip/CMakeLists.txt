@@ -6,6 +6,7 @@ if(CONFIG_PACKAGE_EHIP)
 add_library(ehip OBJECT)
 target_sources(ehip PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip_core.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/ehip_buffer.c"
 )
 
 target_include_directories(ehip PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/include/")
