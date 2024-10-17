@@ -104,6 +104,10 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
         
 
 def launch_json_save(launch_json, top_path):
+    vscode_dir = f'{top_path}/.vscode'
+    if not os.path.exists(vscode_dir):
+        os.mkdir(vscode_dir)
+
     launch_json_path = f'{top_path}/.vscode/launch.json'
     with open(launch_json_path, 'w') as file:
         json.dump(launch_json, file, indent=4)
