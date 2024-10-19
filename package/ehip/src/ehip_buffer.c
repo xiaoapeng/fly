@@ -115,11 +115,36 @@ ehip_buffer_t* ehip_buffer_ref_dup(ehip_buffer_t* buf){
     return new_buffer;
 }
 
+uint8_t* ehip_buffer_payload_put(ehip_buffer_t* buf, ehip_buffer_size_t size){
+    uint8_t *new_payload_ptr = ehip_buffer_get_payload_end_ptr(buf);
+    if((int)((buf->payload_tail) + size) > (int)ehip_buffer_get_buffer_size(buf))
+        return NULL;
+    buf->payload_tail += size;
+    return new_payload_ptr;
+}
+
+
+uint8_t* ehip_buffer_head_append(ehip_buffer_t* buf, ehip_buffer_size_t size){
+    if(buf->payload_pos < size)
+        return NULL;
+    buf->payload_pos -= size;
+    return ehip_buffer_get_payload_ptr(buf);
+}
+
+uint8_t* ehip_buffer_head_reduce(ehip_buffer_t* buf, ehip_buffer_size_t size){
+    uint8_t *old_payload_ptr;
+    if((int)ehip_buffer_get_payload_size(buf) < (int)size)
+        return NULL;
+    old_payload_ptr = ehip_buffer_get_payload_ptr(buf);
+    buf->payload_pos += size;
+    return old_payload_ptr;
+}
+
 static __init int ehip_buffer_init(void){
     const struct ehip_pool_info *info;
     int i=0;
     int ret;
-    int sum_num = 0;
+    size_t sum_num = 0;
 
     for(i = 0; i < EHIP_BUFFER_TYPE_MAX; i++){
         info = &ehip_pool_info_tab[i];
@@ -130,11 +155,11 @@ static __init int ehip_buffer_init(void){
             goto eh_mem_pool_create_fail;
     }
 
-    pool_ehip_buffer_ref = eh_mem_pool_create(1, sizeof(struct ehip_buffer_ref), sum_num);
+    pool_ehip_buffer_ref = eh_mem_pool_create(sizeof(void*), sizeof(struct ehip_buffer_ref), sum_num);
     ret = eh_ptr_to_error(pool_ehip_buffer_ref);
     if(ret < 0)
         goto create_ehip_buffer_ref_pool_fail;
-    pool_ehip_buffer = eh_mem_pool_create(1, sizeof(struct ehip_buffer), EHIP_NETDEV_POLL_BUFFER_MAX_NUM);
+    pool_ehip_buffer = eh_mem_pool_create(sizeof(void*), sizeof(struct ehip_buffer), EHIP_NETDEV_POLL_BUFFER_MAX_NUM);
     ret = eh_ptr_to_error(pool_ehip_buffer);
     if(ret < 0)
         goto create_ehip_buffer_fail;

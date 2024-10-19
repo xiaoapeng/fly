@@ -13,10 +13,11 @@
 #ifndef _EHIP_BUFFER_H_
 #define _EHIP_BUFFER_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct ehip_buffer ehip_buffer_t;
-
+typedef uint16_t ehip_buffer_size_t;
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
@@ -31,16 +32,16 @@ enum ehip_buffer_type{
 eh_static_assert(EHIP_BUFFER_TYPE_MAX <= UINT8_MAX, "ehip_buffer_type must be less than UINT8_MAX");
 
 struct ehip_buffer_ref{
-    uint8_t                 *buffer;
-    uint16_t                 buffer_size;
-    uint16_t                 ref_cnt;
-    enum ehip_buffer_type    type;
+    uint8_t                    *buffer;
+    ehip_buffer_size_t          buffer_size;
+    ehip_buffer_size_t          ref_cnt;
+    enum ehip_buffer_type       type;
 };
 
 struct ehip_buffer{
-    struct ehip_buffer_ref *buffer_ref;
-    uint16_t                payload_pos;
-    uint16_t                payload_tail;
+    struct ehip_buffer_ref     *buffer_ref;
+    ehip_buffer_size_t          payload_pos;
+    ehip_buffer_size_t          payload_tail;
 };
 
 /**
@@ -53,7 +54,7 @@ struct ehip_buffer{
  * @brief                   获取buffer的总大小
  * @return                  buffer size
  */
-#define ehip_buffer_get_buffer_size(buf) ((size_t)(buf)->buffer_ref->buffer_size)
+#define ehip_buffer_get_buffer_size(buf) ((buf)->buffer_ref->buffer_size)
 
 
 /**
@@ -66,7 +67,7 @@ struct ehip_buffer{
  * @brief                   获取有效数据的大小
  * @return                  payload size
  */ 
-#define ehip_buffer_get_payload_size(buf) ((buf)->payload_tail - (buf)->payload_pos)
+#define ehip_buffer_get_payload_size(buf) ((ehip_buffer_size_t)((buf)->payload_tail - (buf)->payload_pos))
 
 /**
  * @brief                   获取有效数据的结束指针地址，在访问数据时作为边界条件使用
@@ -91,17 +92,43 @@ extern void ehip_buffer_free(ehip_buffer_t* buf);
 
 /**
  * @brief                   复制一个网络数据buf,到一个新的缓冲区中 (深拷贝)
- * @param  src              源缓冲
+ * @param  src              源缓冲句柄
  * @return ehip_buffer_t* 
  */
 extern ehip_buffer_t* ehip_buffer_dup(ehip_buffer_t* src);
 
 /**
  * @brief                   引用一个网络数据buf，到一个新的缓冲区中 (浅拷贝)
- * @param  buf              源缓冲
+ * @param  buf              源缓冲句柄
  * @return ehip_buffer_t*   返回一个引用源缓冲区的buf句柄
  */
 extern ehip_buffer_t* ehip_buffer_ref_dup(ehip_buffer_t* buf);
+
+
+/**
+ * @brief                   向payload中追数据,
+ * @param  buf              缓冲句柄
+ * @param  size             本次追加数据的数量
+ * @return uint8_t*         返回本次追加数据的开始指针，用户需要自己追加
+ */
+extern uint8_t* ehip_buffer_payload_append(ehip_buffer_t* buf, ehip_buffer_size_t size);
+
+/**
+ * @brief                   向缓冲区头部追加空间
+ * @param buf               缓冲句柄
+ * @param size              需要追加的空间大小
+ * @return uint8_t*         返回新头部的缓冲区头部指针，如果失败返回NULL
+ */
+extern uint8_t* ehip_buffer_head_append(ehip_buffer_t* buf, ehip_buffer_size_t size);
+
+/**
+ * @brief                   减少缓冲区头部空间
+ * @param buf               缓冲句柄
+ * @param size              需要减少的空间大小
+ * @return uint8_t*         返回被移除的空间的开始指针，如果失败返回NULL
+ */
+extern uint8_t* ehip_buffer_head_reduce(ehip_buffer_t* buf, ehip_buffer_size_t size);
+
 
 
 #ifdef __cplusplus
