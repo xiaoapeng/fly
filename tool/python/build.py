@@ -6,6 +6,7 @@ import kconfiglib
 import menuconfig
 import platform
 import json
+import check_git_status
 
 K_CONFIG_FILR_PATH = 'Kconfig'
 DOT_CONFIG_FILE_PATH = '.config'
@@ -210,6 +211,9 @@ def run_make_img(source_dir, flash_target='default'):
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("build not exist!!")
         exit(1)
+    
+    # 生成时间戳文件,
+    check_git_status.generate_timestamp(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
     os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
 
 def run_rttlog(source_dir):

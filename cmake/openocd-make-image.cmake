@@ -35,13 +35,13 @@ function(add_openocd_image CMAKE_TARGET)
             --symlink-name ${CMAKE_TARGET}_openocd_CURRENT --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST} 
         COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_openocd_CURRENT ${FLY_TOP_DIR}/image/CURRENT
-        DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp
+        DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp 
         COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Make a openocd burn package"
     )
 
     # 添加自定义目标来生成 img 文件
     add_custom_target(${CMAKE_TARGET}_make_img
-        DEPENDS ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
+        DEPENDS check_git_status ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
     )
 
     if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")

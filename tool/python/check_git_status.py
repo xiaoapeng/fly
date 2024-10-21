@@ -9,22 +9,13 @@ def get_git_status():
         raise Exception("Failed to run git status")
     return result.stdout
 
-def main():
-    parser = argparse.ArgumentParser(description='Generate git status information.')
-
-    parser.add_argument('--output-dir', required=True, help='Directory to output the generated information.')
-
-    args = parser.parse_args()
-    if not os.path.exists(args.output_dir):
-        raise Exception(f"Output directory '{args.output_dir}' does not exist.")
-    
-
+def generate_timestamp(output_dir, is_output_log = False):
     status = get_git_status()
     is_clean = len(status.strip()) == 0
     status_str = "clean" if is_clean else "dirty"
     
-    status_file = os.path.join(args.output_dir, '.gitstatus')
-    timestamp_file = os.path.join(args.output_dir, '.gitstatus.timestamp')
+    status_file = os.path.join(output_dir, '.gitstatus')
+    timestamp_file = os.path.join(output_dir, '.gitstatus.timestamp')
     
     # Check if the current status is different from the last status
     previous_status = ""
@@ -40,9 +31,16 @@ def main():
         # Update the timestamp file
         with open(timestamp_file, 'w') as f:
             f.write(str(time.time()))
-        print(f"Git status changed to '{status_str}'. Timestamp updated.")
+        if is_output_log:
+            print(f"Git status changed to '{status_str}'. Timestamp updated.")
     else:
-        print("Git status has not changed.")
+        if is_output_log:
+            print("Git status has not changed.")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Generate git status information.')
+    parser.add_argument('--output-dir', required=True, help='Directory to output the generated information.')
+    args = parser.parse_args()
+    if not os.path.exists(args.output_dir):
+        raise Exception(f"Output directory '{args.output_dir}' does not exist.")
+    generate_timestamp(args.output_dir, True)
