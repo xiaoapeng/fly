@@ -185,11 +185,11 @@ $scriptBlock = {{
     param ($tmpLogFilePath, $outputFilePath)
 
     # Continuously read the log file
-    Get-Content -Path $tmpLogFilePath -Wait | ForEach-Object {{
+    Get-Content -Path $tmpLogFilePath -Encoding UTF8 -Wait | ForEach-Object {{
         # Process each line, for example, by adding a timestamp
         $date_str = Get-Date -Format "[yyyy-MM-dd HH:mm:ss.fff]"
         Write-Output "$date_str $_"
-        Add-Content -Path $outputFilePath -Value "$date_str $_"
+        Add-Content -Path $outputFilePath -Value "$date_str $_" -Encoding UTF8
     }}
 }}
 
