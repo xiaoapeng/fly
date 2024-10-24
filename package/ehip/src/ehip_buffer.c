@@ -177,6 +177,7 @@ eh_mem_pool_create_fail:
 
 static __exit void ehip_buffer_exit(void){
     eh_mem_pool_destroy(pool_ehip_buffer);
+    eh_mem_pool_destroy(pool_ehip_buffer_ref);
     for(int i = 0; i < EHIP_BUFFER_TYPE_MAX; i++){
         eh_mem_pool_destroy(pool_tab[i]);
     }
