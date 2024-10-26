@@ -98,6 +98,8 @@ ehip_buffer_t* ehip_buffer_dup(ehip_buffer_t* src){
         return new_buffer;
     new_buffer->payload_pos = src->payload_pos;
     new_buffer->payload_tail = src->payload_tail;
+    new_buffer->protocol = src->protocol;
+    new_buffer->netdev = src->netdev;
     memcpy(ehip_buffer_get_payload_ptr(new_buffer), ehip_buffer_get_payload_ptr(src), ehip_buffer_get_payload_size(src));
     return new_buffer;
 }

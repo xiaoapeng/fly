@@ -16,13 +16,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct ehip_buffer ehip_buffer_t;
-typedef uint16_t ehip_buffer_size_t;
+#include "eh_types.h"
+#include "ehip_ptype.h"
+
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
 #endif
 #endif /* __cplusplus */
+
+typedef struct ehip_buffer ehip_buffer_t;
+typedef uint16_t ehip_buffer_size_t;
+typedef struct ehip_netdev ehip_netdev_t;
 
 enum ehip_buffer_type{
     EHIP_BUFFER_TYPE_ETHERNET_FRAME,
@@ -42,6 +48,8 @@ struct ehip_buffer{
     struct ehip_buffer_ref     *buffer_ref;
     ehip_buffer_size_t          payload_pos;
     ehip_buffer_size_t          payload_tail;
+    enum ehip_ptype             protocol;
+    ehip_netdev_t              *netdev;
 };
 
 /**
