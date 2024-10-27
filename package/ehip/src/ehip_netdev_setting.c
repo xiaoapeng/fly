@@ -15,6 +15,15 @@
 #include <stdint.h>
 
 
+
+void ehip_netdev_setting_clean(struct ehip_netdev_setting *setting){
+    struct ehip_netdev_setting_item *item, *n;
+    ehip_netdev_setting_for_each_safe(setting, item, n){
+        ehip_netdev_setting_item_remove_and_free(setting, item);
+    }
+}
+
+
 int ehip_netdev_setting_item_add(struct ehip_netdev_setting *setting, struct ehip_netdev_setting_item *item){
     struct ehip_netdev_setting_item *pos_item;
     
@@ -26,3 +35,10 @@ int ehip_netdev_setting_item_add(struct ehip_netdev_setting *setting, struct ehi
     return 0;
 }
 
+struct ehip_netdev_setting_item* ehip_netdev_setting_item_alloc_and_add(struct ehip_netdev_setting *setting, enum ehip_netdev_setting_type type, size_t size){
+    struct ehip_netdev_setting_item* item = ehip_netdev_setting_item_alloc(size);
+    if(item == NULL)  return NULL;
+    item->type = type;
+    ehip_netdev_setting_item_add(setting, item);
+    return item;
+}

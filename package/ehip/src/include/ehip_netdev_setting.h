@@ -50,7 +50,16 @@ struct ehip_netdev_setting{
  * @brief 初始化配置项列表
  * @param setting 配置项列表指针
  */
-#define ehip_netdev_setting_init(setting) eh_list_head_init(&(setting)->item_list)
+static inline void ehip_netdev_setting_init(struct ehip_netdev_setting *setting){
+    eh_list_head_init(&(setting)->item_list);
+}
+
+/**
+ * @brief                   清理setting中的配置项，
+ * @param  setting          setting 句柄
+ */
+void ehip_netdev_setting_clean(struct ehip_netdev_setting *setting);
+
 
 /**
  * @brief 遍历
@@ -66,7 +75,7 @@ struct ehip_netdev_setting{
  * @param item          遍历过程中pos指针
  */
 #define ehip_netdev_setting_for_each_safe(setting, item, n) \
-    eh_list_for_each_entry_safe(item, &(setting)->item_list, node)
+    eh_list_for_each_entry_safe(item, n, &(setting)->item_list, node)
 
 /**
  * @brief                   动态分配一个配置项
@@ -102,6 +111,25 @@ extern int ehip_netdev_setting_item_add(struct ehip_netdev_setting *setting, str
 static inline void ehip_netdev_setting_item_remove(struct ehip_netdev_setting *setting, struct ehip_netdev_setting_item *item){
     (void) setting;
     eh_list_del(&item->node);
+}
+
+/**
+ * @brief                   申请一个配置项并添加到setting
+ * @param  setting          setting 句柄
+ * @param  type             配置类型
+ * @param  size             配置的缓冲长度
+ * @return struct ehip_netdev_setting_item* 
+ */
+extern struct ehip_netdev_setting_item* ehip_netdev_setting_item_alloc_and_add(struct ehip_netdev_setting *setting, enum ehip_netdev_setting_type type, size_t size);
+
+/**
+ * @brief                   移除并销毁一个配置项
+ * @param  setting          setting 句柄
+ * @param  item             配置项(已经添加到setting中)
+ */
+static inline void ehip_netdev_setting_item_remove_and_free(struct ehip_netdev_setting *setting, struct ehip_netdev_setting_item *item){
+    ehip_netdev_setting_item_remove(setting, item);
+    ehip_netdev_setting_item_free(item);
 }
 
 
