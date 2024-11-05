@@ -224,7 +224,6 @@ static void *ethernetif_rx_alloc(ENET_Type *base, void *userData, uint8_t ringId
     (void) base;
     (void) userData;
     (void) ringId;
-    eh_debugfl("debug");
     return eh_malloc(BOARD_ETH_ENET_FRAME_MAX_FRAMELEN);
 }
 
@@ -232,7 +231,6 @@ static void ethernetif_rx_free(ENET_Type *base, void *buffer, void *userData, ui
     (void) base;
     (void) userData;
     (void) ringId;
-    eh_debugfl("debug");
     eh_free(buffer);
 }
 
@@ -267,7 +265,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
     int ret;
     enet_buffer_struct_t buffers[BOARD_ETH_ENET_RXBD_NUM] = {{0}};
     enet_rx_frame_struct_t rx_frame                      = {.rxBuffArray = &buffers[0]};
-    ret = eh_event_flags_wait(ef, BOARD_ETH_EVENT_FLAGS_MASK, BOARD_ETH_EVENT_FLAGS_MASK, &reality_flags, 0);
+    ret = eh_event_flags_wait_bits_set(ef, BOARD_ETH_EVENT_FLAGS_MASK, BOARD_ETH_EVENT_FLAGS_MASK, &reality_flags, 0);
     if(ret < 0){
         eh_warnfl("eh_event_flags_wait fail ret = %d");
         return ;
@@ -406,5 +404,5 @@ static void __init eth_lan8741a_en_exit(void){
 
 
 
-eh_module_level9_export(eth_lan8741a_en_init, eth_lan8741a_en_exit);
+eh_module_level0_export(eth_lan8741a_en_init, eth_lan8741a_en_exit);
 

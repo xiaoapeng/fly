@@ -17,10 +17,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "eh.h"
 #include "eh_error.h"
 #include "eh_list.h"
+#include "eh_signal.h"
+#include "eh_event_flags.h"
+#include "ehip_conf.h"
+#include "ehip_netdev_type.h"
 
-#include "ehip_buffer.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -29,52 +33,69 @@ extern "C"{
 #endif /* __cplusplus */
 
 typedef struct ehip_netdev ehip_netdev_t;
+typedef struct ehip_buffer ehip_buffer_t;
+typedef void   hw_addr_t;
+struct ehip_protocol_handle;
 
-enum ehip_netdev_type{
-    EHIP_NETDEV_TYPE_ETHERNET,
-};
+#define EHIP_NETDEV_STATUS_UP                     0x00000001    /* 网卡是否运行 */
+#define EHIP_NETDEV_STATUS_LINK                   0x00000002    /* LINK 状态 */
+#define EHIP_NETDEV_STATUS_PROMISC                0x00000004    /* PROMISC(混杂)模式，接收全部的包 */
+#define EHIP_NETDEV_STATUS_ALLMULTI               0x00000008    /* 接收全部的组播包 */
+#define EHIP_NETDEV_STATUS_BROADCAST              0x00000010    /* 接收广播包 */
+#define EHIP_NETDEV_STATUS_MULTICAST              0x00000020    /* 接收指定组播包 */
 
 struct ehip_netdev{
-    struct eh_list_head node;
-    struct ehip_netdev_param *param;
+    struct eh_list_head                                  node;
+    struct ehip_netdev_param                            *param;
+    struct eh_list_head                                  protocol_handle_head;
+    void                                                *userdata;
+    enum ehip_netdev_type                                type; /* 类型决定trait使用哪种定义 */
+    EH_STRUCT_CUSTOM_SIGNAL(struct eh_event_flags)       signal;
 };
 
 
 struct ehip_netdev_ops{
-    int (*ndo_open)(ehip_netdev_t *netdev);
-    int (*ndo_stop)(ehip_netdev_t *netdev);
+    int (*ndo_up)(ehip_netdev_t *netdev);
+    int (*ndo_down)(ehip_netdev_t *netdev);
     int (*ndo_output)(ehip_netdev_t *netdev, ehip_buffer_t *buf);
-    int (*ndo_set_rx_mode)(ehip_netdev_t *netdev);
-    int (*ndo_set_mac_addr)(ehip_netdev_t *netdev, const uint8_t *mac);
+    int (*ndo_ctrl)(ehip_netdev_t *netdev, uint32_t ctrl, void *arg);
 };
 
 struct ehip_netdev_param{
     char                    *name;
-    enum ehip_netdev_type    netdev_type;
     struct ehip_netdev_ops  *ops;
     void                    *userdata;
-    uint16_t                 net_frame_size;    
+    uint16_t                 net_frame_size;
 };
 
-/* ########################### 网卡层调用 ################################# */
 
-extern ehip_netdev_t ehip_netdev_register(struct ehip_netdev_param *param);
+/**
+ * @brief                    注册网卡
+ * @param  param             驱动使用static 声明的结构体，需保持全生命周期
+ * @return ehip_netdev_t* 
+ */
+extern ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type, struct ehip_netdev_param *param);
+
+/**
+ * @brief                    注销网卡
+ * @param  netdev            由ehip_netdev_register 返回的指针
+ */
 extern void ehip_netdev_unregister(ehip_netdev_t *netdev);
-extern int ehip_netdev_input(ehip_netdev_t *netdev, ehip_buffer_t *buf);
-extern void ehip_netdev_link_set_status(ehip_netdev_t *netdev, bool is_up);
-
-/* ####################################################################### */
 
 
-/* ############################ 数据链路层调用 ############################# */
+/**
+ * @brief                   为特定网卡注册协议处理函数
+ * @param  netdev           网卡句柄
+ * @param  handle           协议处理函数描述句柄
+ */
+extern int ehip_netdev_protocol_handle_register(ehip_netdev_t *netdev, struct ehip_protocol_handle *handle);
 
-static inline int ehip_netdev_output(ehip_netdev_t *netdev, ehip_buffer_t *buf){
-    eh_param_assert(netdev->param);
-    eh_param_assert(netdev->param->ops->ndo_output);
-    return netdev->param->ops->ndo_output(netdev, buf);
-}
-
-/* ####################################################################### */
+/**
+ * @brief                   为特定网卡注销协议处理函数
+ * @param  netdev           网卡句柄
+ * @param  handle           协议处理函数描述句柄
+ */
+extern void ehip_netdev_protocol_handle_unregister(ehip_netdev_t *netdev, struct ehip_protocol_handle *handle);
 
 
 #ifdef __cplusplus

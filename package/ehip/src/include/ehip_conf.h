@@ -61,5 +61,19 @@
 #define EHIP_POOL_BASE_ALIGN                                    4U
 #endif
 
+/**
+ * 网络设备支持最多ip数量
+ */
+#ifndef EHIP_NETDEV_MAX_IP_NUM
+#define EHIP_NETDEV_MAX_IP_NUM                                  4U
+#endif
+
+/**
+ * 支持最多的多播地址数量
+ */
+#ifndef ETH_MULTICAST_ADDR_NUM
+#define ETH_MULTICAST_ADDR_NUM                                  16U
+#endif
+
 
 #endif // _EHIP_CONF_H_

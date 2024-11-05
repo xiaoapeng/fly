@@ -22,7 +22,8 @@ extern "C"{
 
 #define ehip_preinit_module_export(_init__func_, _exit__func_) _eh_define_modeule_export(_init__func_, _exit__func_, "2.0.0")
 #define ehip_core_module_export(_init__func_, _exit__func_) _eh_define_modeule_export(_init__func_, _exit__func_, "2.0.1")
-#define ehip_netdev_module_export(_init__func_, _exit__func_) _eh_define_modeule_export(_init__func_, _exit__func_, "2.0.2")
+#define ehip_protocol_module_export(_init__func_, _exit__func_) _eh_define_modeule_export(_init__func_, _exit__func_, "2.0.2")
+#define ehip_netdev_module_export(_init__func_, _exit__func_) _eh_define_modeule_export(_init__func_, _exit__func_, "2.0.3")
 
 
 #ifdef __cplusplus

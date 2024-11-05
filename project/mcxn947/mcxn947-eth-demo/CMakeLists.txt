@@ -13,10 +13,14 @@ set(TARGET_FLAGS
 # app程序生成
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/app/inc")
 target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
+target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
+target_compile_options(segger-rtt PRIVATE 
+    "-DBUFFER_SIZE_UP=4096"
+)
 
 add_executable(mcxn947_eth_demo_app )
-target_link_libraries(mcxn947_eth_demo_app  arch-mcxn947-core0 eventhub segger-rtt c rdimon m gcc  )
+target_link_libraries(mcxn947_eth_demo_app  arch-mcxn947-core0 eventhub ehip segger-rtt c rdimon m gcc  )
 target_include_directories( mcxn947_eth_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/general/inc"
@@ -39,12 +43,14 @@ set(BOARD_SOURCES
 target_sources(mcxn947_eth_demo_app PRIVATE 
     "${BOARD_SOURCES}"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"
 )
+
 target_compile_options(mcxn947_eth_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_options(mcxn947_eth_demo_app  PRIVATE
     "-T${CMAKE_CURRENT_SOURCE_DIR}/app/MCXN947_cm33_core0_flash.ld"
