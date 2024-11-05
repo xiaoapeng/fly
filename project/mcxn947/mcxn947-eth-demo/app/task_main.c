@@ -150,11 +150,8 @@ int task_main(void)
 
     // eh_task_create("test_switch0", EH_TASK_FLAGS_DETACH, 1024, (void*)1, task_switch_test);
     // eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 1024, (void*)0, task_switch_test);
-
-    while(1){
-        __await eh_usleep(1000*1000*5);
-        eh_infofl("run!");
-    }
+    while(1)
+        __await eh_usleep(1000*1000*10);
     
     eh_signal_slot_disconnect(&sw3_slot);
     eh_signal_slot_disconnect(&timer_slot);
