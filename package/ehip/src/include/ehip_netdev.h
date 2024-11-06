@@ -38,11 +38,8 @@ typedef void   hw_addr_t;
 struct ehip_protocol_handle;
 
 #define EHIP_NETDEV_STATUS_UP                     0x00000001    /* 网卡是否运行 */
-#define EHIP_NETDEV_STATUS_LINK                   0x00000002    /* LINK 状态 */
-#define EHIP_NETDEV_STATUS_PROMISC                0x00000004    /* PROMISC(混杂)模式，接收全部的包 */
-#define EHIP_NETDEV_STATUS_ALLMULTI               0x00000008    /* 接收全部的组播包 */
-#define EHIP_NETDEV_STATUS_BROADCAST              0x00000010    /* 接收广播包 */
-#define EHIP_NETDEV_STATUS_MULTICAST              0x00000020    /* 接收指定组播包 */
+#define EHIP_NETDEV_STATUS_TX_BUSY                0x00000002    /* 网卡是否忙碌中，忙碌中无法调用ndo_start_xmit */
+
 
 struct ehip_netdev{
     struct eh_list_head                                  node;
@@ -57,8 +54,9 @@ struct ehip_netdev{
 struct ehip_netdev_ops{
     int (*ndo_up)(ehip_netdev_t *netdev);
     int (*ndo_down)(ehip_netdev_t *netdev);
-    int (*ndo_output)(ehip_netdev_t *netdev, ehip_buffer_t *buf);
-    int (*ndo_ctrl)(ehip_netdev_t *netdev, uint32_t ctrl, void *arg);
+    int (*ndo_start_xmit)(ehip_netdev_t *netdev, ehip_buffer_t *buf);
+    void (*ndo_tx_timeout)(ehip_netdev_t *netdev);
+    int (*ndo_ctrl)(ehip_netdev_t *netdev, uint32_t cmd, void *arg);
 };
 
 struct ehip_netdev_param{

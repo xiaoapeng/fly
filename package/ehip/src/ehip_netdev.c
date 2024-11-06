@@ -25,6 +25,8 @@ struct eh_list_head s_netdev_head;
 
 ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type type, struct ehip_netdev_param *param){
     ehip_netdev_t *netdev = NULL;
+    if(type < EHIP_NETDEV_TYPE_MAX)
+        return eh_error_to_ptr(EH_RET_INVALID_PARAM);
     netdev = eh_malloc(sizeof(ehip_netdev_t) + ehip_netdev_trait_size_get(type));
     if(!netdev)
         return eh_error_to_ptr(EH_RET_MALLOC_ERROR);
