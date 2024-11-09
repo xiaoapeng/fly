@@ -1,10 +1,10 @@
-#include "eh.h"
-#include "eh_event.h"
-#include "eh_sleep.h"
-#include "eh_timer.h"
-#include "eh_debug.h"
-#include "eh_signal.h"
-#include "factory-data.h"
+#include <eh.h>
+#include <eh_event.h>
+#include <eh_sleep.h>
+#include <eh_timer.h>
+#include <eh_debug.h>
+#include <eh_signal.h>
+#include <factory-data.h>
 
 #include "led.h"
 #include "button.h"

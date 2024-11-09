@@ -1,11 +1,11 @@
 
 #include "SEGGER_RTT.h"
-#include "eh.h"
-#include "eh_sleep.h"
-#include "eh_debug.h"
-#include "eh_signal.h"
-#include "eh_timer.h"
-#include "factory-data.h"
+#include <eh.h>
+#include <eh_sleep.h>
+#include <eh_debug.h>
+#include <eh_signal.h>
+#include <eh_timer.h>
+#include <factory-data.h>
 #include "led.h"
 
 extern int init(void);

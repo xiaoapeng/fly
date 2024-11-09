@@ -8,13 +8,13 @@
  * 
  */
 
-#include "eh.h"
+#include <eh.h>
 #include "eh_swab.h"
-#include "eh_module.h"
-#include "eh_error.h"
-#include "eh_mem_pool.h"
-#include "eh_debug.h"
-#include "eh_sleep.h"
+#include <eh_module.h>
+#include <eh_error.h>
+#include <eh_mem_pool.h>
+#include <eh_debug.h>
+#include <eh_sleep.h>
 
 
 void mem_fill(void* mem, size_t size, char start){

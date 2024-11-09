@@ -11,17 +11,17 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "SEGGER_RTT.h"
-#include "eh.h"
-#include "eh_co.h"
-#include "eh_debug.h"
-#include "eh_mem.h"
-#include "eh_event.h"
-#include "eh_event_cb.h"
-#include "eh_signal.h"
-#include "eh_sleep.h"
+#include <eh.h>
+#include <eh_co.h>
+#include <eh_debug.h>
+#include <eh_mem.h>
+#include <eh_event.h>
+#include <eh_event_cb.h>
+#include <eh_signal.h>
+#include <eh_sleep.h>
 #include "eh_platform.h"
-#include "eh_timer.h"
-#include "eh_sleep.h"
+#include <eh_timer.h>
+#include <eh_sleep.h>
 #include "eh_types.h"
 #include "system_MCXN947_cm33_core0.h"
 
