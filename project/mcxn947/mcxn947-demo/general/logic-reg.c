@@ -2,12 +2,11 @@
  * @file logic_reg.c
  * @brief 关于本MCU寄存器读写的全部实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-08-16
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 #include <stdint.h>

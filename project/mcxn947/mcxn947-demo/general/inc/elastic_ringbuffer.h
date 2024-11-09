@@ -4,12 +4,11 @@
  *		环形缓冲器特殊实现，可直接在缓冲器内存上做数据解析，无需额外的拷贝和额外的缓冲区消耗。
  *		缺点是需要两倍的内存来运行。
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2021-03-01
  * 
  * @copyright Copyright (c) 2021  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 

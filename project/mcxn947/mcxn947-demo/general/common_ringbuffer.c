@@ -2,12 +2,11 @@
  * @file common_ringbuffer.c
  * @brief 比较常见的环形缓冲区实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-08-28
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 #include <string.h>
 

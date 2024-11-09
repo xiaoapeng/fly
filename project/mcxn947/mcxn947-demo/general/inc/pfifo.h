@@ -3,12 +3,11 @@
  * @brief 拷贝来自linux kfifo内核的实现，
  	通过修改改进为便于移植的版本
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-11-22
  * 
  * @copyright GPL 3.0
  * 
- * @par 修改日志:
+
  */
 
 

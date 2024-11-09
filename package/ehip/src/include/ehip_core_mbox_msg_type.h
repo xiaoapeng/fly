@@ -2,12 +2,10 @@
  * @file ehip_core_mbox_msg_type.h
  * @brief 邮箱消息类型
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-24
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #ifndef _EHIP_CORE_MBOX_MSG_TYPE_H_

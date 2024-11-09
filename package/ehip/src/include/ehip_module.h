@@ -2,12 +2,10 @@
  * @file ehip_module.h
  * @brief ehip module 初始导出宏定义
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-14
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 #ifndef _EHIP_MODULE_H_
 #define _EHIP_MODULE_H_

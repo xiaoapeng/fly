@@ -2,12 +2,11 @@
  * @file regwr_cb.c
  * @brief 使用寄存器读写的形式实现的环形缓冲区，使MCU和MPU数据流畅通无阻
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-09-02
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 

@@ -2,12 +2,11 @@
  * @file logic_reg.h
  * @brief 逻辑寄存器的实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-08-16
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
  #ifndef _LOGIC_REG_H_
  #define _LOGIC_REG_H_

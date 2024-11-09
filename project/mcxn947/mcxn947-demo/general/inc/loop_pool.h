@@ -2,12 +2,11 @@
  * @file loop_pool.h
  * @brief while(1)中定时循环的实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-04-07
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 
