@@ -10,12 +10,12 @@
 
 #include <string.h>
 
-#include "eh_error.h"
-#include "ehip_module.h"
-#include "ehip_conf.h"
-#include "ehip_netdev_trait.h"
+#include <eh_error.h>
+#include <ehip_module.h>
+#include <ehip_conf.h>
+#include <ehip_netdev_trait.h>
 #include "ehip-netdev-class/ethernet_dev.h"
-#include "ehip-mac/ethernet.h"
+#include <ehip-mac/ethernet.h>
 
 struct ethernet_trait{
     ehip_eth_addr_t                             hw_addr;

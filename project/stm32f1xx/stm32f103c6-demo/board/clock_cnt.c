@@ -7,8 +7,8 @@
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
  */
-#include "eh.h"
-#include "eh_module.h"
+#include <eh.h>
+#include <eh_module.h>
 #include "eh_user_config.h"
 #include "stm32f1xx_ll_cortex.h"
 

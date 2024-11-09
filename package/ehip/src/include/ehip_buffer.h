@@ -15,8 +15,8 @@
 #include <stdint.h>
 
 #include "eh_types.h"
-#include "ehip_ptype.h"
-#include "ehip_buffer_type.h"
+#include <ehip_ptype.h>
+#include <ehip_buffer_type.h>
 
 #ifdef __cplusplus
 #if __cplusplus

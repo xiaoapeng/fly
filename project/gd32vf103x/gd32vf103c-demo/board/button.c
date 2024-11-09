@@ -9,9 +9,9 @@
  */
 
 
-#include "eh.h"
-#include "eh_module.h"
-#include "eh_signal.h"
+#include <eh.h>
+#include <eh_module.h>
+#include <eh_signal.h>
 #include "button.h"
 
 EH_DEFINE_SIGNAL(button_pb5_signal);

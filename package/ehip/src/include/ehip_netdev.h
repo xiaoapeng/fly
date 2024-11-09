@@ -15,14 +15,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "eh.h"
-#include "eh_error.h"
-#include "eh_list.h"
-#include "eh_signal.h"
-#include "eh_event_flags.h"
-#include "ehip_conf.h"
-#include "ehip_netdev_type.h"
-#include "ehip_buffer_type.h"
+#include <eh.h>
+#include <eh_error.h>
+#include <eh_list.h>
+#include <eh_signal.h>
+#include <eh_event_flags.h>
+#include <ehip_conf.h>
+#include <ehip_netdev_type.h>
+#include <ehip_buffer_type.h>
 
 #ifdef __cplusplus
 #if __cplusplus

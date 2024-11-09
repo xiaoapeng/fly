@@ -10,33 +10,31 @@
 
 #include <stdalign.h>
 
-#include "eh_mem_pool.h"
-#include "ehip_buffer.h"
-#include "ehip_buffer_type.h"
-#include "ehip_core.h"
+#include <eh.h>
+#include <eh_event.h>
+#include <eh_event_flags.h>
+#include <eh_error.h>
+#include <eh_mem.h>
+#include <eh_module.h>
+#include <eh_debug.h>
+#include <eh_sleep.h>
+#include <eh_signal.h>
+#include <eh_mem_pool.h>
+
+#include <ehip_core.h>
+#include <ehip_module.h>
+#include <ehip_buffer_type.h>
+#include <ehip_buffer.h>
+#include <ehip_netdev.h>
+#include <ehip_netdev_type.h>
+#include <ehip_netdev_trait.h>
+#include <ehip-mac/ethernet.h>
+
 #include "fsl_common.h"
 #include "fsl_flash.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "fsl_enet.h"
-
-
-#include "eh.h"
-#include "eh_event.h"
-#include "eh_event_flags.h"
-#include "eh_error.h"
-#include "eh_mem.h"
-#include "eh_module.h"
-#include "eh_debug.h"
-#include "eh_sleep.h"
-#include "eh_signal.h"
-
-#include "ehip_module.h"
-#include "ehip_buffer.h"
-#include "ehip_netdev.h"
-#include "ehip_netdev_type.h"
-#include "ehip_netdev_trait.h"
-#include "ehip-mac/ethernet.h"
 
 #define PCR_IBE_ibe1 0x01u        /*!<@brief Input Buffer Enable: Enables */
 #define PORT5_PCR_MUX_mux00 0x00u /*!<@brief Pin Multiplex Control: Alternative 0 (GPIO) */

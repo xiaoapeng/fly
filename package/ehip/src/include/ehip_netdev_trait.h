@@ -13,9 +13,9 @@
 
 #include <stddef.h>
 
-#include "ehip_netdev.h"
-#include "ehip_netdev_type.h"
-#include "ehip-mac/ethernet.h"
+#include <ehip_netdev.h>
+#include <ehip_netdev_type.h>
+#include <ehip-mac/ethernet.h>
 #include "ehip-ip/ipv4.h"
 
 #ifdef __cplusplus

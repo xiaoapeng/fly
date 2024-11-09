@@ -12,7 +12,7 @@
 
 #include "clock_cnt.h"
 #include "clock_config.h"
-#include "eh.h"
+#include <eh.h>
 #include "eh_user_config.h"
 
 extern int board_debug_init(void);

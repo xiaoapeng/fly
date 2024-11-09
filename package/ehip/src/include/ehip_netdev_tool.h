@@ -12,7 +12,7 @@
 #define _EHIP_NETDEV_TOOL_H_
 
 
-#include "ehip_netdev.h"
+#include <ehip_netdev.h>
 
 #ifdef __cplusplus
 #if __cplusplus

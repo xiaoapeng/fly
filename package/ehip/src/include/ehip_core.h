@@ -11,7 +11,7 @@
 #ifndef _EHIP_CORE_H_
 #define _EHIP_CORE_H_
 
-#include "ehip_buffer.h"
+#include <ehip_buffer.h>
 
 #ifdef __cplusplus
 #if __cplusplus

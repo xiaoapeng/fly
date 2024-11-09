@@ -8,16 +8,16 @@
  * 
  * */
 #include <string.h>
-#include "eh.h"
-#include "eh_list.h"
-#include "eh_mem.h"
-#include "eh_error.h"
-#include "eh_signal.h"
-#include "eh_event_flags.h"
-#include "ehip_module.h"
-#include "ehip_netdev.h"
-#include "ehip_netdev_trait.h"
-#include "ehip_protocol_handle.h"
+#include <eh.h>
+#include <eh_list.h>
+#include <eh_mem.h>
+#include <eh_error.h>
+#include <eh_signal.h>
+#include <eh_event_flags.h>
+#include <ehip_module.h>
+#include <ehip_netdev.h>
+#include <ehip_netdev_trait.h>
+#include <ehip_protocol_handle.h>
 
 struct eh_list_head s_netdev_head;
 

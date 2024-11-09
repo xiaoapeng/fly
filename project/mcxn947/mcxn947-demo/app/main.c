@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "eh.h"
-#include "eh_debug.h"
-#include "eh_co.h"
+#include <eh.h>
+#include <eh_debug.h>
+#include <eh_co.h>
 #include "pfifo.h"
 #include "autoconf.h"
 extern void init(void);

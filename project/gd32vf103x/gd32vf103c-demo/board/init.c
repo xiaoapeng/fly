@@ -9,8 +9,8 @@
  */
 
 #include "SEGGER_RTT.h"
-#include "eh.h"
-#include "eh_debug.h"
+#include <eh.h>
+#include <eh_debug.h>
 #include "gd32vf103.h"
 #include "n200_func.h"
 

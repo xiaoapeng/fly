@@ -9,8 +9,8 @@
  */
 
 
-#include "eh.h"
-#include "eh_module.h"
+#include <eh.h>
+#include <eh_module.h>
 #include "led.h"
 
 #include "gd32vf103.h"

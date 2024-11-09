@@ -9,8 +9,8 @@
  */
 
 #include <string.h>
-#include "ehip_netdev_trait.h"
-#include "eh_error.h"
+#include <ehip_netdev_trait.h>
+#include <eh_error.h>
 
 static struct ehip_netdev_trait_ops *type_tab[EHIP_NETDEV_TYPE_MAX];
 

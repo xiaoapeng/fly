@@ -762,8 +762,8 @@ simon@:~/fly/package/segger-rtt$ tree
 
     ```c
     #include "SEGGER_RTT.h"
-    #include "eh.h"
-    #include "eh_debug.h"
+    #include <eh.h>
+    #include <eh_debug.h>
 
     void stdout_write(void *stream, const uint8_t *buf, size_t size){
         (void)stream;

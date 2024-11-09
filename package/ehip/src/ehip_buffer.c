@@ -11,14 +11,14 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "eh.h"
-#include "eh_debug.h"
-#include "eh_mem_pool.h"
-#include "eh_error.h"
+#include <eh.h>
+#include <eh_debug.h>
+#include <eh_mem_pool.h>
+#include <eh_error.h>
 
-#include "ehip_module.h"
-#include "ehip_buffer.h"
-#include "ehip_conf.h"
+#include <ehip_module.h>
+#include <ehip_buffer.h>
+#include <ehip_conf.h>
 
 #define EHIP_BUFFER_REF_MAX_NUM UINT16_MAX
 

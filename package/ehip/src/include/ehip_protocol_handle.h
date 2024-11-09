@@ -11,8 +11,8 @@
 #ifndef _EHIP_PROTOCOL_HANDLE_H_
 #define _EHIP_PROTOCOL_HANDLE_H_
 
-#include "ehip_ptype.h"
-#include "eh_list.h"
+#include <eh_list.h>
+#include <ehip_ptype.h>
 
 #ifdef __cplusplus
 #if __cplusplus

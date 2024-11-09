@@ -10,7 +10,7 @@
 #ifndef _EHIP_MODULE_H_
 #define _EHIP_MODULE_H_
 
-#include "eh_module.h"
+#include <eh_module.h>
 
 #ifdef __cplusplus
 #if __cplusplus
