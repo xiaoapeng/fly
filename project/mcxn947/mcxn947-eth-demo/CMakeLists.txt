@@ -45,7 +45,6 @@ target_sources(mcxn947_eth_demo_app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"
