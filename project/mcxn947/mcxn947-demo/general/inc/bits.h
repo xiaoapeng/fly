@@ -2,12 +2,11 @@
  * @file bits.h
  * @brief 内存bit位操作
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2020-12-26
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 #ifndef __BITS_H__

@@ -2,7 +2,6 @@
  * @file memctrl.h
  * @brief 非常方便的内存操作函数
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2021-03-16
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com

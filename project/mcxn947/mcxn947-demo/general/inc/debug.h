@@ -2,12 +2,11 @@
  * @file debug.h
  * @brief debug用
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-03-17
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 #ifndef __DEBUG__H__

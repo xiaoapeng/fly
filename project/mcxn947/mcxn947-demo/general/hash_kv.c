@@ -2,12 +2,11 @@
  * @file hash_kv.c
  * @brief 内存KV数据库实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2020-01-20
  * 
  * @copyright Copyright (c) 2020  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 #include <stdint.h>

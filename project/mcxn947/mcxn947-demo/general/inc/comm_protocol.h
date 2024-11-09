@@ -2,12 +2,11 @@
  * @file comm_protocol.h
  * @brief 
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2023-03-23
  * 
  * @copyright Copyright (c) 2023  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
+
  */
 
 #ifndef  _COMM_PROTOCOL_H_
