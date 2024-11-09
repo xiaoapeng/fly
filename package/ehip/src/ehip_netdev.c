@@ -2,13 +2,11 @@
  * @file ehip_netdev.c
  * @brief 网络设备接口层,网络数据输入输出
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-10
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
- */
+ * */
 #include <string.h>
 #include "eh.h"
 #include "eh_list.h"
@@ -23,9 +21,9 @@
 
 struct eh_list_head s_netdev_head;
 
-ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type type, struct ehip_netdev_param *param){
+ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type type, const struct ehip_netdev_param *param){
     ehip_netdev_t *netdev = NULL;
-    if(type < EHIP_NETDEV_TYPE_MAX)
+    if(type >= EHIP_NETDEV_TYPE_MAX)
         return eh_error_to_ptr(EH_RET_INVALID_PARAM);
     netdev = eh_malloc(sizeof(ehip_netdev_t) + ehip_netdev_trait_size_get(type));
     if(!netdev)

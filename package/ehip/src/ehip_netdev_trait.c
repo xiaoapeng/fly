@@ -2,12 +2,10 @@
  * @file ehip_netdev_trait.c
  * @brief 
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-11-04
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #include <string.h>
@@ -16,7 +14,7 @@
 
 static struct ehip_netdev_trait_ops *type_tab[EHIP_NETDEV_TYPE_MAX];
 
-#define ehip_netdev_get_trait(netdev) (((ehip_netdev_trait_t *)(netdev + 1)))
+#define ehip_netdev_get_trait(netdev) (((ehip_netdev_trait_t)(netdev + 1)))
 
 
 size_t ehip_netdev_trait_size_get(enum ehip_netdev_type type){
@@ -40,7 +38,7 @@ int ehip_netdev_trait_reset(ehip_netdev_t *netdev){
     return 0;
 }
 
-int ehip_netdev_trait_get_hw_addr(ehip_netdev_t *netdev, hw_addr_t *hw_addr){
+int ehip_netdev_trait_get_hw_addr(ehip_netdev_t *netdev, ehip_hw_addr hw_addr){
     ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
     struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
     if(ops && ops->get_hw_addr){
@@ -50,7 +48,7 @@ int ehip_netdev_trait_get_hw_addr(ehip_netdev_t *netdev, hw_addr_t *hw_addr){
     return EH_RET_NOT_SUPPORTED;
 }
 
-int ehip_netdev_trait_set_hw_addr(ehip_netdev_t *netdev, hw_addr_t *hw_addr){
+int ehip_netdev_trait_set_hw_addr(ehip_netdev_t *netdev, ehip_hw_addr hw_addr){
     ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
     struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
     if(ops && ops->set_hw_addr){

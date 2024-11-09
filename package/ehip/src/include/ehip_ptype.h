@@ -11,8 +11,8 @@
 #ifndef _EHIP_PTYPE_H_
 #define _EHIP_PTYPE_H_
 
-#include "eh_swab.h"
-#include "mac/ether.h"
+#include <eh_swab.h>
+#include <ehip-mac/ethernet_type.h>
 
 #ifdef __cplusplus
 #if __cplusplus

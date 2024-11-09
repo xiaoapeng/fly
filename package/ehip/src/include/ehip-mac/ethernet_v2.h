@@ -1,18 +1,17 @@
 /**
- * @file ehip_ethernet.h
- * @brief 声明以太网帧的结构
+ * @file ethernet_v2.h
+ * @brief 以太网V2帧结构与接口
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
- * @date 2024-10-04
+ * @date 2024-10-31
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
-#ifndef _EHIP_ETHERNET_H_
-#define _EHIP_ETHERNET_H_
+#ifndef _ETHERNET_V2_H_
+#define _ETHERNET_V2_H_
 
+#include "ethernet.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -20,8 +19,11 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-#define EHIP_ETHERNET_FRAME_MAX_LEN  1518
-#define EHIP_ETHERNET_FRAME_MIN_LEN  64
+
+
+
+
+
 
 
 
@@ -33,4 +35,4 @@ extern "C"{
 #endif /* __cplusplus */
 
 
-#endif // _EHIP_ETHERNET_H_
+#endif // _ETHERNET_V2_H_

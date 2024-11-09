@@ -2,12 +2,10 @@
  * @file ehip_core.c
  * @brief ehip 核心程序
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-04
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #include "eh.h"
@@ -43,6 +41,11 @@ void  slot_function_mbox_rx(eh_event_t *e, void *slot_param){
 }
 EH_DEFINE_SLOT(slot_mbox_rx, slot_function_mbox_rx, NULL);
 
+
+int ehip_rx(ehip_buffer_t *netdev_buf){
+    (void) netdev_buf;
+    return 0;
+}
 
 
 static int __init ehip_core_init(void){

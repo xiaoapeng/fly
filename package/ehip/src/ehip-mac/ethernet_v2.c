@@ -2,17 +2,15 @@
  * @file ethernet_v2.c
  * @brief 以太网V2帧处理
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-30
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 #include "eh_list.h"
 #include "ehip_module.h"
 #include "ehip_protocol_handle.h"
-
+#include "ehip-mac/ethernet_v2.h"
 
 static void ethernet_v2_handle(struct ehip_buffer* buf){
     

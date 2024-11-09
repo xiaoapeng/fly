@@ -2,12 +2,10 @@
  * @file ehip_buffer.h
  * @brief 网络数据buf实现
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-10
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #ifndef _EHIP_BUFFER_H_
@@ -18,7 +16,7 @@
 
 #include "eh_types.h"
 #include "ehip_ptype.h"
-
+#include "ehip_buffer_type.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -29,11 +27,7 @@ extern "C"{
 typedef struct ehip_buffer ehip_buffer_t;
 typedef uint16_t ehip_buffer_size_t;
 typedef struct ehip_netdev ehip_netdev_t;
-
-enum ehip_buffer_type{
-    EHIP_BUFFER_TYPE_ETHERNET_FRAME,
-    EHIP_BUFFER_TYPE_MAX
-};
+typedef uint8_t * ehip_buffer_raw_ptr;
 
 eh_static_assert(EHIP_BUFFER_TYPE_MAX <= UINT8_MAX, "ehip_buffer_type must be less than UINT8_MAX");
 
@@ -84,13 +78,37 @@ struct ehip_buffer{
 #define ehip_buffer_get_payload_end_ptr(buf) (ehip_buffer_get_buffer_ptr(buf) + (buf)->payload_tail)
 
 
+
+/**
+ * @brief                   向 tpye内存池获取一个裸指针内存块
+ * @param  type             内存池类型
+ * @return ehip_buffer_raw_ptr 失败返回NULL
+ */
+extern ehip_buffer_raw_ptr ehip_buffer_new_raw_ptr(enum ehip_buffer_type type);
+
+
+/**
+ * @brief                   释放一个裸指针内存块
+ * @param  type             内存池类型
+ * @param  buf              buf句柄
+ */
+extern void ehip_buffer_free_raw_ptr(enum ehip_buffer_type type, ehip_buffer_raw_ptr buf);
+
 /**
  * @brief                   新建一个网络数据buf，初始引用计数为1
  * @param  type             数据类型
- * @return ehip_buffer_t*   返回buf句柄
+ * @param  head_reserved_size_or_0      准备预留的空间，或者填0不预留头部空间
+ * @return ehip_buffer_t*   返回buf句柄, 返回值使用eh_ptr_to_error判断
  */
-extern ehip_buffer_t* ehip_buffer_new(enum ehip_buffer_type type);
+extern ehip_buffer_t* ehip_buffer_new(enum ehip_buffer_type type, ehip_buffer_size_t head_reserved_size_or_0);
 
+/**
+ * @brief                   从一个外部缓冲区创建一个网络数据buf，初始引用计数为1
+ * @param  type             数据类型
+ * @param  buf              外部缓冲区指针,该buf必须基于type的类型
+ * @return ehip_buffer_t*   返回buf句柄, 返回值使用eh_ptr_to_error判断
+ */
+extern ehip_buffer_t* ehip_buffer_new_from_buf(enum ehip_buffer_type type, ehip_buffer_raw_ptr buf);
 
 /**
  * @brief                   释放一个网络数据buf

@@ -2,12 +2,10 @@
  * @file ehip_protocol_handle.c
  * @brief ptype 枚举中各种协议包处理
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-26
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #include "eh_error.h"

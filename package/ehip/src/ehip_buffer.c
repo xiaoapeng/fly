@@ -2,12 +2,10 @@
  * @file ehip_buffer.c
  * @brief 
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-13
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #include <stdint.h>
@@ -28,32 +26,19 @@ static eh_mem_pool_t pool_tab[EHIP_BUFFER_TYPE_MAX];
 static eh_mem_pool_t pool_ehip_buffer_ref;
 static eh_mem_pool_t pool_ehip_buffer;
 struct ehip_pool_info {
-    uint16_t    size;
-    uint16_t    num;
-    uint16_t    align;
+    ehip_buffer_size_t    size;
+    ehip_buffer_size_t    num;
+    ehip_buffer_size_t    align;
 };
 static const struct ehip_pool_info ehip_pool_info_tab[EHIP_BUFFER_TYPE_MAX] = {
     [EHIP_BUFFER_TYPE_ETHERNET_FRAME] = {EHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_SIZE, EHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_NUM, EHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_ALIGN}
 };
 
-void ehip_buffer_free(ehip_buffer_t* buf){
-    if(buf->buffer_ref->ref_cnt > 0){
-        buf->buffer_ref->ref_cnt--;
-    }else{
-        eh_warnfl("ref_cnt == 0");
-    }
-    if(buf->buffer_ref->ref_cnt == 0){
-        eh_mem_pool_free(pool_tab[buf->buffer_ref->type], buf->buffer_ref->buffer);
-        eh_mem_pool_free(pool_ehip_buffer_ref, buf->buffer_ref);
-    }
-    eh_mem_pool_free(pool_ehip_buffer, buf);
-}
-
-ehip_buffer_t* ehip_buffer_new(enum ehip_buffer_type type){
+static ehip_buffer_t* _ehip_buffer_new(enum ehip_buffer_type type, ehip_buffer_size_t head_reserved_size_or_0, ehip_buffer_raw_ptr buffer_raw_ptr){
     ehip_buffer_t *buf;
     struct ehip_buffer_ref *buf_ref;
     int ret;
-    if((uint32_t)type >= EHIP_BUFFER_TYPE_MAX)
+    if((uint32_t)type >= EHIP_BUFFER_TYPE_MAX || ehip_pool_info_tab[type].size < head_reserved_size_or_0)
         return eh_error_to_ptr(EH_RET_INVALID_PARAM);
     
     buf = eh_mem_pool_alloc(pool_ehip_buffer);
@@ -69,31 +54,71 @@ ehip_buffer_t* ehip_buffer_new(enum ehip_buffer_type type){
         goto eh_mem_pool_alloc_buffer_ref_fail;
     }
     
-    buf_ref->buffer = eh_mem_pool_alloc(pool_tab[type]);
-    if(buf_ref->buffer == NULL){
-        eh_errfl("type: %d alloc fail", type);
-        ret = EH_RET_MEM_POOL_EMPTY;
-        goto eh_mem_pool_alloc_buffer_fail;
-    }
-
+    buf_ref->buffer = buffer_raw_ptr;
     buf->buffer_ref = buf_ref;
-    buf->payload_pos = 0;
-    buf->payload_tail = 0;
+    buf->payload_pos = head_reserved_size_or_0;
+    buf->payload_tail = head_reserved_size_or_0;
     buf_ref->buffer = buf_ref->buffer;
     buf_ref->ref_cnt = 1;
     buf_ref->type = type;
     buf_ref->buffer_size = ehip_pool_info_tab[type].size;
     
     return buf;
-eh_mem_pool_alloc_buffer_fail:
-    eh_mem_pool_free(pool_ehip_buffer_ref, buf_ref);
 eh_mem_pool_alloc_buffer_ref_fail:
     eh_mem_pool_free(pool_ehip_buffer, buf);
     return eh_error_to_ptr(ret);;
 }
 
+ehip_buffer_raw_ptr ehip_buffer_new_raw_ptr(enum ehip_buffer_type type){
+    if((uint32_t)type >= EHIP_BUFFER_TYPE_MAX)
+        return NULL;
+    return eh_mem_pool_alloc(pool_tab[type]);
+}
+
+void ehip_buffer_free_raw_ptr(enum ehip_buffer_type type, ehip_buffer_raw_ptr buf){
+    eh_mem_pool_free(pool_tab[type], buf);
+}
+
+void ehip_buffer_free(ehip_buffer_t* buf){
+    if(buf->buffer_ref->ref_cnt > 0){
+        buf->buffer_ref->ref_cnt--;
+    }else{
+        eh_warnfl("ref_cnt == 0");
+    }
+    if(buf->buffer_ref->ref_cnt == 0){
+        eh_mem_pool_free(pool_tab[buf->buffer_ref->type], buf->buffer_ref->buffer);
+        eh_mem_pool_free(pool_ehip_buffer_ref, buf->buffer_ref);
+    }
+    eh_mem_pool_free(pool_ehip_buffer, buf);
+}
+
+
+ehip_buffer_t* ehip_buffer_new(enum ehip_buffer_type type, ehip_buffer_size_t head_reserved_size_or_0){
+    void* buffer_ptr;
+    ehip_buffer_t* new_buf;
+    if((uint32_t)type >= EHIP_BUFFER_TYPE_MAX || ehip_pool_info_tab[type].size < head_reserved_size_or_0)
+        return eh_error_to_ptr(EH_RET_INVALID_PARAM);
+    
+    buffer_ptr = eh_mem_pool_alloc(pool_tab[type]);
+    if(buffer_ptr == NULL){
+        eh_errfl("type: %d alloc fail", type);
+        return eh_error_to_ptr(EH_RET_MEM_POOL_EMPTY);
+    }
+
+    new_buf = _ehip_buffer_new(type, head_reserved_size_or_0, buffer_ptr);
+    if(eh_ptr_to_error(new_buf) < 0)
+        eh_mem_pool_free(pool_tab[type], buffer_ptr);
+    return new_buf;
+}
+
+extern ehip_buffer_t* ehip_buffer_new_from_buf(enum ehip_buffer_type type, ehip_buffer_raw_ptr buf){
+    if(!eh_mem_pool_is_from_this(pool_tab[type], buf))
+        return eh_error_to_ptr(EH_RET_INVALID_PARAM);
+    return _ehip_buffer_new(type, 0, buf);
+}
+
 ehip_buffer_t* ehip_buffer_dup(ehip_buffer_t* src){
-    ehip_buffer_t* new_buffer = ehip_buffer_new(src->buffer_ref->type);
+    ehip_buffer_t* new_buffer = ehip_buffer_new(src->buffer_ref->type, 0);
     if(eh_ptr_to_error(new_buffer) < 0)
         return new_buffer;
     new_buffer->payload_pos = src->payload_pos;

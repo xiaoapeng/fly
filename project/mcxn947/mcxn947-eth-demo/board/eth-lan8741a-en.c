@@ -2,15 +2,24 @@
  * @file eth-lan8741a-en.c
  * @brief eth-lan8741a-en ethernet phy driver
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-02
  * 
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #include <stdalign.h>
+
+#include "eh_mem_pool.h"
+#include "ehip_buffer.h"
+#include "ehip_buffer_type.h"
+#include "ehip_core.h"
+#include "fsl_common.h"
+#include "fsl_flash.h"
+#include "fsl_port.h"
+#include "fsl_gpio.h"
+#include "fsl_enet.h"
+
 
 #include "eh.h"
 #include "eh_event.h"
@@ -22,12 +31,12 @@
 #include "eh_sleep.h"
 #include "eh_signal.h"
 
-#include "eh_types.h"
-#include "fsl_common.h"
-#include "fsl_port.h"
-#include "fsl_gpio.h"
-#include "fsl_enet.h"
-
+#include "ehip_module.h"
+#include "ehip_buffer.h"
+#include "ehip_netdev.h"
+#include "ehip_netdev_type.h"
+#include "ehip_netdev_trait.h"
+#include "ehip-mac/ethernet.h"
 
 #define PCR_IBE_ibe1 0x01u        /*!<@brief Input Buffer Enable: Enables */
 #define PORT5_PCR_MUX_mux00 0x00u /*!<@brief Pin Multiplex Control: Alternative 0 (GPIO) */
@@ -53,9 +62,9 @@
 #define BOARD_ETH_PINS_ETH_RESET_PIN 8U                   /*!<@brief PORT pin number */
 #define BOARD_ETH_PINS_ETH_RESET_PIN_MASK (1U << 8U)      /*!<@brief PORT pin mask */
                                                           /* @} */
-#define BOARD_ETH_ENET_RXBD_NUM 5
-#define BOARD_ETH_ENET_TXBD_NUM 5
-#define BOARD_ETH_ENET_FRAME_MAX_FRAMELEN  eh_align_up(1518, 4)
+#define BOARD_ETH_ENET_RXBD_NUM 4
+#define BOARD_ETH_ENET_TXBD_NUM 4
+#define BOARD_ETH_ENET_FRAME_MAX_FRAMELEN  EHIP_ETH_FRAME_MAX_LEN
 #define BOARD_ETH_ENET_PRIORITY (2U)
 #define BOARD_ETH_ENET_PHY_ADDR (0x00)
 
@@ -72,6 +81,8 @@ static alignas(ENET_BUFF_ALIGNMENT) enet_tx_bd_struct_t s_tx_buff_descrip[BOARD_
 static uint32_t rx_buffer_start_addr[BOARD_ETH_ENET_RXBD_NUM];
 static enet_tx_reclaim_info_t   s_tx_dirty[BOARD_ETH_ENET_TXBD_NUM];
 static enet_handle_t s_enet_handle;
+static ehip_netdev_t *s_lan8741a_en_netdev;
+static ehip_eth_addr_t s_mac_addr;
 
 EH_DEFINE_STATIC_CUSTOM_SIGNAL(signal_eth_event_flags, eh_event_flags_t, {});
 
@@ -224,14 +235,14 @@ static void *ethernetif_rx_alloc(ENET_Type *base, void *userData, uint8_t ringId
     (void) base;
     (void) userData;
     (void) ringId;
-    return eh_malloc(BOARD_ETH_ENET_FRAME_MAX_FRAMELEN);
+    return ehip_buffer_new_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME);
 }
 
 static void ethernetif_rx_free(ENET_Type *base, void *buffer, void *userData, uint8_t ringId){
     (void) base;
     (void) userData;
     (void) ringId;
-    eh_free(buffer);
+    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, buffer);
 }
 
 static void ethernet_callback(ENET_Type *base,
@@ -262,6 +273,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
     eh_flags_t reality_flags;
     eh_event_flags_t *ef = (eh_event_flags_t*)e;
     status_t status;
+    ehip_buffer_t *ehip_buf;
     int ret;
     enet_buffer_struct_t buffers[BOARD_ETH_ENET_RXBD_NUM] = {{0}};
     enet_rx_frame_struct_t rx_frame                      = {.rxBuffArray = &buffers[0]};
@@ -270,15 +282,40 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         eh_warnfl("eh_event_flags_wait fail ret = %d");
         return ;
     }
-    eh_infofl("reality_flags = %08x", reality_flags);
+    // eh_infofl("reality_flags = %08x", reality_flags);
+    do{
+        if(reality_flags & (1UL << kENET_RxIntEvent) ){
+            status = ENET_GetRxFrame(ENET0, &s_enet_handle, &rx_frame, 0);
+            if(status != kStatus_Success){
+                eh_debugfl("status = %08x", status);
+                break;
+            }
+            // eh_infoln("rx frame len = %d", rx_frame.totLen);
+            // eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
+            // eh_free(rx_frame.rxBuffArray[0].buffer);
+            if(rx_frame.totLen > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN){
+                for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
+                    if(rx_frame.rxBuffArray[i].buffer)
+                        ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
+                }
+                eh_warnfl("rx frame len = %d > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN", rx_frame.totLen);
+                break;
+            }
+            ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+            if(eh_ptr_to_error(ehip_buf) < 0){
+                eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
+                ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+                break;
+            }
+            ehip_buffer_head_append(ehip_buf, rx_frame.rxBuffArray[0].length);
+            ehip_buf->netdev = s_lan8741a_en_netdev;
+            ehip_buf->protocol = EHIP_PTYPE_ETHERNET_II_FRAME;
+
+            ehip_rx(ehip_buf);
+
+        }
+    }while(0);
     
-    status = ENET_GetRxFrame(ENET0, &s_enet_handle, &rx_frame, 0);
-    eh_debugfl("status = %08x", status);
-    if(status == kStatus_Success){
-        eh_infoln("rx frame len = %d", rx_frame.totLen);
-        eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
-        eh_free(rx_frame.rxBuffArray[0].buffer);
-    }
     
 }
 
@@ -336,7 +373,8 @@ static int eth_phy_init(void){
 }
 
 
-static int __init eth_lan8741a_en_init(void){
+static int eth_lan8741aen_up(ehip_netdev_t *netdev){
+    (void) netdev;
     enet_config_t config;
     enet_buffer_config_t buff_cfg;
     
@@ -388,21 +426,71 @@ static int __init eth_lan8741a_en_init(void){
     
     eh_signal_slot_connect(&signal_eth_event_flags, &slot_eth_event);
     
-
-    
     return 0;
 }
 
-
-static void __init eth_lan8741a_en_exit(void){
+static void eth_lan8741aen_down(ehip_netdev_t *netdev){
+    (void) netdev;
     eh_signal_slot_disconnect(&slot_eth_event);
     eh_signal_unregister(&signal_eth_event_flags);
     eh_event_flags_clean(eh_signal_to_custom_event(&signal_eth_event_flags));
-    
-    /*  */
+    return ;
 }
 
+static int eth_lan8741aen_ctrl(ehip_netdev_t *netdev, uint32_t cmd, void *arg){
+    (void)netdev;
+    (void)cmd;
+    (void)arg;
+    return -1;
+}
+
+static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
+    return EH_RET_BUSY;
+}
+
+static void eth_lan8741aen_tx_timeout(ehip_netdev_t *netdev){
+    return ;
+}
+
+static struct ehip_netdev_ops  netdev_lan8741a_en_ops = {
+    .ndo_up = eth_lan8741aen_up,
+    .ndo_down = eth_lan8741aen_down,
+    .ndo_ctrl = eth_lan8741aen_ctrl,
+    .ndo_start_xmit = eth_lan8741aen_start_xmit,
+    .ndo_tx_timeout = eth_lan8741aen_tx_timeout,
+};
+
+static const struct ehip_netdev_param netdev_lan8741a_en_param = {
+    .name = "eth0",
+    .net_max_frame_size = EHIP_ETH_FRAME_MAX_LEN,
+    .ops = &netdev_lan8741a_en_ops,
+    .userdata = NULL,
+    .buffer_type = EHIP_BUFFER_TYPE_ETHERNET_FRAME,
+};
 
 
-eh_module_level0_export(eth_lan8741a_en_init, eth_lan8741a_en_exit);
+static int __init eth_lan8741a_en_init(void){
+    ehip_netdev_t *netdev;
+    int ret;
+    netdev = ehip_netdev_register(EHIP_NETDEV_TYPE_ETHERNET, &netdev_lan8741a_en_param);
+    ret = eh_ptr_to_error(netdev);
+    if(ret < 0)
+        return ret;
 
+    s_lan8741a_en_netdev = netdev;
+    s_mac_addr.addr[0] = 0x00;
+    s_mac_addr.addr[1] = 0x04;
+    s_mac_addr.addr[2] = 0x9F;
+    s_mac_addr.addr[3] = 0x08;
+    s_mac_addr.addr[4] = 0xB6;
+    s_mac_addr.addr[5] = 0xB6;
+
+    ehip_netdev_trait_set_hw_addr(s_lan8741a_en_netdev, &s_mac_addr);
+    return 0;
+}
+
+static void __exit eth_lan8741a_en_exit(void){
+    ehip_netdev_unregister(s_lan8741a_en_netdev);
+}
+
+ehip_netdev_module_export(eth_lan8741a_en_init, eth_lan8741a_en_exit);

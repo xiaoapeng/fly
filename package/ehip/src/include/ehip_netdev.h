@@ -2,12 +2,10 @@
  * @file ehip_netdev.h
  * @brief 提供网卡注册接口
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
- * @version 1.0
  * @date 2024-10-04
  * 
- * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
+* @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
- * @par 修改日志:
  */
 
 #ifndef _EHIP_NETDEV_H_
@@ -24,7 +22,7 @@
 #include "eh_event_flags.h"
 #include "ehip_conf.h"
 #include "ehip_netdev_type.h"
-
+#include "ehip_buffer_type.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -34,7 +32,6 @@ extern "C"{
 
 typedef struct ehip_netdev ehip_netdev_t;
 typedef struct ehip_buffer ehip_buffer_t;
-typedef void   hw_addr_t;
 struct ehip_protocol_handle;
 
 #define EHIP_NETDEV_STATUS_UP                     0x00000001    /* 网卡是否运行 */
@@ -43,7 +40,7 @@ struct ehip_protocol_handle;
 
 struct ehip_netdev{
     struct eh_list_head                                  node;
-    struct ehip_netdev_param                            *param;
+    const struct ehip_netdev_param                            *param;
     struct eh_list_head                                  protocol_handle_head;
     void                                                *userdata;
     enum ehip_netdev_type                                type; /* 类型决定trait使用哪种定义 */
@@ -53,7 +50,7 @@ struct ehip_netdev{
 
 struct ehip_netdev_ops{
     int (*ndo_up)(ehip_netdev_t *netdev);
-    int (*ndo_down)(ehip_netdev_t *netdev);
+    void (*ndo_down)(ehip_netdev_t *netdev);
     int (*ndo_start_xmit)(ehip_netdev_t *netdev, ehip_buffer_t *buf);
     void (*ndo_tx_timeout)(ehip_netdev_t *netdev);
     int (*ndo_ctrl)(ehip_netdev_t *netdev, uint32_t cmd, void *arg);
@@ -63,7 +60,8 @@ struct ehip_netdev_param{
     char                    *name;
     struct ehip_netdev_ops  *ops;
     void                    *userdata;
-    uint16_t                 net_frame_size;
+    uint16_t                 net_max_frame_size;
+    enum ehip_buffer_type    buffer_type;
 };
 
 
@@ -72,7 +70,7 @@ struct ehip_netdev_param{
  * @param  param             驱动使用static 声明的结构体，需保持全生命周期
  * @return ehip_netdev_t* 
  */
-extern ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type, struct ehip_netdev_param *param);
+extern ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type, const struct ehip_netdev_param *param);
 
 /**
  * @brief                    注销网卡
