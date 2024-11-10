@@ -142,14 +142,13 @@ ehip_buffer_t* ehip_buffer_ref_dup(ehip_buffer_t* buf){
     return new_buffer;
 }
 
-uint8_t* ehip_buffer_payload_put(ehip_buffer_t* buf, ehip_buffer_size_t size){
+uint8_t* ehip_buffer_payload_append(ehip_buffer_t* buf, ehip_buffer_size_t size){
     uint8_t *new_payload_ptr = ehip_buffer_get_payload_end_ptr(buf);
     if((int)((buf->payload_tail) + size) > (int)ehip_buffer_get_buffer_size(buf))
         return NULL;
     buf->payload_tail += size;
     return new_payload_ptr;
 }
-
 
 uint8_t* ehip_buffer_head_append(ehip_buffer_t* buf, ehip_buffer_size_t size){
     if(buf->payload_pos < size)

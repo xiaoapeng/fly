@@ -86,7 +86,7 @@
 #define EHIP_ETH_P_DSA_A5PSW                0xE001                              /* A5PSW Tag Value [ NOT AN OFFICIALLY REGISTERED ID ] */
 #define EHIP_ETH_P_IFE                      0xED3E                              /* ForCES inter-FE LFB type */
 #define EHIP_ETH_P_AF_IUCV                  0xFBFB                              /* IBM af_iucv [ NOT AN OFFICIALLY REGISTERED ID ] */
-#define EHIP_ETH_P_802_3_MIN                0x0600                              /* If the value in the ethernet type is more than this value
+#define EHIP_ETH_P_ETHERNET_II_MIN          0x0600                              /* If the value in the ethernet type is more than this value
                                                                                  * then the frame is Ethernet II. Else it is 802.3 */
 
 

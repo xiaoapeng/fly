@@ -60,6 +60,17 @@ void ehip_netdev_protocol_handle_unregister(ehip_netdev_t *netdev, struct ehip_p
     ehip_protocol_handle_unregister(handle);
 }
 
+
+ehip_netdev_t * ehip_netdev_find(char *netdev_name){
+    ehip_netdev_t *pos;
+    eh_list_for_each_entry(pos, &s_netdev_head, node){
+        if(strcmp(pos->param->name, netdev_name) == 0)
+            return pos;
+    }
+    return NULL;
+}
+
+
 static int __init ehip_netdev_init(void){
     eh_list_head_init(&s_netdev_head);
     return 0;

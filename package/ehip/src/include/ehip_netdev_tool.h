@@ -20,11 +20,38 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-
+/**
+ * @brief                   网络设备 UP
+ * @param  netdev
+ * @return int 
+ */
 extern int ehip_netdev_tool_up(ehip_netdev_t *netdev);
+
+/**
+ * @brief                   网络设备 DOWN
+ * @param  netdev
+ * @return int 
+ */
 extern int ehip_netdev_tool_down(ehip_netdev_t *netdev);
+
+
+/**
+ * @brief                   网络设备控制
+ * @param  netdev
+ * @param  ctrl
+ * @param  arg
+ * @return int 
+ */
 extern int ehip_netdev_tool_ctrl(ehip_netdev_t *netdev, uint32_t ctrl, void *arg);
 
+/**
+ * @brief                   根据网卡名称获取网卡句柄
+ * @param  netdev_name      网卡注册时名称
+ * @return ehip_netdev_t* 
+ */
+static inline ehip_netdev_t * ehip_netdev_tool_find(char *netdev_name){
+    return ehip_netdev_find(netdev_name);
+}
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -34,4 +61,3 @@ extern int ehip_netdev_tool_ctrl(ehip_netdev_t *netdev, uint32_t ctrl, void *arg
 
 
 #endif // _EHIP_NETDEV_TOOL_H_
-

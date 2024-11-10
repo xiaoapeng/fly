@@ -8,8 +8,12 @@ target_sources(ehip PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip_core.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip_buffer.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip_netdev.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/ehip_netdev_tool.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip_netdev_trait.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/ehip_protocol_handle.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/ehip-netdev-class/ethernet_dev.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/ehip-mac/ethernet.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/ehip-mac/ethernet_v2.c"
 )
 
 target_include_directories(ehip PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/include/")

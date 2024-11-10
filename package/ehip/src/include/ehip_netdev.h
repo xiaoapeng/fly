@@ -40,7 +40,7 @@ struct ehip_protocol_handle;
 
 struct ehip_netdev{
     struct eh_list_head                                  node;
-    const struct ehip_netdev_param                            *param;
+    const struct ehip_netdev_param                       *param;
     struct eh_list_head                                  protocol_handle_head;
     void                                                *userdata;
     enum ehip_netdev_type                                type; /* 类型决定trait使用哪种定义 */
@@ -93,6 +93,13 @@ extern int ehip_netdev_protocol_handle_register(ehip_netdev_t *netdev, struct eh
  */
 extern void ehip_netdev_protocol_handle_unregister(ehip_netdev_t *netdev, struct ehip_protocol_handle *handle);
 
+
+/**
+ * @brief                   根据网卡名称获取网卡句柄
+ * @param  netdev_name      网卡注册时名称
+ * @return ehip_netdev_t* 
+ */
+extern ehip_netdev_t * ehip_netdev_find(char *netdev_name);
 
 #ifdef __cplusplus
 #if __cplusplus

@@ -64,8 +64,10 @@ int ehip_protocol_handle_dispatch(ehip_buffer_t *buf){
     int ret = 0;
     ret = ehip_protocol_handle_list_handle(&global_protocol_handle_head, buf);
     if(ret < 0)
-        return ret;
+        goto error;
     ret = ehip_protocol_handle_list_handle(&buf->netdev->protocol_handle_head, buf);
+error:
+    ehip_buffer_free(buf);
     return ret;
 }
 

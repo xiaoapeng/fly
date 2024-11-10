@@ -9,13 +9,14 @@
  */
 
 #include <eh.h>
-#include "eh_swab.h"
+#include <eh_swab.h>
 #include <eh_module.h>
 #include <eh_error.h>
 #include <eh_mem_pool.h>
 #include <eh_debug.h>
 #include <eh_sleep.h>
-
+#include <eh_llist.h>
+#include <ehip_netdev_tool.h>
 
 void mem_fill(void* mem, size_t size, char start){
     for(size_t i=0; i<size; i++){
@@ -118,12 +119,7 @@ error:
     eh_errln("Fail..");
 }
 
-#define _none_val(x) (x)
-
-
-static int task_task(void *arg){
-    (void) arg;
-    // mem_pool_test();
+void swab_test(void){
     struct test{
         char test_data[16];
     };
@@ -142,14 +138,82 @@ static int task_task(void *arg){
     int64_t t1 = 0xFFFFFFFFF;
     int32_t t2 = (int32_t)t1;
     eh_debugln("t11 %lld t2 %d", t1, t2);
+}
+
+int llist_test(void){
+    struct eh_llist_head head = EH_LLIST_HEAD_INIT(head);
+    struct eh_llist_node *pos, *n, *prev;
+    struct test_node{
+        struct eh_llist_node node;
+        int data;
+    };
+    struct test_node test_data[30];
+    for(int i=0;i<30;i++){
+        test_data[i].data = i;
+        eh_llist_add(&test_data[i].node, &head);
+    }
+
+    prev = (struct eh_llist_node *)&head;
+    eh_llist_for_each_safe(pos, n, head.first){
+        eh_llist_del(prev, pos);
+    }
+
+    if(eh_llist_empty(&head)){
+        eh_infoln("llist empty");
+    }
+
+    for(int i=0;i<30;i++){
+        test_data[i].data = i;
+        eh_llist_push(&test_data[i].node, &head);
+    }
+    eh_debugfl("debug!");
+    while((pos = eh_llist_pop(&head))){
+        eh_debugln("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
+    }
+
+
+    for(int i=0;i<30;i++){
+        test_data[i].data = i;
+        eh_llist_enqueue(&test_data[i].node, &head);
+    }
+
+    while((pos = eh_llist_dequeue(&head))){
+        eh_debugln("queue data %d", eh_llist_entry(pos, struct test_node, node)->data);
+    }
     
+    
+    for(int i=0;i<30;i++){
+        test_data[i].data = i;
+        eh_llist_push(&test_data[i].node, &head);
+    }
+
+    while((pos = eh_llist_pop(&head))){
+        eh_debugln("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
+    }
+
+    return 0;
+}
+
+void eth_test(void){
+    ehip_netdev_t * eth0_netdev;
+    eth0_netdev = ehip_netdev_tool_find("eth0");
+    eh_infoln("eth0 netdev %p", eth0_netdev);
+    EH_DBG_ERROR_EXEC(ehip_netdev_tool_up(eth0_netdev) != 0, return);
+
+}
+
+
+static int task_task(void *arg){
+    (void) arg;
+    // llist_test();
+    eth_test();
     return 0;
 }
 
 
 static int __init test_init(void){
     eh_infoln("test init");
-    eh_task_create("test", EH_TASK_FLAGS_DETACH, 1024, NULL, task_task);
+    eh_task_create("test", EH_TASK_FLAGS_DETACH, 4096, NULL, task_task);
     return 0;
 }
 

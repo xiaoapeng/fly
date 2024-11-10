@@ -39,13 +39,6 @@
 #endif
 
 /**
- *  核心程序消息邮箱的大小
- */
-#ifndef EHIP_CORE_MBOX_MSG_SIZE
-#define EHIP_CORE_MBOX_MSG_SIZE                                 16U
-#endif
-
-/**
  *  网卡RX 消息句柄数量，单次最多结束的数据包数量
  */
 #ifndef EHIP_CORE_MBOX_NETDEV_MSG_BUFFER_NUM

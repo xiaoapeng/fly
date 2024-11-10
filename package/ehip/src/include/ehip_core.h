@@ -21,7 +21,9 @@ extern "C"{
 
 /**
  * @brief                   ehip 网络数据的入口，
- *                          这里将视为buf所有权的移交，若还要继续使用Buf，请dup一个新buf
+ *                          这里将视为buf所有权的移交，
+ *                          无论函数是否执行成功，所有权都由ehip_rx所有
+ *                          若调用该函数还要继续使用Buf，请dup/ref一个新buf/新引用
  * @param  netdev_buf       网络数据Buf
  * @return int
  */

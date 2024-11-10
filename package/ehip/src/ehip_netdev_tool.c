@@ -10,7 +10,7 @@
  */
 
 #include <eh_error.h>
-#include "ehip_netdev_tool.h"
+#include <ehip_netdev_tool.h>
 
 int ehip_netdev_tool_up(ehip_netdev_t *netdev){
     if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_up)
@@ -19,8 +19,10 @@ int ehip_netdev_tool_up(ehip_netdev_t *netdev){
 }
 
 int ehip_netdev_tool_down(ehip_netdev_t *netdev){
-    if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_down)
-        return netdev->param->ops->ndo_down(netdev);
+    if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_down){
+        netdev->param->ops->ndo_down(netdev);
+        return 0;
+    }
     return EH_RET_INVALID_PARAM;
 }
 

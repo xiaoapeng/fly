@@ -11,6 +11,7 @@
 #ifndef _EHIP_CORE_MBOX_MSG_TYPE_H_
 #define _EHIP_CORE_MBOX_MSG_TYPE_H_
 
+#include <eh_llist.h>
 #include <ehip_buffer.h>
 
 #ifdef __cplusplus
@@ -25,10 +26,11 @@ enum ehip_mbox_msg_type{
 
 struct ehip_mbox_msg_base{
     enum ehip_mbox_msg_type type;
+    struct eh_llist_node    node;
 };
 
 struct ehip_mbox_msg_netdev_rx{
-    enum ehip_mbox_msg_type     type;
+    struct ehip_mbox_msg_base    base;
     ehip_buffer_t               *netdev_buffer;
 };
 

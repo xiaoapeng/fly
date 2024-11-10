@@ -13,7 +13,6 @@
 #include <ehip_ptype.h>
 
 #include "hw_addr.h"
-#include "ethernet_type.h"
 
 
 #ifdef __cplusplus
@@ -36,7 +35,12 @@ struct eth_hdr{
 #define EHIP_ETH_FRAME_MAX_LEN          (sizeof(struct eth_hdr) + 1500U + 4U) /* 1500 bytes payload + 14 bytes header + 4 bytes CRC*/
 #define EHIP_ETH_FRAME_MIN_LEN          (sizeof(struct eth_hdr) + 46U + 4U)   /* 46 bytes payload + 14 bytes header + 4 bytes CRC*/
 
-
+/**
+ * @brief                   根据以太网头判断以太网帧类型
+ * @param  eth_hdr          以太网头、含以太网帧类型
+ * @return enum ehip_ptype 
+ */
+extern enum ehip_ptype eth_hdr_ptype_get(struct eth_hdr *eth_hdr);
 
 
 #ifdef __cplusplus

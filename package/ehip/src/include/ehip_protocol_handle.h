@@ -42,7 +42,7 @@ extern void ehip_protocol_handle_unregister(struct ehip_protocol_handle *handle)
 
 /**
  * @brief                   进行协议包处理
- * @param  buf              网络协议包
+ * @param  buf              网络协议包,buf所有权将移交给协议包处理函数
  * @return int 
  */
 extern int ehip_protocol_handle_dispatch(ehip_buffer_t *buf);
