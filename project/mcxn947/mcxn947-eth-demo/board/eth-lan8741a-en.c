@@ -233,7 +233,11 @@ static void *ethernetif_rx_alloc(ENET_Type *base, void *userData, uint8_t ringId
     (void) base;
     (void) userData;
     (void) ringId;
-    return ehip_buffer_new_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME);
+    void *new;
+    new = ehip_buffer_new_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME);
+    if(new == NULL)
+        eh_warnfl("Failed to allocate buffer!!");
+    return new;
 }
 
 static void ethernetif_rx_free(ENET_Type *base, void *buffer, void *userData, uint8_t ringId){
@@ -280,38 +284,35 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         eh_warnfl("eh_event_flags_wait fail ret = %d");
         return ;
     }
-    // eh_infofl("reality_flags = %08x", reality_flags);
     do{
-        if(reality_flags & (1UL << kENET_RxIntEvent) ){
-            status = ENET_GetRxFrame(ENET0, &s_enet_handle, &rx_frame, 0);
-            if(status != kStatus_Success){
-                eh_debugfl("status = %08x", status);
-                break;
-            }
-            // eh_infoln("rx frame len = %d", rx_frame.totLen);
-            // eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
-            // eh_free(rx_frame.rxBuffArray[0].buffer);
-            if(rx_frame.totLen > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN){
-                for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
-                    if(rx_frame.rxBuffArray[i].buffer)
-                        ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
-                }
-                eh_warnfl("rx frame len = %d > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN", rx_frame.totLen);
-                break;
-            }
-            ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
-            if(eh_ptr_to_error(ehip_buf) < 0){
-                eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
-                ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
-                break;
-            }
-            ehip_buffer_head_append(ehip_buf, rx_frame.rxBuffArray[0].length);
-            ehip_buf->netdev = s_lan8741a_en_netdev;
-            ehip_buf->protocol = EHIP_PTYPE_ETHERNET_II_FRAME;
-
-            ehip_rx(ehip_buf);
-
+        if( !(reality_flags & (1UL << kENET_RxIntEvent)) )
+            break;
+        status = ENET_GetRxFrame(ENET0, &s_enet_handle, &rx_frame, 0);
+        if(status != kStatus_Success){
+            eh_debugfl("status = %08x", status);
+            break;
         }
+        // eh_infoln("rx frame len = %d", rx_frame.totLen);
+        // eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
+        // eh_free(rx_frame.rxBuffArray[0].buffer);
+        if(rx_frame.totLen > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN){
+            for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
+                if(rx_frame.rxBuffArray[i].buffer)
+                    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
+            }
+            eh_warnfl("rx frame len = %d > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN", rx_frame.totLen);
+            break;
+        }
+        ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+        if(eh_ptr_to_error(ehip_buf) < 0){
+            eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
+            ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+            break;
+        }
+        ehip_buffer_payload_append(ehip_buf, rx_frame.rxBuffArray[0].length);
+        ehip_buf->netdev = s_lan8741a_en_netdev;
+        ehip_buf->protocol = eth_hdr_ptype_get((struct eth_hdr *)rx_frame.rxBuffArray[0].buffer);
+        ehip_rx(ehip_buf);
     }while(0);
     
     
@@ -407,7 +408,7 @@ static int eth_lan8741aen_up(ehip_netdev_t *netdev){
     config.interrupt = kENET_DmaTx | kENET_DmaRx;
     NVIC_SetPriority(ETHERNET_IRQn, BOARD_ETH_ENET_PRIORITY);
     
-    ENET_Init(ENET0, &config, (uint8_t*)"\x54\x27\x8d\x12\x34\x56", 50000000);
+    ENET_Init(ENET0, &config, (uint8_t*)s_mac_addr.addr, 50000000);
     
     EH_DBG_ERROR_EXEC(ENET_DescriptorInit(ENET0, &config, &buff_cfg) != kStatus_Success, return -1);
 
@@ -443,10 +444,13 @@ static int eth_lan8741aen_ctrl(ehip_netdev_t *netdev, uint32_t cmd, void *arg){
 }
 
 static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
+    (void)netdev;
+    (void)buf;
     return EH_RET_BUSY;
 }
 
 static void eth_lan8741aen_tx_timeout(ehip_netdev_t *netdev){
+    (void)netdev;
     return ;
 }
 
