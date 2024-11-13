@@ -26,10 +26,18 @@ extern "C"{
 
 typedef struct ehip_buffer ehip_buffer_t;
 typedef uint16_t ehip_buffer_size_t;
+typedef uint32_t ehip_buffer_flags_t;
 typedef struct ehip_netdev ehip_netdev_t;
 typedef uint8_t * ehip_buffer_raw_ptr;
 
 eh_static_assert(EHIP_BUFFER_TYPE_MAX <= UINT8_MAX, "ehip_buffer_type must be less than UINT8_MAX");
+
+#define EHIP_PACKET_TYPE_HOST           0x00
+#define EHIP_PACKET_TYPE_MCASTLOOP      0x01
+#define EHIP_PACKET_TYPE_BROADCAST      0x02
+#define EHIP_PACKET_TYPE_OTHERHOST      0x03
+#define EHIP_PACKET_TYPE_LOOPBACK       0x04
+
 
 struct ehip_buffer_ref{
     uint8_t                    *buffer;
@@ -44,6 +52,12 @@ struct ehip_buffer{
     ehip_buffer_size_t          payload_tail;
     enum ehip_ptype             protocol;
     ehip_netdev_t              *netdev;
+    union{
+        ehip_buffer_flags_t         flags;
+        struct{
+            uint8_t     packet_type;
+        };
+    };
 };
 
 /**

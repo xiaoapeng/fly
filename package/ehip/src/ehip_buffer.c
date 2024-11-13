@@ -58,11 +58,11 @@ static ehip_buffer_t* _ehip_buffer_new(enum ehip_buffer_type type, ehip_buffer_s
     buf->buffer_ref = buf_ref;
     buf->payload_pos = head_reserved_size_or_0;
     buf->payload_tail = head_reserved_size_or_0;
+    buf->flags = 0;
     buf_ref->buffer = buf_ref->buffer;
     buf_ref->ref_cnt = 1;
     buf_ref->type = type;
     buf_ref->buffer_size = ehip_pool_info_tab[type].size;
-    
     return buf;
 eh_mem_pool_alloc_buffer_ref_fail:
     eh_mem_pool_free(pool_ehip_buffer, buf);
@@ -125,6 +125,7 @@ ehip_buffer_t* ehip_buffer_dup(ehip_buffer_t* src){
     new_buffer->payload_tail = src->payload_tail;
     new_buffer->protocol = src->protocol;
     new_buffer->netdev = src->netdev;
+    new_buffer->flags = src->flags;
     memcpy(ehip_buffer_get_payload_ptr(new_buffer), ehip_buffer_get_payload_ptr(src), ehip_buffer_get_payload_size(src));
     return new_buffer;
 }
