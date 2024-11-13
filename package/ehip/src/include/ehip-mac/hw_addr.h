@@ -24,7 +24,7 @@ struct ehip_general_hw_addr{
     uint8_t addr[EHIP_GENERAL_HW_ADDR_LEN];
 }eh_aligned(1);
 
-typedef void* ehip_hw_addr;
+typedef void ehip_hw_addr_t;
 
 #ifdef __cplusplus
 #if __cplusplus

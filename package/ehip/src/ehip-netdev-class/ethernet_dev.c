@@ -24,13 +24,12 @@ struct ethernet_trait{
 };
 
 
-static int ethernet_dev_trait_get_ipv4_addr(ehip_netdev_trait_t *netdev_trait, int index, struct ipv4_addr *ipv4_addr)
+static const  struct ipv4_addr* ethernet_dev_trait_get_ipv4_addr(const ehip_netdev_trait_t *netdev_trait, int index)
 {
-    struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
+    const struct ethernet_trait *ethernet_trait = (const struct ethernet_trait *)netdev_trait;
     if((unsigned int)index >= EHIP_NETDEV_MAX_IP_NUM) 
-        return EH_RET_INVALID_PARAM;
-    *ipv4_addr = ethernet_trait->ipv4_addr[index];
-    return EH_RET_OK;
+        return (struct ipv4_addr *)eh_error_to_ptr(EH_RET_INVALID_PARAM);
+    return &ethernet_trait->ipv4_addr[index];
 }
 
 static int ethernet_dev_trait_set_ipv4_addr(ehip_netdev_trait_t *netdev_trait, int index, struct ipv4_addr *ipv4_addr)
@@ -42,26 +41,27 @@ static int ethernet_dev_trait_set_ipv4_addr(ehip_netdev_trait_t *netdev_trait, i
     return EH_RET_OK;
 }
 
-static void ethernet_dev_trait_get_hw_addr(ehip_netdev_trait_t *netdev_trait, ehip_hw_addr hw_addr)
+const static ehip_hw_addr_t* ethernet_dev_trait_get_hw_addr(const ehip_netdev_trait_t *netdev_trait)
 {
     struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
-    memcpy(hw_addr, &ethernet_trait->hw_addr, sizeof(ehip_eth_addr_t));
+    return &ethernet_trait->hw_addr;
 }
 
-static void ethernet_dev_trait_set_hw_addr(ehip_netdev_trait_t *netdev_trait, ehip_hw_addr hw_addr)
+static void ethernet_dev_trait_set_hw_addr(ehip_netdev_trait_t *netdev_trait, ehip_hw_addr_t *hw_addr)
 {
     struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
     memcpy(&ethernet_trait->hw_addr, hw_addr, sizeof(ehip_eth_addr_t));
 }
 
 
-struct ehip_netdev_trait_ops ethernet_dev_trait_ops = {
+const struct ehip_netdev_trait_ops ethernet_dev_trait_ops = {
     .trait_size = sizeof(struct ethernet_trait),
     .get_hw_addr = ethernet_dev_trait_get_hw_addr,
     .set_hw_addr = ethernet_dev_trait_set_hw_addr,
     .get_ipv4_addr = ethernet_dev_trait_get_ipv4_addr,
     .set_ipv4_addr = ethernet_dev_trait_set_ipv4_addr,
     .reset = NULL,
+    .hw_addr_len = 6,
 };
 
 

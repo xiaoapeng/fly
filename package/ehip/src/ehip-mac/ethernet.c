@@ -11,6 +11,8 @@
 #include <eh_swab.h>
 #include <ehip-mac/ethernet.h>
 
+const ehip_eth_addr_t ehip_eth_mac_addr_broadcast = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+
 static inline bool eth_proto_is_ethernet_v2(uint16_t proto)
 {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
