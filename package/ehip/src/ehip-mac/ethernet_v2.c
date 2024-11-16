@@ -23,7 +23,7 @@
 
 static void ethernet_v2_handle(struct ehip_buffer* buf){
     struct eth_hdr *hdr = (struct eth_hdr *)ehip_buffer_get_payload_ptr(buf);
-    const ehip_eth_addr_t *if_mac = (const ehip_eth_addr_t *)ehip_netdev_trait_get_hw_addr(buf->netdev);
+    const ehip_eth_addr_t *if_mac = (const ehip_eth_addr_t *)ehip_netdev_trait_hw_addr(buf->netdev);
     ehip_buffer_size_t payload_size = ehip_buffer_get_payload_size(buf);
     if(payload_size < sizeof(struct eth_hdr) || eh_ptr_to_error((void*)if_mac) < 0)
         goto drop;
@@ -45,7 +45,7 @@ static void ethernet_v2_handle(struct ehip_buffer* buf){
     }else{
         buf->packet_type = EHIP_PACKET_TYPE_OTHERHOST;
     }
-
+    
     /* 更新下一层协议 */
     buf->protocol = hdr->type_or_len;
     ehip_buffer_head_reduce(buf, sizeof(struct eth_hdr));

@@ -9,12 +9,46 @@
  */
 
 #include <string.h>
-#include <ehip_netdev_trait.h>
 #include <eh_error.h>
+#include <eh_types.h>
+#include <ehip_netdev_trait.h>
 
 static struct  ehip_netdev_trait_ops const *type_tab[EHIP_NETDEV_TYPE_MAX];
 
-#define ehip_netdev_get_trait(netdev) (((ehip_netdev_trait_t)(netdev + 1)))
+static void* ehip_netdev_offset_to_trait_addr(ehip_netdev_t * netdev, uint16_t offset){
+    if(offset < sizeof(ehip_netdev_t))
+        return eh_error_to_ptr(EH_RET_NOT_SUPPORTED);
+    return (void*)(((char*)netdev) + offset);
+}
+
+#define EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(name, return_type_ptr)                                                    \
+return_type_ptr ehip_netdev_trait_##name(ehip_netdev_t *netdev)                                                         \
+{                                                                                                                       \
+    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];                                                  \
+    if((uint32_t)netdev->type >= EH_ARRAY_SIZE(type_tab))                                                               \
+        return eh_error_to_ptr(EH_RET_INVALID_STATE);                                                                   \
+    return (return_type_ptr)ehip_netdev_offset_to_trait_addr(netdev, ops->name##_offset);                               \
+}
+
+#define EHIP_NETDEV_ARRAY_TRAIT_DEFINE_FUNC(name, return_type_ptr, step_len)                                            \
+return_type_ptr ehip_netdev_trait_##name(ehip_netdev_t *netdev, int index)                                              \
+{                                                                                                                       \
+    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];                                                  \
+    if((uint32_t)netdev->type >= EH_ARRAY_SIZE(type_tab) || (unsigned long)step_len <= 0)                               \
+        return eh_error_to_ptr(EH_RET_INVALID_STATE);                                                                   \
+    return (return_type_ptr)                                                                                            \
+        (((char*)ehip_netdev_offset_to_trait_addr(netdev, ops->name##_offset)) +                                        \
+         ((size_t)step_len * (size_t)index));                                                                           \
+}
+
+#define EHIP_NETDEV_CONST_INT_VAL_TRAIT_DEFINE_FUNC(name)                                                               \
+int ehip_netdev_trait_##name(const ehip_netdev_t *netdev)                                                               \
+{                                                                                                                       \
+    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];                                                  \
+    if((uint32_t)netdev->type >= EH_ARRAY_SIZE(type_tab))                                                               \
+        return EH_RET_INVALID_STATE;                                                                                    \
+    return (int)ops->name;                                                                                              \
+}
 
 
 size_t ehip_netdev_trait_size_get(enum ehip_netdev_type type){
@@ -28,55 +62,30 @@ int ehip_netdev_trait_type_install(enum ehip_netdev_type type, const struct ehip
 }
 
 int ehip_netdev_trait_reset(ehip_netdev_t *netdev){
-    ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
+    ehip_netdev_trait_t * trait = ehip_netdev_to_trait(netdev);
     const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
     if(ops && ops->reset){
-        ops->reset(trait);
+        ops->reset(netdev);
         return 0;
     }
     memset(trait, 0, ops->trait_size);
     return 0;
 }
 
-const ehip_hw_addr_t* ehip_netdev_trait_get_hw_addr(const ehip_netdev_t *netdev){
-    ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
+int ehip_netdev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr){
     const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
-    if(ops && ops->get_hw_addr){
-        return ops->get_hw_addr(trait);
-    }
-    return eh_error_to_ptr(EH_RET_NOT_SUPPORTED);
-}
-
-int ehip_netdev_trait_set_hw_addr(ehip_netdev_t *netdev, ehip_hw_addr_t *hw_addr){
-    ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
-    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
-    if(ops && ops->set_hw_addr){
-        ops->set_hw_addr(trait, hw_addr);
-        return 0;
+    if(ops && ops->change){
+        return ops->change(netdev, type_ptr, src_ptr);
     }
     return EH_RET_NOT_SUPPORTED;
 }
 
 
-const struct ipv4_addr * ehip_netdev_trait_get_ipv4_addr(const ehip_netdev_t *netdev, int index){
-    ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
-    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
-    if(ops && ops->get_ipv4_addr)
-        return ops->get_ipv4_addr(trait, index);
-    return eh_error_to_ptr(EH_RET_NOT_SUPPORTED) ;
-}
-
-
-int ehip_netdev_trait_set_ipv4_addr(ehip_netdev_t *netdev, int index, struct ipv4_addr *ipv4_addr){
-    ehip_netdev_trait_t * trait = ehip_netdev_get_trait(netdev);
-    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
-    if(ops && ops->set_ipv4_addr)
-        return ops->set_ipv4_addr(trait, index, ipv4_addr);
-    return EH_RET_NOT_SUPPORTED;
-}
-
-
-int ehip_netdev_trait_get_hw_addr_len(const ehip_netdev_t *netdev){
-    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
-    return ops->hw_addr_len;
-}
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(hw_head_size, const uint16_t*)
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(hw_tail_size, const uint16_t*)
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(mtu, const uint16_t*)
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(hw_addr, const ehip_hw_addr_t*)
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(mac_ptype, const enum ehip_ptype*)
+EHIP_NETDEV_ARRAY_TRAIT_DEFINE_FUNC(ipv4_addr, const ipv4_addr_t*, sizeof(ipv4_addr_t))
+EHIP_NETDEV_CONST_INT_VAL_TRAIT_DEFINE_FUNC(hw_addr_len);
+EHIP_NETDEV_ARRAY_TRAIT_DEFINE_FUNC(multicast_hw, const ehip_hw_addr_t*,  ehip_netdev_trait_hw_addr_len(netdev))

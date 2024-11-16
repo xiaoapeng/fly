@@ -17,6 +17,12 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
+#include <stdint.h>
+#include <ehip-mac/ethernet.h>
+#include <ehip_conf.h>
+#include <ehip-ipv4/ip.h>
+#include <ehip_netdev_trait.h>
+
 /**
  * @brief 定义的是ehip_netdev->signal成员的位图定义，在以太网设备中的含义
  */
@@ -33,7 +39,15 @@ extern "C"{
 #define ETHERNET_CTRL_CMD_SET_MAC_ADDR                      0x00000002
 #define ETHERNET_CTRL_CMD_SET_MULTICAST_ADDR                0x00000003
 
-
+struct ethernet_trait{
+    uint16_t                                    hw_head_size;                  /* 一般是 14*/
+    uint16_t                                    hw_tail_size;                  /* 一般是 4 */
+    uint16_t                                    mtu;                           /* 一般是 1500 */
+    ehip_eth_addr_t                             hw_addr;
+    enum ehip_ptype                             mac_ptype;
+    ehip_eth_addr_t                             multicast_hw_addr[ETH_MULTICAST_ADDR_NUM];
+    ipv4_addr_t                                 ipv4_addr[EHIP_NETDEV_MAX_IP_NUM];
+};
 
 
 #ifdef __cplusplus

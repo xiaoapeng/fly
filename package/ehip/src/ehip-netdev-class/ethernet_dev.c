@@ -11,61 +11,96 @@
 #include <string.h>
 
 #include <eh_error.h>
+#include <eh_types.h>
 #include <ehip_module.h>
-#include <ehip_conf.h>
-#include <ehip_netdev_trait.h>
-#include "ehip-netdev-class/ethernet_dev.h"
-#include <ehip-mac/ethernet.h>
+#include <ehip_ptype.h>
 
-struct ethernet_trait{
-    ehip_eth_addr_t                             hw_addr;
-    ehip_eth_addr_t                             multicast_hw_addr[ETH_MULTICAST_ADDR_NUM];
-    struct ipv4_addr                            ipv4_addr[EHIP_NETDEV_MAX_IP_NUM];
-};
+#include <ehip-netdev-class/ethernet_dev.h>
 
 
-static const  struct ipv4_addr* ethernet_dev_trait_get_ipv4_addr(const ehip_netdev_trait_t *netdev_trait, int index)
-{
-    const struct ethernet_trait *ethernet_trait = (const struct ethernet_trait *)netdev_trait;
-    if((unsigned int)index >= EHIP_NETDEV_MAX_IP_NUM) 
-        return (struct ipv4_addr *)eh_error_to_ptr(EH_RET_INVALID_PARAM);
-    return &ethernet_trait->ipv4_addr[index];
-}
+ehip_netdev_trait_static_assert(struct ethernet_trait);
 
-static int ethernet_dev_trait_set_ipv4_addr(ehip_netdev_trait_t *netdev_trait, int index, struct ipv4_addr *ipv4_addr)
-{
-    struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
-    if((unsigned int)index >= EHIP_NETDEV_MAX_IP_NUM) 
-        return EH_RET_INVALID_PARAM;
-    ethernet_trait->ipv4_addr[index] = *ipv4_addr;
-    return EH_RET_OK;
-}
-
-const static ehip_hw_addr_t* ethernet_dev_trait_get_hw_addr(const ehip_netdev_trait_t *netdev_trait)
-{
-    struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
-    return &ethernet_trait->hw_addr;
-}
-
-static void ethernet_dev_trait_set_hw_addr(ehip_netdev_trait_t *netdev_trait, ehip_hw_addr_t *hw_addr)
-{
-    struct ethernet_trait *ethernet_trait = (struct ethernet_trait *)netdev_trait;
-    memcpy(&ethernet_trait->hw_addr, hw_addr, sizeof(ehip_eth_addr_t));
-}
-
-
+static void ethernet_dev_trait_reset(ehip_netdev_t *netdev);
+static int ethernet_dev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr);
 const struct ehip_netdev_trait_ops ethernet_dev_trait_ops = {
     .trait_size = sizeof(struct ethernet_trait),
-    .get_hw_addr = ethernet_dev_trait_get_hw_addr,
-    .set_hw_addr = ethernet_dev_trait_set_hw_addr,
-    .get_ipv4_addr = ethernet_dev_trait_get_ipv4_addr,
-    .set_ipv4_addr = ethernet_dev_trait_set_ipv4_addr,
-    .reset = NULL,
-    .hw_addr_len = 6,
+    .reset = ethernet_dev_trait_reset,
+    .change = ethernet_dev_trait_change,
+    .hw_addr_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, hw_addr),
+    .ipv4_addr_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, ipv4_addr),
+    .multicast_hw_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, multicast_hw_addr),
+    .mac_ptype_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, mac_ptype),
+    .hw_addr_len = sizeof(ehip_eth_addr_t),
 };
 
+int ethernet_dev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr){
+    struct ethernet_trait *netdev_ethernet_trait = (struct ethernet_trait *)ehip_netdev_to_trait(netdev);
+    long long_offset = (long)type_ptr-(long)netdev;
+    uint16_t offset;
+    int ret = 0;
+    if(long_offset < (long)sizeof(ehip_netdev_t) || long_offset >= (long)(sizeof(ehip_netdev_t) + sizeof(struct ethernet_trait))){
+        return EH_RET_INVALID_PARAM;
+    }
+    offset = (uint16_t)long_offset;
+    switch (offset) {
+        case ehip_netdev_trait_offsetof(struct ethernet_trait, hw_head_size):
+        case ehip_netdev_trait_offsetof(struct ethernet_trait, hw_tail_size):
+            ret = EH_RET_NOT_SUPPORTED;
+            break;
+        case ehip_netdev_trait_offsetof(struct ethernet_trait, mtu):{
+            uint16_t new_mtu = *(uint16_t*)src_ptr;
+            if(new_mtu < 46 || (new_mtu + netdev_ethernet_trait->hw_tail_size + netdev_ethernet_trait->hw_head_size) > netdev->param->net_max_frame_size){
+                ret = EH_RET_NOT_SUPPORTED;
+                break;
+            }
+            netdev_ethernet_trait->mtu = new_mtu;
+            break;
+        }
+        case ehip_netdev_trait_offsetof(struct ethernet_trait, hw_addr):
+            /* mac 地址被修改 */
+            memcpy((void*)type_ptr, src_ptr, sizeof(netdev_ethernet_trait->hw_addr));
+            break;
+        case ehip_netdev_trait_offsetof(struct ethernet_trait, mac_ptype):{
+            enum ehip_ptype new_mac_ptype = *(enum ehip_ptype*)src_ptr;
+            /* 数据链路层协议修改 */
+            /* 只支持此 ETHERNET_II */
+            if(new_mac_ptype != EHIP_PTYPE_ETHERNET_II_FRAME){
+                ret = EH_RET_NOT_SUPPORTED;
+                break;
+            }
+            netdev_ethernet_trait->mac_ptype = new_mac_ptype;
+            netdev_ethernet_trait->hw_head_size = sizeof(struct eth_hdr);
+            break;
+        }
+        default:
+            if( offset >= ehip_netdev_trait_offsetof(struct ethernet_trait, multicast_hw_addr) && 
+                offset <  (ehip_netdev_trait_offsetof(struct ethernet_trait, 
+                    multicast_hw_addr) + (ETH_MULTICAST_ADDR_NUM * sizeof(ehip_eth_addr_t)))){
+                /* 多播地址被修改 */
+                break;
+            }else if( offset >= ehip_netdev_trait_offsetof(struct ethernet_trait, ipv4_addr) && 
+                offset <  (ehip_netdev_trait_offsetof(struct ethernet_trait, 
+                    ipv4_addr) + (EHIP_NETDEV_MAX_IP_NUM * sizeof(ehip_eth_addr_t)))){
+                /* IP地址被修改 */
+                break;
+            }
+            ret = EH_RET_INVALID_PARAM;
+            break;
+    }
+    return ret;
+}
 
-int __init ethernet_dev_trait_init(void)
+static void ethernet_dev_trait_reset(ehip_netdev_t *netdev){
+    struct ethernet_trait *netdev_ethernet_trait = (struct ethernet_trait *)ehip_netdev_to_trait(netdev);
+    memset(netdev_ethernet_trait, 0, sizeof(struct ethernet_trait));
+    netdev_ethernet_trait->hw_head_size = sizeof(struct eth_hdr);
+    netdev_ethernet_trait->hw_tail_size = 4;   /* crc */
+    netdev_ethernet_trait->mtu = (uint16_t)(netdev->param->net_max_frame_size - 
+        netdev_ethernet_trait->hw_head_size - netdev_ethernet_trait->hw_tail_size);
+    netdev_ethernet_trait->mac_ptype = EHIP_PTYPE_ETHERNET_II_FRAME;
+}
+
+static int __init ethernet_dev_trait_init(void)
 {
     return ehip_netdev_trait_type_install(EHIP_NETDEV_TYPE_ETHERNET, &ethernet_dev_trait_ops);
 }
