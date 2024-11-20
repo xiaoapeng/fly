@@ -40,7 +40,7 @@ static void ethernet_v2_handle(struct ehip_buffer* buf){
         if(eth_addr_equal_64bits(&hdr->dest, EHIP_ETH_MAC_ADDR_BROADCAST)){
             buf->packet_type = EHIP_PACKET_TYPE_BROADCAST;
         }else{
-            buf->packet_type = EHIP_PACKET_TYPE_MCASTLOOP;
+            buf->packet_type = EHIP_PACKET_TYPE_MULTICAST;
         }
     }else{
         buf->packet_type = EHIP_PACKET_TYPE_OTHERHOST;

@@ -27,7 +27,7 @@ const struct ehip_netdev_trait_ops ethernet_dev_trait_ops = {
     .reset = ethernet_dev_trait_reset,
     .change = ethernet_dev_trait_change,
     .hw_addr_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, hw_addr),
-    .ipv4_addr_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, ipv4_addr),
+    .ipv4_dev_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, ipv4_netdev),
     .multicast_hw_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, multicast_hw_addr),
     .mac_ptype_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, mac_ptype),
     .hw_addr_len = sizeof(ehip_eth_addr_t),
@@ -77,11 +77,6 @@ int ethernet_dev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const
                 offset <  (ehip_netdev_trait_offsetof(struct ethernet_trait, 
                     multicast_hw_addr) + (ETH_MULTICAST_ADDR_NUM * sizeof(ehip_eth_addr_t)))){
                 /* 多播地址被修改 */
-                break;
-            }else if( offset >= ehip_netdev_trait_offsetof(struct ethernet_trait, ipv4_addr) && 
-                offset <  (ehip_netdev_trait_offsetof(struct ethernet_trait, 
-                    ipv4_addr) + (EHIP_NETDEV_MAX_IP_NUM * sizeof(ehip_eth_addr_t)))){
-                /* IP地址被修改 */
                 break;
             }
             ret = EH_RET_INVALID_PARAM;

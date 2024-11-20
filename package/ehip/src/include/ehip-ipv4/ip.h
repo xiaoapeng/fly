@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <eh_swab.h>
-
+#include <ehip_conf.h>
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
@@ -35,6 +35,10 @@ typedef uint32_t ipv4_addr_t;
 #define IPV4_ADDR_ALLSNOOPERS_GROUP	    0xe000006aU	/* 224.0.0.106 */
 #define IPV4_ADDR_MAX_LOCAL_GROUP		0xe00000ffU	/* 224.0.0.255 */
 
+struct ipv4_netdev{
+    ipv4_addr_t                                 ipv4_addr[EHIP_NETDEV_MAX_IP_NUM];
+	uint8_t										ipv4_mask_len[EHIP_NETDEV_MAX_IP_NUM];
+};
 
 
 static inline bool ipv4_is_multicast(ipv4_addr_t addr)

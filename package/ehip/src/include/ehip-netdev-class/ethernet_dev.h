@@ -46,7 +46,7 @@ struct ethernet_trait{
     ehip_eth_addr_t                             hw_addr;
     enum ehip_ptype                             mac_ptype;
     ehip_eth_addr_t                             multicast_hw_addr[ETH_MULTICAST_ADDR_NUM];
-    ipv4_addr_t                                 ipv4_addr[EHIP_NETDEV_MAX_IP_NUM];
+    struct ipv4_netdev                          ipv4_netdev;
 };
 
 

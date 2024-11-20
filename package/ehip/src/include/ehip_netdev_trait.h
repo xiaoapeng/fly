@@ -42,7 +42,7 @@ struct ehip_netdev_trait_ops{
     uint16_t mtu_offset;
     uint16_t hw_addr_offset;
     uint16_t mac_ptype_offset;
-    uint16_t ipv4_addr_offset;
+    uint16_t ipv4_dev_offset;
     uint16_t multicast_hw_offset;
     uint8_t hw_addr_len;
 };
@@ -89,7 +89,7 @@ extern __tait_type_ptr__ const uint16_t* ehip_netdev_trait_hw_tail_size(ehip_net
 extern __tait_type_ptr__ const uint16_t* ehip_netdev_trait_mtu(ehip_netdev_t *netdev);
 extern __tait_type_ptr__ const ehip_hw_addr_t* ehip_netdev_trait_hw_addr(ehip_netdev_t *netdev);
 extern __tait_type_ptr__ const enum ehip_ptype* ehip_netdev_trait_mac_ptype(ehip_netdev_t *netdev);
-extern __tait_type_ptr__ const ipv4_addr_t* ehip_netdev_trait_ipv4_addr(ehip_netdev_t *netdev, int index);
+extern __tait_type_ptr__ struct ipv4_netdev* ehip_netdev_trait_ipv4_dev(ehip_netdev_t *netdev);
 extern __tait_type_ptr__ const ehip_hw_addr_t* ehip_netdev_trait_multicast_hw(ehip_netdev_t *netdev, int index);
 
 

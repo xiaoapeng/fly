@@ -33,7 +33,7 @@ typedef uint8_t * ehip_buffer_raw_ptr;
 eh_static_assert(EHIP_BUFFER_TYPE_MAX <= UINT8_MAX, "ehip_buffer_type must be less than UINT8_MAX");
 
 #define EHIP_PACKET_TYPE_HOST           0x00
-#define EHIP_PACKET_TYPE_MCASTLOOP      0x01
+#define EHIP_PACKET_TYPE_MULTICAST      0x01
 #define EHIP_PACKET_TYPE_BROADCAST      0x02
 #define EHIP_PACKET_TYPE_OTHERHOST      0x03
 #define EHIP_PACKET_TYPE_LOOPBACK       0x04

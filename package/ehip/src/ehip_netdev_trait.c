@@ -86,6 +86,6 @@ EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(hw_tail_size, const uint16_t*)
 EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(mtu, const uint16_t*)
 EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(hw_addr, const ehip_hw_addr_t*)
 EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(mac_ptype, const enum ehip_ptype*)
-EHIP_NETDEV_ARRAY_TRAIT_DEFINE_FUNC(ipv4_addr, const ipv4_addr_t*, sizeof(ipv4_addr_t))
+EHIP_NETDEV_VAR_PTR_TRAIT_DEFINE_FUNC(ipv4_dev, struct ipv4_netdev*)
 EHIP_NETDEV_CONST_INT_VAL_TRAIT_DEFINE_FUNC(hw_addr_len);
 EHIP_NETDEV_ARRAY_TRAIT_DEFINE_FUNC(multicast_hw, const ehip_hw_addr_t*,  ehip_netdev_trait_hw_addr_len(netdev))
