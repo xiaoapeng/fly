@@ -10,6 +10,8 @@
 #ifndef _IPV4_H_
 #define _IPV4_H_
 
+#include "eh_list.h"
+#include "ehip_netdev.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <eh_swab.h>
@@ -31,14 +33,24 @@ typedef uint32_t ipv4_addr_t;
 
 #define IPV4_ADDR_UNSPEC_GROUP		    0xe0000000U	/* 224.0.0.0   */
 #define IPV4_ADDR_ALLHOSTS_GROUP		0xe0000001U	/* 224.0.0.1   */
-#define IPV4_ADDR_ALLRTRS_GROUP		    0xe0000002U	/* 224.0.0.2 */
+#define IPV4_ADDR_ALLRTRS_GROUP		    0xe0000002U	/* 224.0.0.2   */
 #define IPV4_ADDR_ALLSNOOPERS_GROUP	    0xe000006aU	/* 224.0.0.106 */
 #define IPV4_ADDR_MAX_LOCAL_GROUP		0xe00000ffU	/* 224.0.0.255 */
 
+#define IPV4_ADDR_DEFAULT_CLASS_A_MASK_LEN 8
+#define IPV4_ADDR_DEFAULT_CLASS_B_MASK_LEN 16
+#define IPV4_ADDR_DEFAULT_CLASS_C_MASK_LEN 24
+#define IPV4_ADDR_DEFAULT_CLASS_D_MASK_LEN 3
+
 struct ipv4_netdev{
+	struct eh_list_head							node;
     ipv4_addr_t                                 ipv4_addr[EHIP_NETDEV_MAX_IP_NUM];
 	uint8_t										ipv4_mask_len[EHIP_NETDEV_MAX_IP_NUM];
+	uint8_t 									ipv4_addr_num;
 };
+
+#define ipv4_mask_len_to_mask(mask_len) ((ipv4_addr_t)(IPV4_ADDR_NONE << (32 - (mask_len))))
+#define ipv4_make_addr(addr0, addr1, addr2, addr3) ((ipv4_addr_t)((addr0) | ((addr1) << 8) | ((addr2) << 16) | ((addr3) << 24)))
 
 
 static inline bool ipv4_is_multicast(ipv4_addr_t addr)
@@ -56,10 +68,14 @@ static inline bool ipv4_is_local_multicast(ipv4_addr_t addr)
 	return (addr & eh_hton32(0xffffff00)) == eh_hton32(0xe0000000);
 }
 
-static inline bool ipv4_is_lbcast(ipv4_addr_t addr)
+static inline bool ipv4_is_global_bcast(ipv4_addr_t addr)
 {
 	/* limited broadcast */
 	return addr == eh_hton32(IPV4_ADDR_BROADCAST);
+}
+
+static inline bool ipv4_is_local_broadcast(ipv4_addr_t addr, uint8_t mask_len){
+	return (addr | ipv4_mask_len_to_mask(mask_len)) == eh_hton32(IPV4_ADDR_BROADCAST);
 }
 
 static inline bool ipv4_is_all_snoopers(ipv4_addr_t addr)
@@ -110,6 +126,86 @@ static inline bool ipv4_is_test_198(ipv4_addr_t addr)
 }
 
 
+static inline bool ipv4_is_class_a(ipv4_addr_t addr)
+{
+	return (addr & eh_hton32(0x80000000)) == 0;
+}
+
+static inline bool ipv4_is_class_b(ipv4_addr_t addr)
+{
+	return (addr & eh_hton32(0xc0000000)) == eh_hton32(0x80000000);
+}
+
+static inline bool ipv4_is_class_c(ipv4_addr_t addr)
+{
+	return (addr & eh_hton32(0xe0000000)) == eh_hton32(0xc0000000);
+}
+
+static inline bool ipv4_is_class_d(ipv4_addr_t addr)
+{
+	return (addr & eh_hton32(0xf0000000)) == eh_hton32(0xe0000000);
+}
+
+extern void ipv4_netdev_reset(struct ipv4_netdev *netdev);
+
+extern void ipv4_netdev_up(struct ipv4_netdev *netdev);
+
+extern void ipv4_netdev_down(struct ipv4_netdev *netdev);
+
+/**
+ * @brief 					判断IP地址是否为该设备的有效地址
+ * @param  netdev           网络设备
+ * @param  ipv4_addr        
+ * @return true 
+ * @return false 
+ */
+extern bool ipv4_netdev_is_ipv4_addr_valid(const struct ipv4_netdev* ipv4_dev,ipv4_addr_t ipv4_addr);
+
+/**
+ * @brief 					获取最佳匹配的IP地址
+ * @param  netdev           网络设备
+ * @param  dst_addr        	目标地址
+ * @param  mask_len         掩码位数
+ * @return ipv4_addr_t 		失败返回IPV4_ADDR_ANY 成功返回最佳接口地址
+ */
+extern ipv4_addr_t ipv4_netdev_get_best_ipv4_addr(const struct ipv4_netdev* ipv4_dev, ipv4_addr_t dst_addr, 
+    uint8_t mask_len);
+
+/**
+ * @brief 					获取接口的网络地址
+ * @param  ipv4_dev         ipv4设备
+ * @return ipv4_addr_t 		失败返回IPV4_ADDR_ANY 成功返回第一个接口地址
+ */
+extern ipv4_addr_t ipv4_netdev_get_addr(const struct ipv4_netdev* ipv4_dev);
+
+/**
+ * @brief 					设置接口主要网络地址
+ * @param  ipv4_dev         ipv4设备
+ * @param  addr             要设置的IP地址
+ * @param  mask_len         掩码，如果设置为0，则根据IP类型使用默认掩码
+ */
+extern int ipv4_netdev_set_main_addr(struct ipv4_netdev* ipv4_dev, ipv4_addr_t addr, uint8_t mask_len);
+
+/**
+ * @brief 					设置接口次要网络地址
+ * @param  ipv4_dev         ipv4设备
+ * @param  addr             要设置的IP地址
+ * @param  mask_len         掩码，如果设置为0，则根据IP类型使用默认掩码
+ */
+extern int ipv4_netdev_set_sub_addr(struct ipv4_netdev* ipv4_dev, ipv4_addr_t addr, uint8_t mask_len);
+
+/**
+ * @brief 					删除接口网络地址
+ * @param  ipv4_dev         ipv4设备
+ * @param  addr             要删除的IP地址
+ */
+extern void ipv4_netdev_del_addr(struct ipv4_netdev* ipv4_dev, ipv4_addr_t addr);
+/**
+ * @brief 					判断地址是否为本地地址
+ * @param  addr             要判断的ip地址
+ * @return int 
+ */
+extern bool ipv4_netdev_is_local_addr(ipv4_addr_t addr);
 
 #ifdef __cplusplus
 #if __cplusplus

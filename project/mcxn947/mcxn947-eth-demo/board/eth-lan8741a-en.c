@@ -20,6 +20,7 @@
 #include <eh_sleep.h>
 #include <eh_signal.h>
 #include <eh_mem_pool.h>
+#include <eh_types.h>
 
 #include <ehip_core.h>
 #include <ehip_module.h>
@@ -29,6 +30,8 @@
 #include <ehip_netdev_type.h>
 #include <ehip_netdev_trait.h>
 #include <ehip-mac/ethernet.h>
+#include <ehip-netdev-class/ethernet_dev.h>
+
 
 #include "fsl_common.h"
 #include "fsl_flash.h"
@@ -80,7 +83,7 @@ static uint32_t rx_buffer_start_addr[BOARD_ETH_ENET_RXBD_NUM];
 static enet_tx_reclaim_info_t   s_tx_dirty[BOARD_ETH_ENET_TXBD_NUM];
 static enet_handle_t s_enet_handle;
 static ehip_netdev_t *s_lan8741a_en_netdev;
-static ehip_eth_addr_t s_mac_addr;
+static const struct ethernet_trait *s_lan8741a_en_trait;
 
 EH_DEFINE_STATIC_CUSTOM_SIGNAL(signal_eth_event_flags, eh_event_flags_t, {});
 
@@ -279,6 +282,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
     int ret;
     enet_buffer_struct_t buffers[BOARD_ETH_ENET_RXBD_NUM] = {{0}};
     enet_rx_frame_struct_t rx_frame                      = {.rxBuffArray = &buffers[0]};
+    enum ehip_ptype             protocol;
     ret = eh_event_flags_wait_bits_set(ef, BOARD_ETH_EVENT_FLAGS_MASK, BOARD_ETH_EVENT_FLAGS_MASK, &reality_flags, 0);
     if(ret < 0){
         eh_warnfl("eh_event_flags_wait fail ret = %d");
@@ -295,7 +299,10 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         // eh_infoln("rx frame len = %d", rx_frame.totLen);
         // eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
         // eh_free(rx_frame.rxBuffArray[0].buffer);
-        if(rx_frame.totLen > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN){
+        if(rx_frame.totLen > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN || 
+            rx_frame.totLen != rx_frame.rxBuffArray[0].length ||
+            (protocol = eth_hdr_ptype_get((struct eth_hdr *)rx_frame.rxBuffArray[0].buffer)) != s_lan8741a_en_trait->mac_ptype
+        ){
             for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
                 if(rx_frame.rxBuffArray[i].buffer)
                     ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
@@ -303,6 +310,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             eh_warnfl("rx frame len = %d > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN", rx_frame.totLen);
             break;
         }
+
         ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
         if(eh_ptr_to_error(ehip_buf) < 0){
             eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
@@ -408,7 +416,7 @@ static int eth_lan8741aen_up(ehip_netdev_t *netdev){
     config.interrupt = kENET_DmaTx | kENET_DmaRx;
     NVIC_SetPriority(ETHERNET_IRQn, BOARD_ETH_ENET_PRIORITY);
     
-    ENET_Init(ENET0, &config, (uint8_t*)s_mac_addr.addr, 50000000);
+    ENET_Init(ENET0, &config, (uint8_t*)ehip_netdev_trait_hw_addr(s_lan8741a_en_netdev), 50000000);
     
     EH_DBG_ERROR_EXEC(ENET_DescriptorInit(ENET0, &config, &buff_cfg) != kStatus_Success, return -1);
 
@@ -473,6 +481,7 @@ static const struct ehip_netdev_param netdev_lan8741a_en_param = {
 
 static int __init eth_lan8741a_en_init(void){
     ehip_netdev_t *netdev;
+    static const ehip_eth_addr_t mac_addr = {{0x00, 0x04, 0x9F, 0x08, 0xB6, 0xB6}};
     int ret;
     netdev = ehip_netdev_register(EHIP_NETDEV_TYPE_ETHERNET, &netdev_lan8741a_en_param);
     ret = eh_ptr_to_error(netdev);
@@ -480,14 +489,14 @@ static int __init eth_lan8741a_en_init(void){
         return ret;
 
     s_lan8741a_en_netdev = netdev;
-    s_mac_addr.addr[0] = 0x00;
-    s_mac_addr.addr[1] = 0x04;
-    s_mac_addr.addr[2] = 0x9F;
-    s_mac_addr.addr[3] = 0x08;
-    s_mac_addr.addr[4] = 0xB6;
-    s_mac_addr.addr[5] = 0xB6;
+    ehip_netdev_trait_change(
+        s_lan8741a_en_netdev,
+        ehip_netdev_trait_hw_addr(s_lan8741a_en_netdev),
+        &mac_addr
+    );
 
-    ehip_netdev_trait_set_hw_addr(s_lan8741a_en_netdev, &s_mac_addr);
+    s_lan8741a_en_trait = ehip_netdev_to_trait(netdev);
+
     return 0;
 }
 
