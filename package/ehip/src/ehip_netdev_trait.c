@@ -62,14 +62,28 @@ int ehip_netdev_trait_type_install(enum ehip_netdev_type type, const struct ehip
 }
 
 int ehip_netdev_trait_reset(ehip_netdev_t *netdev){
-    ehip_netdev_trait_t * trait = ehip_netdev_to_trait(netdev);
+    ehip_netdev_trait_t * trait;
     const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
     if(ops && ops->reset){
         ops->reset(netdev);
         return 0;
     }
+    trait = ehip_netdev_to_trait(netdev);
     memset(trait, 0, ops->trait_size);
     return 0;
+}
+
+int ehip_netdev_trait_up(ehip_netdev_t *netdev){
+    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
+    if(ops && ops->up)
+        return ops->up(netdev);
+    return 0;
+}
+
+extern void ehip_netdev_trait_down(ehip_netdev_t *netdev){
+    const struct ehip_netdev_trait_ops * ops = type_tab[netdev->type];
+    if(ops && ops->down)
+        ops->down(netdev);
 }
 
 int ehip_netdev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr){

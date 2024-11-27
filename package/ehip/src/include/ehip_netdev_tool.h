@@ -25,14 +25,18 @@ extern "C"{
  * @param  netdev
  * @return int 
  */
-extern int ehip_netdev_tool_up(ehip_netdev_t *netdev);
+static inline int ehip_netdev_tool_up(ehip_netdev_t *netdev){
+    return ehip_netdev_up(netdev);
+}
 
 /**
  * @brief                   网络设备 DOWN
  * @param  netdev
  * @return int 
  */
-extern int ehip_netdev_tool_down(ehip_netdev_t *netdev);
+static inline void ehip_netdev_tool_down(ehip_netdev_t *netdev){
+    ehip_netdev_down(netdev);
+}
 
 
 /**

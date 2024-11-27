@@ -35,8 +35,10 @@ typedef void *ehip_netdev_trait_t;
 
 struct ehip_netdev_trait_ops{
     size_t  trait_size;
-    void (*reset)(ehip_netdev_t *netdev_trait);
-    int (*change)(ehip_netdev_t *netdev_trait, const void *type_ptr, const void *src_ptr);
+    int (*up)(ehip_netdev_t *netdev);
+    void (*down)(ehip_netdev_t *netdev);
+    void (*reset)(ehip_netdev_t *netdev);
+    int (*change)(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr);
     uint16_t hw_head_size_offset;
     uint16_t hw_tail_size_offset;
     uint16_t mtu_offset;
@@ -54,8 +56,15 @@ struct ehip_netdev_trait_ops{
 
 #define  ehip_netdev_trait_offsetof(type, member)  (uint16_t)(eh_offsetof(type, member) + sizeof(ehip_netdev_t))
 
-#define ehip_netdev_to_trait(netdev) (((ehip_netdev_trait_t)(netdev + 1)))
+
+#define ehip_netdev_to_trait(netdev)        ((ehip_netdev_trait_t)(netdev + 1) )
+#define ehip_trait_to_netdev(netdev_trait)  ((ehip_netdev_t*)(netdev_trait) - 1)
     
+/**
+ * @brief                   获取给定网络设备类型的特征属性大小
+ * @param  type             网络设备类型
+ * @return size_t 
+ */
 extern size_t ehip_netdev_trait_size_get(enum ehip_netdev_type type);
 
 /**
@@ -73,6 +82,15 @@ extern int ehip_netdev_trait_type_install(enum ehip_netdev_type type, const stru
  */
 extern int ehip_netdev_trait_reset(ehip_netdev_t *netdev);
 
+/**
+ * @brief               网卡特征属性up,当网络设备状态被up时调用
+ */
+extern int ehip_netdev_trait_up(ehip_netdev_t *netdev);
+
+/**
+ * @brief               网卡特征属性down,当网络设备状态被down时调用
+ */
+extern void ehip_netdev_trait_down(ehip_netdev_t *netdev);
 
 /**
  * @brief                   修改某一个特征

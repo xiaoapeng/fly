@@ -8,6 +8,7 @@
  * 
  */
 
+#include "ehip-ipv4/ip.h"
 #include <string.h>
 
 #include <eh_error.h>
@@ -20,10 +21,14 @@
 
 ehip_netdev_trait_static_assert(struct ethernet_trait);
 
+static int ethernet_dev_trait_up(ehip_netdev_t *netdev);
+static void ethernet_dev_trait_down(ehip_netdev_t *netdev);
 static void ethernet_dev_trait_reset(ehip_netdev_t *netdev);
 static int ethernet_dev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const void *src_ptr);
 const struct ehip_netdev_trait_ops ethernet_dev_trait_ops = {
     .trait_size = sizeof(struct ethernet_trait),
+    .up = ethernet_dev_trait_up,
+    .down = ethernet_dev_trait_down,
     .reset = ethernet_dev_trait_reset,
     .change = ethernet_dev_trait_change,
     .hw_addr_offset = ehip_netdev_trait_offsetof(struct ethernet_trait, hw_addr),
@@ -83,6 +88,17 @@ int ethernet_dev_trait_change(ehip_netdev_t *netdev, const void *type_ptr, const
             break;
     }
     return ret;
+}
+
+
+static int ethernet_dev_trait_up(ehip_netdev_t *netdev){
+    struct ethernet_trait *netdev_ethernet_trait = (struct ethernet_trait *)ehip_netdev_to_trait(netdev);
+    ipv4_netdev_up(&netdev_ethernet_trait->ipv4_netdev);
+    return 0;
+}
+static void ethernet_dev_trait_down(ehip_netdev_t *netdev){
+    struct ethernet_trait *netdev_ethernet_trait = (struct ethernet_trait *)ehip_netdev_to_trait(netdev);
+    ipv4_netdev_down(&netdev_ethernet_trait->ipv4_netdev);
 }
 
 static void ethernet_dev_trait_reset(ehip_netdev_t *netdev){

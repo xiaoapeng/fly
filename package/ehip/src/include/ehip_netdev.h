@@ -101,6 +101,20 @@ extern void ehip_netdev_protocol_handle_unregister(ehip_netdev_t *netdev, struct
  */
 extern ehip_netdev_t * ehip_netdev_find(char *netdev_name);
 
+/**
+ * @brief                   启动网卡
+ * @param  netdev           网卡句柄
+ * @return int 
+ */
+extern int ehip_netdev_up(ehip_netdev_t *netdev);
+
+/**
+ * @brief                   关闭网卡
+ * @param  netdev           网卡句柄
+ */
+extern void ehip_netdev_down(ehip_netdev_t *netdev);
+
+
 #ifdef __cplusplus
 #if __cplusplus
 }

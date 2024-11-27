@@ -19,7 +19,7 @@
 #include <ehip_netdev_trait.h>
 #include <ehip_protocol_handle.h>
 
-struct eh_list_head s_netdev_head;
+struct eh_list_head s_netdev_head = EH_LIST_HEAD_INIT(s_netdev_head);
 
 ehip_netdev_t* ehip_netdev_register(enum ehip_netdev_type type, const struct ehip_netdev_param *param){
     ehip_netdev_t *netdev = NULL;
@@ -71,13 +71,24 @@ ehip_netdev_t * ehip_netdev_find(char *netdev_name){
 }
 
 
-static int __init ehip_netdev_init(void){
-    eh_list_head_init(&s_netdev_head);
-    return 0;
+int ehip_netdev_up(ehip_netdev_t *netdev){
+    int ret;
+    ret = ehip_netdev_trait_up(netdev);
+    if(ret < 0) return ret;
+    if( netdev->param->ops && 
+        netdev->param->ops->ndo_up && 
+        (ret = netdev->param->ops->ndo_up(netdev)) < 0
+    ){
+        ehip_netdev_trait_down(netdev);
+        return ret;
+    }
+    eh_event_flags_set_bits(eh_signal_to_custom_event(&netdev->signal), EHIP_NETDEV_STATUS_UP);
+    return EH_RET_OK;
 }
 
-static void __exit ehip_netdev_exit(void){
-    eh_list_del_init(&s_netdev_head);
+void ehip_netdev_down(ehip_netdev_t *netdev){
+    if(netdev->param->ops && netdev->param->ops->ndo_down)
+        netdev->param->ops->ndo_down(netdev);
+    ehip_netdev_trait_down(netdev);
+    eh_event_flags_clear_bits(eh_signal_to_custom_event(&netdev->signal), EHIP_NETDEV_STATUS_UP);
 }
-
-ehip_preinit_module_export(ehip_netdev_init, ehip_netdev_exit);

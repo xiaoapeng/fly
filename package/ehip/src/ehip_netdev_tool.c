@@ -12,19 +12,6 @@
 #include <eh_error.h>
 #include <ehip_netdev_tool.h>
 
-int ehip_netdev_tool_up(ehip_netdev_t *netdev){
-    if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_up)
-        return netdev->param->ops->ndo_up(netdev);
-    return EH_RET_INVALID_PARAM;
-}
-
-int ehip_netdev_tool_down(ehip_netdev_t *netdev){
-    if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_down){
-        netdev->param->ops->ndo_down(netdev);
-        return 0;
-    }
-    return EH_RET_INVALID_PARAM;
-}
 
 int ehip_netdev_tool_ctrl(ehip_netdev_t *netdev, uint32_t ctrl, void *arg){
     if(netdev && netdev->param && netdev->param->ops && netdev->param->ops->ndo_ctrl)
