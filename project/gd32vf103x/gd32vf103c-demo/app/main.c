@@ -12,7 +12,7 @@
 extern int init(void);
 
 EH_DEFINE_STATIC_CUSTOM_SIGNAL(timer_1000ms_signal, 
-    eh_timer_event_t, 
+    eh_event_timer_t, 
     {}
 );
 

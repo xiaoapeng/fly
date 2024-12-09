@@ -36,7 +36,7 @@ int main(void)
 
 EH_DEFINE_STATIC_CUSTOM_SIGNAL(
 	signal_1000ms_timer, 
-	eh_timer_event_t, 
+	eh_event_timer_t, 
 	{}
 );
 

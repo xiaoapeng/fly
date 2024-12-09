@@ -36,12 +36,12 @@ void stdout_write(void *stream, const uint8_t *buf, size_t size){
     SEGGER_RTT_Write(0, buf, size);
 }
 
-EH_DEFINE_STATIC_CUSTOM_SIGNAL(timer_signal, eh_timer_event_t, EH_TIMER_INIT(timer_signal.custom_event));
+EH_DEFINE_STATIC_CUSTOM_SIGNAL(timer_signal, eh_event_timer_t, EH_TIMER_INIT(timer_signal.custom_event));
 
 #define TEST_CNT        500 
 int task_run(void *parameters){
     // float a = 0.0f;
-    eh_timer_event_t timer1;
+    eh_event_timer_t timer1;
     eh_timer_init(&timer1);
     eh_timer_config_interval(&timer1, eh_usec_to_clock(1000));
     eh_timer_set_attr(&timer1, EH_TIMER_ATTR_AUTO_CIRCULATION);
