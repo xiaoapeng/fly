@@ -17,6 +17,9 @@
 #include <eh_sleep.h>
 #include <eh_llist.h>
 #include <ehip_netdev_tool.h>
+#include <ehip_netdev_trait.h>
+#include <ehip-ipv4/ip.h>
+#include <ehip-ipv4/route.h>
 
 void mem_fill(void* mem, size_t size, char start){
     for(size_t i=0; i<size; i++){
@@ -195,10 +198,68 @@ int llist_test(void){
 }
 
 void eth_test(void){
+    struct route_info route_info;
     ehip_netdev_t * eth0_netdev;
+    struct ipv4_netdev* eth0_ipv4_netdev;
+    enum route_table_type route_table_type;
+    ipv4_addr_t  src_addr;
     eth0_netdev = ehip_netdev_tool_find("eth0");
     eh_infoln("eth0 netdev %p", eth0_netdev);
-    EH_DBG_ERROR_EXEC(ehip_netdev_tool_up(eth0_netdev) != 0, return);
+    EH_DBG_ERROR_EXEC( ehip_netdev_tool_up(eth0_netdev) != 0, return );
+    eth0_ipv4_netdev = ehip_netdev_trait_ipv4_dev(eth0_netdev);
+    EH_DBG_ERROR_EXEC( eth0_ipv4_netdev == NULL, return );
+    ipv4_netdev_set_main_addr(eth0_ipv4_netdev, ipv4_make_addr(192,168,12,88), 24);
+
+    /* 局域网路由 */
+    route_info.dst_addr = ipv4_make_addr(192,168,12,0);
+    route_info.gateway = ipv4_make_addr(0,0,0,0);
+    route_info.mask_len = 24;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(0,0,0,0);
+
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+    /* 外网路由 */
+    route_info.dst_addr = ipv4_make_addr(0,0,0,0);
+    route_info.gateway = ipv4_make_addr(192,168,12,6);
+    route_info.mask_len = 0;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(0,0,0,0);
+
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+    route_table_type = ipv4_route_lookup(ipv4_make_addr(192,168,12,8), &route_info);
+    src_addr = ipv4_route_best_src_ip(&route_info);
+    eh_infoln("route table type %d", route_table_type);
+    eh_infoln("route info dst %d.%d.%d.%d gateway %d.%d.%d.%d mask_len %d metric %d netdev %s src_addr %d.%d.%d.%d", 
+        ipv4_addr_to_dec0(route_info.dst_addr), ipv4_addr_to_dec1(route_info.dst_addr),
+        ipv4_addr_to_dec2(route_info.dst_addr), ipv4_addr_to_dec3(route_info.dst_addr),
+        ipv4_addr_to_dec0(route_info.gateway), ipv4_addr_to_dec1(route_info.gateway), 
+        ipv4_addr_to_dec2(route_info.gateway), ipv4_addr_to_dec3(route_info.gateway), 
+        route_info.mask_len, 
+        route_info.metric, route_info.netdev ? route_info.netdev->param->name : NULL,
+        ipv4_addr_to_dec0(src_addr), ipv4_addr_to_dec1(src_addr), 
+        ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
+    );
+
+    eh_infoln("\n");
+
+
+    route_table_type = ipv4_route_lookup(ipv4_make_addr(188,16,11,8), &route_info);
+    src_addr = ipv4_route_best_src_ip(&route_info);
+    eh_infoln("route table type %d", route_table_type);
+    eh_infoln("route info dst %d.%d.%d.%d gateway %d.%d.%d.%d mask_len %d metric %d netdev %s src_addr %d.%d.%d.%d", 
+        ipv4_addr_to_dec0(route_info.dst_addr), ipv4_addr_to_dec1(route_info.dst_addr),
+        ipv4_addr_to_dec2(route_info.dst_addr), ipv4_addr_to_dec3(route_info.dst_addr),
+        ipv4_addr_to_dec0(route_info.gateway), ipv4_addr_to_dec1(route_info.gateway), 
+        ipv4_addr_to_dec2(route_info.gateway), ipv4_addr_to_dec3(route_info.gateway), 
+        route_info.mask_len, 
+        route_info.metric, route_info.netdev ? route_info.netdev->param->name : NULL,
+        ipv4_addr_to_dec0(src_addr), ipv4_addr_to_dec1(src_addr), 
+        ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
+    );
 
 }
 
