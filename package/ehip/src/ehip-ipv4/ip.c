@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2024  simon.xiaoapeng@gmail.com
  * 
  */
+#include <eh_formatio.h>
 #include <eh_list.h>
 #include <eh_error.h>
 #include <ehip_netdev.h>
@@ -24,7 +25,7 @@ static uint8_t ipv4_addr_default_mask_len(ipv4_addr_t addr){
 }
 
 static int ipv4_netdev_addr_index(const struct ipv4_netdev* ipv4_dev, ipv4_addr_t addr){
-    for(int i = 0; 0 < ipv4_dev->ipv4_addr_num; i++){
+    for(int i = 0; i < ipv4_dev->ipv4_addr_num; i++){
         if(ipv4_dev->ipv4_addr[i] == addr)
             return i;
     }
@@ -53,7 +54,7 @@ ipv4_addr_t ipv4_netdev_get_best_ipv4_addr(const struct ipv4_netdev* ipv4_dev, i
 
 
 ipv4_addr_t ipv4_netdev_get_addr(const struct ipv4_netdev* ipv4_dev){
-    if(ipv4_dev->ipv4_addr_num)
+    if(ipv4_dev && ipv4_dev->ipv4_addr_num)
         return ipv4_dev->ipv4_addr[0];
     return IPV4_ADDR_ANY;
 }

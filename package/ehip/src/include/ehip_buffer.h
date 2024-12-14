@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "eh_types.h"
+#include <eh_types.h>
 #include <ehip_ptype.h>
 #include <ehip_buffer_type.h>
 
@@ -154,7 +154,7 @@ extern ehip_buffer_t* ehip_buffer_ref_dup(ehip_buffer_t* buf);
 extern uint8_t* ehip_buffer_payload_append(ehip_buffer_t* buf, ehip_buffer_size_t size);
 
 /**
- * @brief                   向缓冲区头部追加空间
+ * @brief                   向缓冲区头部追加数据
  * @param buf               缓冲句柄
  * @param size              需要追加的空间大小
  * @return uint8_t*         返回新头部的缓冲区头部指针，如果失败返回NULL

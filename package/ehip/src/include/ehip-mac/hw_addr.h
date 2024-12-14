@@ -11,7 +11,9 @@
 #define _HW_ADDR_H_
 
 #include <stdint.h>
-#include "eh_types.h"
+
+#include <eh_types.h>
+#include <ehip_conf.h>
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -23,6 +25,11 @@ extern "C"{
 struct ehip_general_hw_addr{
     uint8_t addr[EHIP_GENERAL_HW_ADDR_LEN];
 }eh_aligned(1);
+
+struct ehip_max_hw_addr{
+    uint8_t addr[EHIP_ETH_HWADDR_MAX_LEN];
+}eh_aligned(1);
+
 
 typedef void ehip_hw_addr_t;
 

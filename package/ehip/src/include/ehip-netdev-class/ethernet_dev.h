@@ -40,12 +40,10 @@ extern "C"{
 #define ETHERNET_CTRL_CMD_SET_MULTICAST_ADDR                0x00000003
 
 struct ethernet_trait{
-    uint16_t                                    hw_head_size;                  /* 一般是 14*/
-    uint16_t                                    hw_tail_size;                  /* 一般是 4 */
-    uint16_t                                    mtu;                           /* 一般是 1500 */
     ehip_eth_addr_t                             hw_addr;
     enum ehip_ptype                             mac_ptype;
     ehip_eth_addr_t                             multicast_hw_addr[ETH_MULTICAST_ADDR_NUM];
+    ehip_eth_addr_t                             broadcast_hw_addr;
     struct ipv4_netdev                          ipv4_netdev;
 };
 

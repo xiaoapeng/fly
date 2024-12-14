@@ -39,10 +39,17 @@
 #endif
 
 /**
- *  网卡RX 消息句柄数量，单次最多结束的数据包数量
+ *  网卡RX 消息句柄数量，单次最多接收的数据包数量
  */
-#ifndef EHIP_CORE_MBOX_NETDEV_MSG_BUFFER_NUM
-#define EHIP_CORE_MBOX_NETDEV_MSG_BUFFER_NUM                    16U
+#ifndef EHIP_CORE_MBOX_NETDEV_RX_MSG_BUFFER_NUM
+#define EHIP_CORE_MBOX_NETDEV_RX_MSG_BUFFER_NUM                 16U
+#endif
+
+/**
+ *  网卡TX 消息句柄数量，单次最多可发送的数据包数量
+ */
+#ifndef EHIP_CORE_MBOX_NETDEV_TX_MSG_BUFFER_NUM
+#define EHIP_CORE_MBOX_NETDEV_TX_MSG_BUFFER_NUM                 16U
 #endif
 
 /**
@@ -66,5 +73,23 @@
 #define ETH_MULTICAST_ADDR_NUM                                  16U
 #endif
 
+/* 网络设备数据发送看门狗超时时间 */
+#ifndef EHIP_NETDEV_TX_WATCHDOG_TIMEOUT
+#define EHIP_NETDEV_TX_WATCHDOG_TIMEOUT                         5000U
+#endif
+
+/* mac地址最大长度 */
+#ifndef EHIP_ETH_HWADDR_MAX_LEN
+#define EHIP_ETH_HWADDR_MAX_LEN                                 6U
+#endif
+
+/* arp缓存项最大数量 */
+#ifndef EHIP_ARP_CACHE_MAX_NUM
+#define EHIP_ARP_CACHE_MAX_NUM                                  16U
+#endif
+
+#ifndef EHIP_ARP_MAX_RETRY_CNT
+#define EHIP_ARP_MAX_RETRY_CNT                                  5U
+#endif
 
 #endif // _EHIP_CONF_H_

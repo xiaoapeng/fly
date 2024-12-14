@@ -17,6 +17,9 @@
 #include <stdint.h>
 #include <eh_types.h>
 #include <ehip_netdev_trait.h>
+#include <ehip_netdev.h>
+#include <ehip-mac/hw_addr.h>
+#include <ehip-ipv4/ip.h>
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
@@ -32,6 +35,19 @@ struct arp_hdr{
 }eh_aligned(sizeof(char));
 
 
+struct arp_entry{
+	uint16_t 					reachable_time_cd;
+	union{
+		uint16_t 					delay_probe_time_cd;
+		uint16_t					retry_cnt;
+	};
+	struct ehip_netdev			*netdev;
+	ipv4_addr_t					ip_addr;
+	struct ehip_max_hw_addr		hw_addr;
+	uint8_t						state;
+};
+
+
 /* ARP protocol opcodes. */
 #define	ARPOP_REQUEST	1		/* ARP request			*/
 #define	ARPOP_REPLY		2		/* ARP reply			*/
@@ -44,7 +60,7 @@ struct arp_hdr{
 
 static inline unsigned int arp_hdr_len(const ehip_netdev_t *dev)
 {
-	return sizeof(struct arp_hdr) + ((size_t)ehip_netdev_trait_hw_addr_len(dev) + sizeof(uint32_t)) * 2;
+	return sizeof(struct arp_hdr) + ((size_t)dev->attr.hw_addr_len + sizeof(uint32_t)) * 2;
 }
 
 #ifdef __cplusplus

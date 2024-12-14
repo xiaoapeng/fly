@@ -29,7 +29,7 @@ struct ehip_mbox_msg_base{
     struct eh_llist_node    node;
 };
 
-struct ehip_mbox_msg_netdev_rx{
+struct ehip_mbox_msg_rx{
     struct ehip_mbox_msg_base    base;
     ehip_buffer_t               *netdev_buffer;
 };

@@ -25,7 +25,7 @@ static void ethernet_v2_handle(struct ehip_buffer* buf){
     struct eth_hdr *hdr = (struct eth_hdr *)ehip_buffer_get_payload_ptr(buf);
     const ehip_eth_addr_t *if_mac = (const ehip_eth_addr_t *)ehip_netdev_trait_hw_addr(buf->netdev);
     ehip_buffer_size_t payload_size = ehip_buffer_get_payload_size(buf);
-    if(payload_size < sizeof(struct eth_hdr) || eh_ptr_to_error((void*)if_mac) < 0)
+    if(payload_size < sizeof(struct eth_hdr) || if_mac == NULL)
         goto drop;
     
     eh_debugfl("dst mac: %02x:%02x:%02x:%02x:%02x:%02x", hdr->dest.addr[0], hdr->dest.addr[1], hdr->dest.addr[2], hdr->dest.addr[3], hdr->dest.addr[4], hdr->dest.addr[5]);
