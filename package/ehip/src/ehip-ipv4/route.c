@@ -45,7 +45,7 @@ static void _ehip_ipv4_route_delete(struct route_table_entry *entry){
 static void netdev_status_change(eh_event_t *e, void *slot_param){
     (void)e;
     struct route_table_entry *entry = slot_param;
-    if(eh_event_flags_get(eh_signal_to_custom_event(&entry->route.netdev->signal)) & EHIP_NETDEV_STATUS_UP)
+    if(eh_event_flags_get(eh_signal_to_custom_event(&entry->route.netdev->signal_status)) & EHIP_NETDEV_STATUS_UP)
         return ;
     
     /* 删除此条路由 */
@@ -103,7 +103,7 @@ int ipv4_route_add(const struct route_info *route){
     eh_list_add_tail(&entry->node, &route_head);
     eh_signal_slot_init(&entry->slot_netdev_status_change, netdev_status_change, entry);
     /* 注册当网络状态 DOWN时删除改路由 */
-    eh_signal_slot_connect(&entry->route.netdev->signal, &entry->slot_netdev_status_change);
+    eh_signal_slot_connect(&entry->route.netdev->signal_status, &entry->slot_netdev_status_change);
     route_cnt ++;
     return 0;
 }
@@ -134,7 +134,7 @@ enum route_table_type ipv4_route_lookup(ipv4_addr_t dst_addr, struct route_info 
     if(ipv4_netdev_is_local_addr(dst_addr))
         return ROUTE_TABLE_LOCAL;
 
-    /* 如果设计了哈希表，先查哈希表，没有就遍历路由表 */
+    /* 如果设计了哈希表，先查哈希表，没有就遍历路由表 TODO */
 
     eh_list_for_each_entry(pos, &route_head, node){
         match_level_tmp = ehip_ipv4_route_entry_match_level(dst_addr, pos);
@@ -152,10 +152,42 @@ enum route_table_type ipv4_route_lookup(ipv4_addr_t dst_addr, struct route_info 
     return ROUTE_TABLE_UNICAST;
 }
 
+
+enum route_table_type ipv4_route_input(ipv4_addr_t src_addr, ipv4_addr_t dst_addr, 
+    ehip_netdev_t *netdev, struct route_info *route){
+    enum route_table_type ret = ROUTE_TABLE_UNREACHABLE;
+    struct ipv4_netdev *ipv4_dev;
+    
+    /* 检查源地址的合法性 */
+    if(ipv4_is_multicast(src_addr) || ipv4_is_zeronet(src_addr) || ipv4_is_linklocal_169(src_addr)){
+        ret = ROUTE_TABLE_UNREACHABLE;
+        goto out;
+    }
+
+    ipv4_dev = ehip_netdev_trait_ipv4_dev(netdev);
+    if(ipv4_dev == NULL){
+        ret = ROUTE_TABLE_UNREACHABLE;
+        goto out;
+    }
+
+    /* 
+     * 检查目的IP本接口是否拥有
+     */
+    if(ipv4_netdev_is_ipv4_addr_valid(ipv4_dev, dst_addr)){
+        ret = ROUTE_TABLE_LOCAL_SELF;
+        goto out;
+    }
+
+    if(route)
+        ret = ipv4_route_lookup(dst_addr, route);
+out:
+    return ret;
+}
+
 ipv4_addr_t ipv4_route_best_src_ip(const struct route_info *route){
     ipv4_addr_t src_ip;
     struct ipv4_netdev* ipv4_dev = ehip_netdev_trait_ipv4_dev(route->netdev);
-    if(eh_ptr_to_error(ipv4_dev) < 0)
+    if(ipv4_dev == NULL)
         return IPV4_ADDR_ANY;
     if(ipv4_netdev_is_ipv4_addr_valid(ipv4_dev, route->src_addr))
         return route->src_addr;
@@ -171,5 +203,12 @@ static int __init ehip_ipv4_route_init(void)
     return 0;
 }
 
-ehip_preinit_module_export(ehip_ipv4_route_init, NULL);
+static void __exit ehip_ipv4_route_exit(void)
+{
+    struct route_table_entry *pos, *n;
+    eh_list_for_each_entry_safe(pos, n, &route_head, node)
+        _ehip_ipv4_route_delete(pos);
+}
+
+ehip_preinit_module_export(ehip_ipv4_route_init, ehip_ipv4_route_exit);
 
