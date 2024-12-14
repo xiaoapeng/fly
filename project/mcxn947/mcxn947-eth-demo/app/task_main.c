@@ -117,6 +117,7 @@ void timer_slot_function(eh_event_t *e, void *slot_param){
     // static uint8_t sta = 0;
     // led_test_out_set_val(sta);
     // sta = !sta;
+    eh_infofl("run!!!");
 }
 
 int task_switch_test(void *parameters){
@@ -138,7 +139,7 @@ int task_main(void)
 
     eh_infofl("start! 1234");
     
-    eh_timer_advanced_init(eh_signal_to_custom_event(&timer_signal), (eh_sclock_t)eh_usec_to_clock(500), EH_TIMER_ATTR_AUTO_CIRCULATION);
+    eh_timer_advanced_init(eh_signal_to_custom_event(&timer_signal), (eh_sclock_t)eh_msec_to_clock(1000*5), EH_TIMER_ATTR_AUTO_CIRCULATION);
     
     eh_signal_register(&timer_signal);
     eh_signal_slot_connect(&timer_signal, &timer_slot);
@@ -149,7 +150,6 @@ int task_main(void)
     // eh_task_create("test_switch0", EH_TASK_FLAGS_DETACH, 1024, (void*)1, task_switch_test);
     // eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 1024, (void*)0, task_switch_test);
     while(1){
-        eh_infofl("run!!!");
         __await eh_usleep(1000*1000*10);
     }
     

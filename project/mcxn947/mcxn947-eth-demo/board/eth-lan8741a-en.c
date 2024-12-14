@@ -33,6 +33,7 @@
 #include <ehip-netdev-class/ethernet_dev.h>
 
 
+#include "eh_ringbuf.h"
 #include "fsl_common.h"
 #include "fsl_flash.h"
 #include "fsl_port.h"
@@ -84,6 +85,7 @@ static enet_tx_reclaim_info_t   s_tx_dirty[BOARD_ETH_ENET_TXBD_NUM];
 static enet_handle_t s_enet_handle;
 static ehip_netdev_t *s_lan8741a_en_netdev;
 static const struct ethernet_trait *s_lan8741a_en_trait;
+static eh_ringbuf_t *s_tx_event;
 
 EH_DEFINE_STATIC_CUSTOM_SIGNAL(signal_eth_event_flags, eh_event_flags_t, {});
 
@@ -263,6 +265,9 @@ static void ethernet_callback(ENET_Type *base,
     (void) userData;
     
     eh_event_flags_set_bits(eh_signal_to_custom_event(&signal_eth_event_flags), 1UL << event);
+    if(event == kENET_TxIntEvent && txReclaimInfo){
+        eh_ringbuf_write(s_tx_event, (uint8_t*)&txReclaimInfo->context, sizeof(txReclaimInfo->context));
+    }
 }
 
 
@@ -292,6 +297,8 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         if( !(reality_flags & (1UL << kENET_RxIntEvent)) )
             break;
         status = ENET_GetRxFrame(ENET0, &s_enet_handle, &rx_frame, 0);
+        if(status == kStatus_ENET_RxFrameEmpty)
+            break;
         if(status != kStatus_Success){
             eh_debugfl("status = %08x", status);
             break;
@@ -307,7 +314,9 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
                 if(rx_frame.rxBuffArray[i].buffer)
                     ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
             }
-            eh_warnfl("rx frame len = %d > BOARD_ETH_ENET_FRAME_MAX_FRAMELEN", rx_frame.totLen);
+            // eh_warnfl("rx frame len = %d", rx_frame.totLen);
+            // eh_warnfl("rx_frame.rxBuffArray[0].length = %d", rx_frame.rxBuffArray[0].length);
+            // eh_warnfl("protocol = %04x", protocol);
             break;
         }
 
@@ -321,9 +330,19 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         ehip_buf->netdev = s_lan8741a_en_netdev;
         ehip_buf->protocol = eth_hdr_ptype_get((struct eth_hdr *)rx_frame.rxBuffArray[0].buffer);
         ehip_rx(ehip_buf);
+    }while(true);
+
+    do{
+        if( !(reality_flags & (1UL << kENET_TxIntEvent)) )
+            break;
+        ehip_buffer_t *pos;
+
+        while(eh_ringbuf_read(s_tx_event, (uint8_t*)&pos, sizeof(&pos)) > 0){
+            ehip_buffer_free(pos);
+        }
+        ehip_queue_tx_wakeup(s_lan8741a_en_netdev);
     }while(0);
-    
-    
+
 }
 
 static void eth_phy_reset(void){
@@ -453,8 +472,35 @@ static int eth_lan8741aen_ctrl(ehip_netdev_t *netdev, uint32_t cmd, void *arg){
 
 static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
     (void)netdev;
-    (void)buf;
-    return EH_RET_BUSY;
+    status_t ret;
+    int retv;
+    enet_buffer_struct_t tx_buff;
+    enet_tx_frame_struct_t tx_frame = {
+        .txBuffArray = &tx_buff,
+        .txBuffNum = 1,
+        .txConfig.intEnable = 1,
+        .txConfig.tsEnable = 0,
+        .txConfig.slotNum = 0,
+        .context = buf,
+    };
+    tx_buff.buffer = ehip_buffer_get_payload_ptr(buf);
+    tx_buff.length = ehip_buffer_get_payload_size(buf);
+
+    
+    eh_infoln("tx frame len = %d", tx_buff.length);
+    eh_infoln("tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
+
+    ret = ENET_SendFrame(ENET0, &s_enet_handle, &tx_frame, 0);
+    if(ret == kStatus_Success){
+        return 0;
+    }else if(ret == kStatus_ENET_TxFrameBusy){
+        /* 返回BUSY会自动重传 */
+        retv = EH_RET_BUSY;
+    }else{
+        retv = EH_RET_INVALID_STATE;
+    }
+    ehip_buffer_free(buf);
+    return retv;
 }
 
 static void eth_lan8741aen_tx_timeout(ehip_netdev_t *netdev){
@@ -474,8 +520,7 @@ static const struct ehip_netdev_param netdev_lan8741a_en_param = {
     .name = "eth0",
     .net_max_frame_size = EHIP_ETH_FRAME_MAX_LEN,
     .ops = &netdev_lan8741a_en_ops,
-    .userdata = NULL,
-    .buffer_type = EHIP_BUFFER_TYPE_ETHERNET_FRAME,
+    .userdata = NULL
 };
 
 
@@ -496,11 +541,13 @@ static int __init eth_lan8741a_en_init(void){
     );
 
     s_lan8741a_en_trait = ehip_netdev_to_trait(netdev);
+    s_tx_event = eh_ringbuf_create(sizeof(void*) * BOARD_ETH_ENET_TXBD_NUM * 4, NULL);
 
     return 0;
 }
 
 static void __exit eth_lan8741a_en_exit(void){
+    eh_ringbuf_destroy(s_tx_event);
     ehip_netdev_unregister(s_lan8741a_en_netdev);
 }
 
