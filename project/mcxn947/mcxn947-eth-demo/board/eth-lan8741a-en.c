@@ -390,6 +390,7 @@ static int eth_phy_init_task(void* arg){
         eh_warnfl("phy_mdio_write fail ret = %d", ret);
         return -1;
     }
+    eh_infofl("lan8741a phy init success!!");
     return 0;
 }
 static int eth_phy_init(void){
@@ -486,9 +487,8 @@ static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
     tx_buff.buffer = ehip_buffer_get_payload_ptr(buf);
     tx_buff.length = ehip_buffer_get_payload_size(buf);
 
-    
-    eh_infoln("tx frame len = %d", tx_buff.length);
-    eh_infoln("tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
+    eh_debugfl("tx frame len = %d", tx_buff.length);
+    eh_debugfl("tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
 
     ret = ENET_SendFrame(ENET0, &s_enet_handle, &tx_frame, 0);
     if(ret == kStatus_Success){

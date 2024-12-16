@@ -16,10 +16,12 @@
 #include <eh_debug.h>
 #include <eh_sleep.h>
 #include <eh_llist.h>
+#include <eh_signal.h>
 #include <ehip_netdev_tool.h>
 #include <ehip_netdev_trait.h>
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/route.h>
+#include <ehip-ipv4/arp.h>
 
 void mem_fill(void* mem, size_t size, char start){
     for(size_t i=0; i<size; i++){
@@ -197,6 +199,39 @@ int llist_test(void){
     return 0;
 }
 
+
+void  slot_function_arp_table_changed(eh_event_t *e, void *slot_param){
+    (void)e;
+    (void)slot_param;
+    const struct arp_entry* atp_entry;
+    eh_infofl("arp table changed:");
+    for(int i=0; i<(int)EHIP_ARP_CACHE_MAX_NUM;i++){
+        atp_entry = arp_get_table_entry(i);
+        if(atp_entry->state >= ARP_STATE_NUD_STALE){
+            eh_infofl("ip: %d.%d.%d.%d mac: %.6hhq if: %s", 
+                ipv4_addr_to_dec0(atp_entry->ip_addr), ipv4_addr_to_dec1(atp_entry->ip_addr),
+                ipv4_addr_to_dec2(atp_entry->ip_addr), ipv4_addr_to_dec3(atp_entry->ip_addr),
+                &atp_entry->hw_addr, atp_entry->netdev->param->name);
+        }
+    }
+}
+
+EH_DEFINE_SLOT(slot_arp_table_changed, slot_function_arp_table_changed, NULL);
+
+void arp_test(void){
+    // ehip_netdev_t * eth0_netdev;
+    // eth0_netdev = ehip_netdev_tool_find("eth0");
+    // int old_idx_or_minus_or_out_idx = -1;
+    // int ret;
+
+    // eh_usleep(1000*1000*2);
+    // ret = arp_query(eth0_netdev, ipv4_make_addr(192,168,12,12), &old_idx_or_minus_or_out_idx);
+    // eh_infofl("ret = %d", ret);
+
+    eh_signal_slot_connect(&signal_arp_table_changed, &slot_arp_table_changed);
+}
+
+
 void eth_test(void){
     struct route_info route_info;
     ehip_netdev_t * eth0_netdev;
@@ -260,6 +295,8 @@ void eth_test(void){
         ipv4_addr_to_dec0(src_addr), ipv4_addr_to_dec1(src_addr), 
         ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
     );
+
+    arp_test();
 
 }
 
