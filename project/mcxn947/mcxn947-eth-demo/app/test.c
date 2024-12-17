@@ -23,6 +23,8 @@
 #include <ehip-ipv4/route.h>
 #include <ehip-ipv4/arp.h>
 
+#include "button.h"
+
 void mem_fill(void* mem, size_t size, char start){
     for(size_t i=0; i<size; i++){
         ((char *)mem)[i] = start++;
@@ -200,36 +202,64 @@ int llist_test(void){
 }
 
 
-void  slot_function_arp_table_changed(eh_event_t *e, void *slot_param){
+void  slot_function_arp_table_dump(eh_event_t *e, void *slot_param){
     (void)e;
     (void)slot_param;
-    const struct arp_entry* atp_entry;
-    eh_infofl("arp table changed:");
-    for(int i=0; i<(int)EHIP_ARP_CACHE_MAX_NUM;i++){
-        atp_entry = arp_get_table_entry(i);
-        if(atp_entry->state >= ARP_STATE_NUD_STALE){
-            eh_infofl("ip: %d.%d.%d.%d mac: %.6hhq if: %s", 
-                ipv4_addr_to_dec0(atp_entry->ip_addr), ipv4_addr_to_dec1(atp_entry->ip_addr),
-                ipv4_addr_to_dec2(atp_entry->ip_addr), ipv4_addr_to_dec3(atp_entry->ip_addr),
-                &atp_entry->hw_addr, atp_entry->netdev->param->name);
-        }
+    uint32_t sta = button_sw3_sta();
+    if(sta == 0 || e == &signal_arp_table_changed.event){
+        eh_infofl("arp table changed:");
+        arp_table_dump();
     }
 }
 
-EH_DEFINE_SLOT(slot_arp_table_changed, slot_function_arp_table_changed, NULL);
+EH_DEFINE_SLOT(slot_arp_table_changed, slot_function_arp_table_dump, NULL);
+EH_DEFINE_SLOT(slot_button_sw3, slot_function_arp_table_dump, NULL);
+
+
 
 void arp_test(void){
-    // ehip_netdev_t * eth0_netdev;
-    // eth0_netdev = ehip_netdev_tool_find("eth0");
-    // int old_idx_or_minus_or_out_idx = -1;
-    // int ret;
-
-    // eh_usleep(1000*1000*2);
-    // ret = arp_query(eth0_netdev, ipv4_make_addr(192,168,12,12), &old_idx_or_minus_or_out_idx);
-    // eh_infofl("ret = %d", ret);
+    ehip_netdev_t * eth0_netdev;
+    eth0_netdev = ehip_netdev_tool_find("eth0");
 
     eh_signal_slot_connect(&signal_arp_table_changed, &slot_arp_table_changed);
+    eh_signal_slot_connect(&button_sw3_signal, &slot_button_sw3);
+
+    eh_usleep(1000*1000*2);
+    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,12), -1);
+    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,6), -1);
+    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,1), -1);
+    
 }
+
+/* 
+arp 测试：
+sudo apt-get install arping
+
+sudo arping -S 192.168.12.50 192.168.12.88 -C 1
+sudo arping -S 192.168.12.51 192.168.12.88 -C 1
+sudo arping -S 192.168.12.52 192.168.12.88 -C 1
+sudo arping -S 192.168.12.53 192.168.12.88 -C 1
+sudo arping -S 192.168.12.54 192.168.12.88 -C 1
+sudo arping -S 192.168.12.55 192.168.12.88 -C 1
+sudo arping -S 192.168.12.56 192.168.12.88 -C 1
+sudo arping -S 192.168.12.57 192.168.12.88 -C 1
+sudo arping -S 192.168.12.58 192.168.12.88 -C 1
+sudo arping -S 192.168.12.59 192.168.12.88 -C 1
+sudo arping -S 192.168.12.60 192.168.12.88 -C 1
+sudo arping -S 192.168.12.61 192.168.12.88 -C 1
+sudo arping -S 192.168.12.62 192.168.12.88 -C 1
+sudo arping -S 192.168.12.63 192.168.12.88 -C 1
+sudo arping -S 192.168.12.64 192.168.12.88 -C 1
+sudo arping -S 192.168.12.65 192.168.12.88 -C 1
+
+
+sudo arping -S 192.168.12.72 192.168.12.88 -C 1
+sudo arping -S 192.168.12.73 192.168.12.88 -C 1
+sudo arping -S 192.168.12.74 192.168.12.88 -C 1
+sudo arping -S 192.168.12.75 192.168.12.88 -C 1
+
+*/
+
 
 
 void eth_test(void){
