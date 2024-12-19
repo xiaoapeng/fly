@@ -8,6 +8,8 @@
  * 
  */
 
+#include <stdint.h>
+
 #include <eh.h>
 #include <eh_swab.h>
 #include <eh_module.h>
@@ -22,6 +24,7 @@
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/route.h>
 #include <ehip-ipv4/arp.h>
+#include <ehip_chksum.h>
 
 #include "button.h"
 
@@ -326,7 +329,34 @@ void eth_test(void){
         ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
     );
 
+    union{
+        uint8_t addr;
+        struct{
+            uint8_t	ihl:4,
+		    version:4;
+        };
+    }rr = {0};
+    rr.version = 0x4;
+    eh_infoln("rr.addr %02x rr.ihl %02x rr.version %02x", rr.addr, rr.ihl, rr.version);
     arp_test();
+    
+    char buf0[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
+    char buf1[17] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
+    char buf2[18] = {0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
+    char buf3[19] = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
+    uint16_t sum;
+    
+    sum = ehip_standard_chksum(buf0, 16);
+    eh_debugln("buf0 sum %04hx", sum);
+
+    sum = ehip_standard_chksum(buf1+1, 16);
+    eh_debugln("buf1 sum %04hx", sum);
+
+    sum = ehip_standard_chksum(buf2+2, 16);
+    eh_debugln("buf2 sum %04hx", sum);
+
+    sum = ehip_standard_chksum(buf3+3, 16);
+    eh_debugln("buf3 sum %04hx", sum);
 
 }
 
