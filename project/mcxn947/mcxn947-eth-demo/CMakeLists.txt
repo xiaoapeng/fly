@@ -15,6 +15,12 @@ target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/app/inc
 target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
+target_compile_definitions(ehip PRIVATE 
+    "-DEHIP_ARP_DEBUG=0"
+    "-DEHIP_IP_DEBUG=1"
+    "-DEHIP_ETHERNET_V2_DEBUG=1"
+)
+
 target_compile_options(segger-rtt PRIVATE 
     "-DBUFFER_SIZE_UP=4096"
 )
