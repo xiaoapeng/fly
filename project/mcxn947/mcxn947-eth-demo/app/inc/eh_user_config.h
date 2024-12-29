@@ -38,11 +38,6 @@ extern uint32_t SystemCoreClock;
  */
 #define EH_CONFIG_STDOUT_MEM_CACHE_SIZE                          (32U)
 
-/**
- *  配置系统默认的BUG等级
- */
-#define EH_CONFIG_DEFAULT_DEBUG_LEVEL                            EH_DBG_DEBUG
-
 /** 
  *  DEBUG时的回车符号，当未定义时会根据系统类型自动判断
  */

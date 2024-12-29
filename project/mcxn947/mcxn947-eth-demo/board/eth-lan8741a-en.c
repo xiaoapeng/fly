@@ -301,7 +301,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             break;
         if(status != kStatus_Success){
             eh_debugfl("status = %08x", status);
-            break;
+            continue;
         }
         // eh_infoln("rx frame len = %d", rx_frame.totLen);
         // eh_infoln("rx data :|%.*hhq|", (int)rx_frame.rxBuffArray[0].length, rx_frame.rxBuffArray[0].buffer);
@@ -317,14 +317,14 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             // eh_warnfl("rx frame len = %d", rx_frame.totLen);
             // eh_warnfl("rx_frame.rxBuffArray[0].length = %d", rx_frame.rxBuffArray[0].length);
             // eh_warnfl("protocol = %04x", protocol);
-            break;
+            continue;
         }
 
         ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
         if(eh_ptr_to_error(ehip_buf) < 0){
             eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
             ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
-            break;
+            continue;
         }
         ehip_buffer_payload_append(ehip_buf, rx_frame.rxBuffArray[0].length);
         ehip_buf->netdev = s_lan8741a_en_netdev;
