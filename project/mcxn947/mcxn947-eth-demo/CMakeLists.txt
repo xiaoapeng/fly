@@ -17,11 +17,11 @@ target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
 
 target_compile_definitions(eventhub PUBLIC
-    #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
-    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
+    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
 )
 
-target_compile_definitions(ehip PRIVATE
+target_compile_definitions(ehip PUBLIC
     "-DEHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_NUM=28" 
     "-DEHIP_ARP_DEBUG=0"
     "-DEHIP_IP_DEBUG=1"
@@ -59,6 +59,7 @@ target_sources(mcxn947_eth_demo_app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/ip_message_test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"

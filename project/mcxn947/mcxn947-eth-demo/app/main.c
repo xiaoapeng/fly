@@ -8,14 +8,17 @@
  * 
  */
 
-#include <eh_mem.h>
-#include "fsl_clock.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+
+#include <eh_mem.h>
 #include <eh.h>
 #include <eh_debug.h>
 #include <eh_co.h>
+
+#include "fsl_clock.h"
 #include "autoconf.h"
 extern void init(void);
 
