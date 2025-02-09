@@ -18,6 +18,7 @@ target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
 target_compile_definitions(eventhub PUBLIC
     "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    "-DMEM_POOL_DEBUG=0"
     #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
 )
 

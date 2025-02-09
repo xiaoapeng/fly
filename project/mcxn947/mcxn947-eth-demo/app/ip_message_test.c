@@ -8,10 +8,13 @@
  * 
  */
 
+
 #include <eh.h>
 #include <eh_swab.h>
 #include <eh_module.h>
 #include <eh_debug.h>
+#include <eh_mem_pool.h>
+#include <eh_sleep.h>
 #include <ehip_buffer.h>
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/ip_message.h>
@@ -77,20 +80,131 @@ static int  ip_message_test_task(void *arg){
     struct ip_message* ip_message;
     ehip_buffer_t *pos_buffer;
     int int_tmp_i, int_tmp_sort_i;
-    eh_debugfl("ip_message_test_task");
+    uint8_t *out_data;
+    ehip_buffer_size_t total_size = 0;
+    int ret;
 
-    ip_message = ip_message_test_create_multi_part_rx_ip_message(4000, 500);
-    if(ip_message == NULL){
-        eh_errfl("ip_message_test_create_multi_part_rx_ip_message fail");
-        return -1;
+    {
+        uint8_t buffer[128];
+        eh_debugfl("########### ip_message_test_task 1 start!!!! ########### ");
+        ip_message = ip_message_test_create_multi_part_rx_ip_message(4000, 512+20);
+        if(ip_message == NULL){
+            eh_errfl("ip_message_test_create_multi_part_rx_ip_message fail");
+            return -1;
+        }
+
+        ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
+            eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+                ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
+        }
+        eh_usleep(1000 * 200);
+
+        while(1){
+
+            ret = ip_message_peek(ip_message, &out_data, (ehip_buffer_size_t)sizeof(buffer), buffer);
+            if(ret < 0){
+                eh_errfl("ip_message_peek fail ret = %d", ret);
+                break;
+            }
+            if(ret == 0)
+                break;
+            eh_debugfl("read %d %0#p |%0.*hhq|", ret, out_data, ret, out_data);
+
+            ret = ip_message_rx_read(ip_message, &out_data, (ehip_buffer_size_t)sizeof(buffer), buffer);
+            if(ret < 0){
+                eh_errfl("ip_message_rx_read fail ret = %d", ret);
+                break;
+            }
+            if(ret == 0)
+                break;
+            eh_debugfl("read %d %0#p |%0.*hhq|", ret, out_data, ret, out_data);
+            total_size += (ehip_buffer_size_t)ret;
+
+            eh_usleep(1000 * 300);
+        }
+
+        eh_debugfl("$$$$$ total_size = %d $$$$$ ", total_size);
+
+        ip_message_free(ip_message);
+        eh_debugfl("###########  ip_message_test_task 1 end!!!!  ########### ");
     }
+    
+    // {
+        
+    //     static uint8_t buffer[4000];
 
-    ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
-        eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
-            ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
-    }
+    //     eh_debugfl("########### ip_message_test_task 2 start!!!! ########### ");
+    //     ip_message = ip_message_test_create_multi_part_rx_ip_message(4000, 512+20);
+    //     if(ip_message == NULL){
+    //         eh_errfl("ip_message_test_create_multi_part_rx_ip_message fail");
+    //         return -1;
+    //     }
+    //     ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
+    //         eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+    //             ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
+    //     }
+    //     eh_usleep(1000 * 200);
 
-    ip_message_free(ip_message);
+    //     do{
+    //         ret = ip_message_peek(ip_message, &out_data, (ehip_buffer_size_t)sizeof(buffer), buffer);
+    //         if(ret < 0){
+    //             eh_errfl("ip_message_peek fail ret = %d", ret);
+    //             break;
+    //         }
+    //         if(ret == 0)
+    //             break;
+    //         eh_debugfl("read %d %0#p |%0.*hhq|", ret, out_data, ret, out_data);
+    //     }while(0);
+
+    //     ip_message_free(ip_message);
+    //     eh_debugfl("###########  ip_message_test_task 2 end!!!!  ########### ");
+    // }
+    
+    // {
+        
+    //     static uint8_t buffer[256+128];
+
+    //     eh_debugfl("########### ip_message_test_task 3 start!!!! ########### ");
+    //     ip_message = ip_message_test_create_multi_part_rx_ip_message(4000, 512+20);
+    //     if(ip_message == NULL){
+    //         eh_errfl("ip_message_test_create_multi_part_rx_ip_message fail");
+    //         return -1;
+    //     }
+    //     ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
+    //         eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+    //             ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
+    //     }
+    //     eh_usleep(1000 * 200);
+
+        
+    //     while(1){
+
+    //         ret = ip_message_peek(ip_message, &out_data, (ehip_buffer_size_t)sizeof(buffer), buffer);
+    //         if(ret < 0){
+    //             eh_errfl("ip_message_peek fail ret = %d", ret);
+    //             break;
+    //         }
+    //         if(ret == 0)
+    //             break;
+    //         eh_debugfl("read %d %0#p |%0.*hhq|", ret, out_data, ret, out_data);
+
+    //         ret = ip_message_rx_read(ip_message, &out_data, (ehip_buffer_size_t)sizeof(buffer), buffer);
+    //         if(ret < 0){
+    //             eh_errfl("ip_message_rx_read fail ret = %d", ret);
+    //             break;
+    //         }
+    //         if(ret == 0)
+    //             break;
+    //         eh_debugfl("read %d %0#p |%0.*hhq|", ret, out_data, ret, out_data);
+    //         total_size += (ehip_buffer_size_t)ret;
+
+    //         eh_usleep(1000 * 300);
+    //     }
+
+    //     ip_message_free(ip_message);
+    //     eh_debugfl("###########  ip_message_test_task 3 end!!!!  ########### ");
+    // }
+
     return 0;
 }
 
