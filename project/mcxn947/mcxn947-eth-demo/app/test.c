@@ -221,16 +221,16 @@ EH_DEFINE_SLOT(slot_button_sw3, slot_function_arp_table_dump, NULL);
 
 
 void arp_test(void){
-    ehip_netdev_t * eth0_netdev;
-    eth0_netdev = ehip_netdev_tool_find("eth0");
+    // ehip_netdev_t * eth0_netdev;
+    // eth0_netdev = ehip_netdev_tool_find("eth0");
 
     eh_signal_slot_connect(&signal_arp_table_changed, &slot_arp_table_changed);
     eh_signal_slot_connect(&button_sw3_signal, &slot_button_sw3);
 
-    eh_usleep(1000*1000*2);
-    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,12), -1);
-    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,6), -1);
-    arp_query(eth0_netdev, ipv4_make_addr(192,168,12,1), -1);
+    // eh_usleep(1000*1000*2);
+    // arp_query(eth0_netdev, ipv4_make_addr(192,168,12,12), -1);
+    // arp_query(eth0_netdev, ipv4_make_addr(192,168,12,6), -1);
+    // arp_query(eth0_netdev, ipv4_make_addr(192,168,12,1), -1);
     
 }
 
@@ -346,16 +346,16 @@ void eth_test(void){
     char buf3[19] = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
     uint16_t sum;
     
-    sum = ehip_standard_chksum(buf0, 16);
+    sum = ehip_standard_chksum(0x00, buf0, 16);
     eh_debugln("buf0 sum %04hx", sum);
 
-    sum = ehip_standard_chksum(buf1+1, 16);
+    sum = ehip_standard_chksum(0x00, buf1+1, 16);
     eh_debugln("buf1 sum %04hx", sum);
 
-    sum = ehip_standard_chksum(buf2+2, 16);
+    sum = ehip_standard_chksum(0x00, buf2+2, 16);
     eh_debugln("buf2 sum %04hx", sum);
 
-    sum = ehip_standard_chksum(buf3+3, 16);
+    sum = ehip_standard_chksum(0x00, buf3+3, 16);
     eh_debugln("buf3 sum %04hx", sum);
 
 }

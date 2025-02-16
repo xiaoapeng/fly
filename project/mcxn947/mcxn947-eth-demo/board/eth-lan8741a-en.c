@@ -290,7 +290,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
     enum ehip_ptype             protocol;
     ret = eh_event_flags_wait_bits_set(ef, BOARD_ETH_EVENT_FLAGS_MASK, BOARD_ETH_EVENT_FLAGS_MASK, &reality_flags, 0);
     if(ret < 0){
-        eh_warnfl("eh_event_flags_wait fail ret = %d");
+        eh_warnfl("eh_event_flags_wait fail ret = %d", ret);
         return ;
     }
     do{
@@ -541,7 +541,7 @@ static int __init eth_lan8741a_en_init(void){
     );
 
     s_lan8741a_en_trait = ehip_netdev_to_trait(netdev);
-    s_tx_event = eh_ringbuf_create(sizeof(void*) * BOARD_ETH_ENET_TXBD_NUM * 4, NULL);
+    s_tx_event = eh_ringbuf_create(sizeof(void*) * BOARD_ETH_ENET_TXBD_NUM * 8, NULL);
 
     return 0;
 }

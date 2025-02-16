@@ -39,7 +39,7 @@ static struct ip_message* ip_message_test_create_multi_part_rx_ip_message(uint32
     while(end-offset > 0){
         fragment_size = end - offset > max_fragment_size ? max_fragment_size : (ehip_buffer_size_t)(end - offset);
         buffer = ehip_buffer_new(EHIP_BUFFER_TYPE_ETHERNET_FRAME, 0);
-        if(buffer == NULL){
+        if(eh_ptr_to_error(buffer)){
             eh_errfl("ehip_buffer_new fail");
             goto error;
         }
