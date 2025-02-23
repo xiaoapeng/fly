@@ -49,19 +49,30 @@ void tick_init(void){
 
 
 int main(void){
-
+    uint32_t last_time = 0;
     /* 开总中断 */
     __enable_irq();
 
     printf("SystemCoreClock:%lu\r\n", SystemCoreClock);
-    // SystemInit();
     
     printf_app_info();
     tick_init();
 
+    /* LED PB4 一秒闪烁一次 */
+    rcu_periph_clock_enable(RCU_GPIOB);
+    gpio_mode_set(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_4);
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_4);
 
+
+
+    last_time = tick_get();
     while(1){
-         printf("hello world %lu\r\n", tick_get());
+        if(tick_get() - last_time > 1000){
+            last_time += 1000;
+            /* 一秒打印一次 hello workd!! 并闪烁LED灯 */
+            printf("hello world!!! \r\n");
+            gpio_bit_toggle(GPIOB, GPIO_PIN_4);
+        }
     }
     return 0;
 }
