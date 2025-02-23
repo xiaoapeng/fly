@@ -1,0 +1,25 @@
+
+
+choice
+    prompt "Select a gd32e23x platform project"
+    default PROJECT_GD32E23X_NONE
+    depends on ARCH_GD32E23X
+
+config PROJECT_GD32E23X_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_GD32E230_DEMO
+    bool "GD32E230 demo project"
+    help
+        Select this option to enable Module GD32E230 DEMO.
+    select PACKAGE_SEGGER_RTT
+    
+endchoice
+
+
+config PROJECT
+    string
+    default "gd32e23x/gd32e230-demo" if PROJECT_GD32E230_DEMO
+

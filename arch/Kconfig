@@ -13,6 +13,16 @@ choice
         help
             Select this option if you are targeting gd32f10x architecture.
 
+    config ARCH_GD32E23X
+        bool "gd32e23x"
+        help
+            Select this option if you are targeting gd32e23x architecture.
+    
+    config ARCH_GD32VF103X
+        bool "gd32vf103x"
+        help
+            Select this option if you are targeting gd32vf103x architecture.
+
     config ARCH_STM32F0XX
         bool "stm32f0xx"
         help
@@ -37,11 +47,7 @@ choice
         bool "ch58x"
         help
             Select this option if you are targeting ch58x architecture.
-
-    config ARCH_GD32VF103X
-        bool "gd32vf103x"
-        help
-            Select this option if you are targeting gd32vf103x architecture.
+    
 
 endchoice
 
@@ -49,10 +55,11 @@ config ARCH
     string
     default "mcxn947"                   if ARCH_MCXN947
     default "gd32/arm/gd32f10x"         if ARCH_GD32F10X
+    default "gd32/arm/gd32e23x"         if ARCH_GD32E23X
+    default "gd32/risc-v/gd32vf103"     if ARCH_GD32VF103X
     default "stm32/stm32f0xx"           if ARCH_STM32F0XX
     default "stm32/stm32f1xx"           if ARCH_STM32F1XX
     default "stm32/stm32f4xx"           if ARCH_STM32F4XX
     default "stm32/stm32h7xx"           if ARCH_STM32H7XX
     default "ch58x"                     if ARCH_CH58X
-    default "gd32/risc-v/gd32vf103"     if ARCH_GD32VF103X
     

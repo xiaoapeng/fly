@@ -9,11 +9,12 @@ rsource "common/Kconfig"
 if !COMMON_PROJECT_SET
 rsource "mcxn947/Kconfig"
 rsource "gd32f10x/Kconfig"
+rsource "gd32e23x/Kconfig"
+rsource "gd32vf103x/Kconfig"
 rsource "stm32f0xx/Kconfig"
 rsource "stm32f1xx/Kconfig"
 rsource "stm32f4xx/Kconfig"
 rsource "stm32h7xx/Kconfig"
 rsource "ch58x/Kconfig"
-rsource "gd32vf103x/Kconfig"
 
 endif
