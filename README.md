@@ -64,7 +64,7 @@ cd fly
 
 |平台|交叉编译器前缀|下载链接|
 | --- | --- | --- |
-|stm32fx<br>gd32fx<br>mcxn947|arm-none-eabi|[下载](https://developer.arm.com/downloads/-/gnu-rm)|
+|stm32fx<br>gd32fx<br>mcxn947<br>gd32e23x|arm-none-eabi|[下载](https://developer.arm.com/downloads/-/gnu-rm)|
 |ch58x|riscv-none-elf|[下载](http://www.mounriver.com/download/)|
 |gd32vfx|riscv-none-embed|[下载](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/tag/v10.2.0-1.2)|
 
