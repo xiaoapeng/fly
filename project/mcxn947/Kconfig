@@ -23,6 +23,7 @@ config PROJECT_MCXN947_ETH_DEMO
         Select this option to enable Module MCXN947 eth DEMO.
     select PACKAGE_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
+    select PACKAGE_EHIP
 
 endchoice
 
