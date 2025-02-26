@@ -209,7 +209,7 @@ static int  ip_message_test_task(void *arg){
 }
 
 static int __init ip_message_test_init(void){
-    eh_infoln("test init");
+    eh_infofl("test init");
     eh_task_create("ip_message_test_task", EH_TASK_FLAGS_DETACH, 4096, NULL, ip_message_test_task);
     return 0;
 }

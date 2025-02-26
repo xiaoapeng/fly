@@ -152,7 +152,7 @@ void swab_test(void){
 
 int llist_test(void){
     struct eh_llist_head head = EH_LLIST_HEAD_INIT(head);
-    struct eh_llist_node *pos, *n, *prev;
+    struct eh_llist_node *pos, *next, *prev;
     struct test_node{
         struct eh_llist_node node;
         int data;
@@ -163,22 +163,24 @@ int llist_test(void){
         eh_llist_add(&test_data[i].node, &head);
     }
 
-    prev = (struct eh_llist_node *)&head;
-    eh_llist_for_each_safe(pos, n, head.first){
-        eh_llist_del(prev, pos);
+    eh_llist_for_each_safe(prev, pos, next, &head){
+        eh_infofl("del :%d", eh_llist_entry(pos, struct test_node, node)->data);
+        eh_llist_del_node_in_for_each_safe(&head, prev, next);
     }
+    eh_infofl("del finish!!");
 
     if(eh_llist_empty(&head)){
         eh_infoln("llist empty");
     }
 
+    eh_infofl("debug!");
     for(int i=0;i<30;i++){
         test_data[i].data = i;
         eh_llist_push(&test_data[i].node, &head);
     }
-    eh_debugfl("debug!");
+    eh_infofl("debug!");
     while((pos = eh_llist_pop(&head))){
-        eh_debugln("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
+        eh_infofl("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
     }
 
 
@@ -188,7 +190,7 @@ int llist_test(void){
     }
 
     while((pos = eh_llist_dequeue(&head))){
-        eh_debugln("queue data %d", eh_llist_entry(pos, struct test_node, node)->data);
+        eh_infofl("queue data %d", eh_llist_entry(pos, struct test_node, node)->data);
     }
     
     
@@ -198,7 +200,7 @@ int llist_test(void){
     }
 
     while((pos = eh_llist_pop(&head))){
-        eh_debugln("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
+        eh_infofl("stack data %d", eh_llist_entry(pos, struct test_node, node)->data);
     }
 
     return 0;
@@ -370,7 +372,7 @@ static int task_task(void *arg){
 
 
 static int __init test_init(void){
-    eh_infoln("test init");
+    eh_infofl("test init");
     eh_task_create("test", EH_TASK_FLAGS_DETACH, 4096, NULL, task_task);
     return 0;
 }
