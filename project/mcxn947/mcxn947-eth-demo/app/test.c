@@ -272,13 +272,16 @@ void eth_test(void){
     ehip_netdev_t * eth0_netdev;
     struct ipv4_netdev* eth0_ipv4_netdev;
     enum route_table_type route_table_type;
-    ipv4_addr_t  src_addr;
+    ipv4_addr_t  best_src_addr;
     eth0_netdev = ehip_netdev_tool_find("eth0");
     eh_infoln("eth0 netdev %p", eth0_netdev);
     EH_DBG_ERROR_EXEC( ehip_netdev_tool_up(eth0_netdev) != 0, return );
     eth0_ipv4_netdev = ehip_netdev_trait_ipv4_dev(eth0_netdev);
     EH_DBG_ERROR_EXEC( eth0_ipv4_netdev == NULL, return );
     ipv4_netdev_set_main_addr(eth0_ipv4_netdev, ipv4_make_addr(192,168,12,88), 24);
+    ipv4_netdev_set_sub_addr(eth0_ipv4_netdev, ipv4_make_addr(192,168,11,88), 24);
+    ipv4_netdev_set_sub_addr(eth0_ipv4_netdev, ipv4_make_addr(192,168,11,89), 24);
+    ipv4_netdev_set_sub_addr(eth0_ipv4_netdev, ipv4_make_addr(192,168,9,88), 24);
 
     /* 局域网路由 */
     route_info.dst_addr = ipv4_make_addr(192,168,12,0);
@@ -287,7 +290,32 @@ void eth_test(void){
     route_info.metric = 200;
     route_info.netdev = eth0_netdev;
     route_info.src_addr = ipv4_make_addr(0,0,0,0);
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
 
+    
+    route_info.dst_addr = ipv4_make_addr(192,168,11,0);
+    route_info.gateway = ipv4_make_addr(0,0,0,0);
+    route_info.mask_len = 24;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(0,0,0,0);
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+    // route_info.dst_addr = ipv4_make_addr(192,168,10,0);
+    // route_info.gateway = ipv4_make_addr(0,0,0,0);
+    // route_info.mask_len = 24;
+    // route_info.metric = 200;
+    // route_info.netdev = eth0_netdev;
+    // route_info.src_addr = ipv4_make_addr(0,0,0,0);
+    // EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+    
+    route_info.dst_addr = ipv4_make_addr(192,168,9,0);
+    route_info.gateway = ipv4_make_addr(0,0,0,0);
+    route_info.mask_len = 24;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(0,0,0,0);
     EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
 
     /* 外网路由 */
@@ -300,36 +328,130 @@ void eth_test(void){
 
     EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
 
-    route_table_type = ipv4_route_lookup(ipv4_make_addr(192,168,12,8), &route_info);
-    src_addr = ipv4_route_best_src_ip(&route_info);
-    eh_infoln("route table type %d", route_table_type);
-    eh_infoln("route info dst %d.%d.%d.%d gateway %d.%d.%d.%d mask_len %d metric %d netdev %s src_addr %d.%d.%d.%d", 
-        ipv4_addr_to_dec0(route_info.dst_addr), ipv4_addr_to_dec1(route_info.dst_addr),
-        ipv4_addr_to_dec2(route_info.dst_addr), ipv4_addr_to_dec3(route_info.dst_addr),
-        ipv4_addr_to_dec0(route_info.gateway), ipv4_addr_to_dec1(route_info.gateway), 
-        ipv4_addr_to_dec2(route_info.gateway), ipv4_addr_to_dec3(route_info.gateway), 
-        route_info.mask_len, 
-        route_info.metric, route_info.netdev ? route_info.netdev->param->name : NULL,
-        ipv4_addr_to_dec0(src_addr), ipv4_addr_to_dec1(src_addr), 
-        ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
-    );
+    /* 特定的外网路由 */
+    route_info.dst_addr = ipv4_make_addr(172,16,0,0);
+    route_info.gateway = ipv4_make_addr(192,168,11,6);
+    route_info.mask_len = 16;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(192,168,11,89);
 
-    eh_infoln("\n");
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
 
 
-    route_table_type = ipv4_route_lookup(ipv4_make_addr(188,16,11,8), &route_info);
-    src_addr = ipv4_route_best_src_ip(&route_info);
-    eh_infoln("route table type %d", route_table_type);
-    eh_infoln("route info dst %d.%d.%d.%d gateway %d.%d.%d.%d mask_len %d metric %d netdev %s src_addr %d.%d.%d.%d", 
-        ipv4_addr_to_dec0(route_info.dst_addr), ipv4_addr_to_dec1(route_info.dst_addr),
-        ipv4_addr_to_dec2(route_info.dst_addr), ipv4_addr_to_dec3(route_info.dst_addr),
-        ipv4_addr_to_dec0(route_info.gateway), ipv4_addr_to_dec1(route_info.gateway), 
-        ipv4_addr_to_dec2(route_info.gateway), ipv4_addr_to_dec3(route_info.gateway), 
-        route_info.mask_len, 
-        route_info.metric, route_info.netdev ? route_info.netdev->param->name : NULL,
-        ipv4_addr_to_dec0(src_addr), ipv4_addr_to_dec1(src_addr), 
-        ipv4_addr_to_dec2(src_addr), ipv4_addr_to_dec3(src_addr)
-    );
+    /* 特定的内网路由 */
+    route_info.dst_addr = ipv4_make_addr(192,168,11,3);
+    route_info.gateway = ipv4_make_addr(0,0,0,0);
+    route_info.mask_len = 32;
+    route_info.metric = 200;
+    route_info.netdev = eth0_netdev;
+    route_info.src_addr = ipv4_make_addr(192,168,11,89);
+
+    EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+    {
+        unsigned int i=0;
+        struct {
+            ipv4_addr_t         dts_addr;
+            ehip_netdev_t       *netdev;
+        }test_dts_addr[] = {
+            {
+                ipv4_make_addr(192, 168,  12,   8),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,  11,   8),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,   9,   8),
+                NULL
+            },{
+                ipv4_make_addr(134, 50 ,   8,  23),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,  12, 255),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,  11, 255),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,   9, 255),
+                NULL
+            },{
+                ipv4_make_addr(255, 255, 255, 255),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,  12,  88),
+                NULL
+            },{
+                ipv4_make_addr(192, 168,  11,  88),
+                NULL
+            },{
+                ipv4_make_addr(224, 0,  0,  1),
+                NULL
+            },{
+                ipv4_make_addr(239, 0,  0,  1),
+                NULL
+            },{
+                ipv4_make_addr(172,16,0,1),
+                NULL
+            },{
+                ipv4_make_addr(192,168,11,3),
+                NULL
+            },{
+                ipv4_make_addr(255, 255, 255, 255),
+                eth0_netdev
+            },{
+                ipv4_make_addr(192, 168,  12,  88),
+                eth0_netdev
+            },{
+                ipv4_make_addr(192, 168,  11,  88),
+                eth0_netdev
+            },{
+                ipv4_make_addr(224, 0,  0,  1),
+                eth0_netdev
+            },{
+                ipv4_make_addr(239, 0,  0,  1),
+                eth0_netdev
+            },{
+                ipv4_make_addr(172,16,0,1),
+                eth0_netdev
+            },{
+                ipv4_make_addr(192,168,11,3),
+                eth0_netdev
+            },
+        };
+
+        for(i=0; i < sizeof(test_dts_addr)/sizeof(test_dts_addr[0]); i++){
+            route_table_type = ipv4_route_lookup(test_dts_addr[i].dts_addr, test_dts_addr[i].netdev, &route_info, &best_src_addr);
+            if(route_table_type == ROUTE_TABLE_UNREACHABLE){
+                eh_infoln("route info dst %d.%d.%d.%d unreachable", 
+                    ipv4_addr_to_dec0(test_dts_addr[i].dts_addr), ipv4_addr_to_dec1(test_dts_addr[i].dts_addr),
+                    ipv4_addr_to_dec2(test_dts_addr[i].dts_addr), ipv4_addr_to_dec3(test_dts_addr[i].dts_addr)
+                );
+                continue;
+            }
+
+            eh_infoln("route info dst %d.%d.%d.%d gateway %d.%d.%d.%d mask_len %d metric %d netdev %s src_addr %d.%d.%d.%d best_src_addr %d.%d.%d.%d type %s", 
+                ipv4_addr_to_dec0(route_info.dst_addr), ipv4_addr_to_dec1(route_info.dst_addr),
+                ipv4_addr_to_dec2(route_info.dst_addr), ipv4_addr_to_dec3(route_info.dst_addr),
+                ipv4_addr_to_dec0(route_info.gateway), ipv4_addr_to_dec1(route_info.gateway),
+                ipv4_addr_to_dec2(route_info.gateway), ipv4_addr_to_dec3(route_info.gateway),
+                route_info.mask_len,
+                route_info.metric, route_info.netdev ? route_info.netdev->param->name : NULL,
+                ipv4_addr_to_dec0(route_info.src_addr), ipv4_addr_to_dec1(route_info.src_addr),
+                ipv4_addr_to_dec2(route_info.src_addr), ipv4_addr_to_dec3(route_info.src_addr),
+                ipv4_addr_to_dec0(best_src_addr), ipv4_addr_to_dec1(best_src_addr),
+                ipv4_addr_to_dec2(best_src_addr), ipv4_addr_to_dec3(best_src_addr), 
+                route_table_type == ROUTE_TABLE_UNREACHABLE ? "unreachable" :
+                route_table_type == ROUTE_TABLE_MULTICAST ? "multicast" :
+                route_table_type == ROUTE_TABLE_BROADCAST ? "broadcast" : 
+                route_table_type == ROUTE_TABLE_UNICAST ? "unicast" : 
+                route_table_type == ROUTE_TABLE_LOCAL ? "local" : "self"
+            );
+        }
+    }
+
+
 
     union{
         uint8_t addr;
