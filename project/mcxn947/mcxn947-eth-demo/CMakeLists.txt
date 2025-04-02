@@ -17,21 +17,21 @@ target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
 
 target_compile_definitions(eventhub PUBLIC
-    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
     "-DMEM_POOL_DEBUG=0"
-    #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
 )
 
 target_compile_definitions(ehip PUBLIC
     "-DEHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_NUM=28" 
     "-DEHIP_ARP_DEBUG=0"
-    "-DEHIP_IP_DEBUG=1"
+    "-DEHIP_IP_DEBUG=0"
     "-DEHIP_ETHERNET_V2_DEBUG=0"
     "-DEHIP_IP_MAX_FRAGMENT_NUM=16"
 )
 
 target_compile_options(segger-rtt PRIVATE 
-    "-DBUFFER_SIZE_UP=20480"
+    "-DBUFFER_SIZE_UP=4096"
 )
 
 add_executable(mcxn947_eth_demo_app )
@@ -61,6 +61,7 @@ target_sources(mcxn947_eth_demo_app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/ip_message_test.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/udp_test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"

@@ -78,6 +78,7 @@ error :
 static int  ip_message_test_task(void *arg){
     (void) arg;
     struct ip_message* ip_message;
+    struct ip_message* ip_message_dup;
     ehip_buffer_t *pos_buffer;
     int int_tmp_i, int_tmp_sort_i;
     uint8_t *out_data;
@@ -93,9 +94,21 @@ static int  ip_message_test_task(void *arg){
             return -1;
         }
 
+        eh_usleep(1000 * 1000);
         ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
-            eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+            eh_infoln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
                 ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
+            eh_usleep(1000 * 50);
+        }
+        eh_usleep(1000 * 200);
+
+        
+        ip_message_dup = ip_message_rx_ref_dup(ip_message);
+        
+        ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message_dup){
+            eh_infoln("fragment dup %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+                ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
+            eh_usleep(1000 * 50);
         }
         eh_usleep(1000 * 200);
 
@@ -140,7 +153,7 @@ static int  ip_message_test_task(void *arg){
     //         return -1;
     //     }
     //     ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
-    //         eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+    //         eh_infoln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
     //             ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
     //     }
     //     eh_usleep(1000 * 200);
@@ -171,7 +184,7 @@ static int  ip_message_test_task(void *arg){
     //         return -1;
     //     }
     //     ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, ip_message){
-    //         eh_debugln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+    //         eh_infoln("fragment %d  %d |%.*hhq|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
     //             ehip_buffer_get_payload_size(pos_buffer), ehip_buffer_get_payload_ptr(pos_buffer));
     //     }
     //     eh_usleep(1000 * 200);

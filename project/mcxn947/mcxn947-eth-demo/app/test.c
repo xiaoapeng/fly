@@ -19,14 +19,24 @@
 #include <eh_sleep.h>
 #include <eh_llist.h>
 #include <eh_signal.h>
+#include <eh_timer.h>
+#include <eh_mem.h>
+#include <ehip_chksum.h>
 #include <ehip_netdev_tool.h>
 #include <ehip_netdev_trait.h>
+#include <ehip_buffer.h>
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/route.h>
 #include <ehip-ipv4/arp.h>
-#include <ehip_chksum.h>
+#include <ehip-ipv4/udp.h>
+#include <ehip-ipv4/ip_message.h>
 
 #include "button.h"
+
+
+static  eh_task_t *task_test_handle;
+
+EH_DEFINE_STATIC_CUSTOM_SIGNAL(udp_sender_timer_signal, eh_event_timer_t, EH_TIMER_INIT(udp_sender_timer_signal.custom_event));
 
 void mem_fill(void* mem, size_t size, char start){
     for(size_t i=0; i<size; i++){
@@ -267,7 +277,7 @@ sudo arping -S 192.168.12.75 192.168.12.88 -C 1
 
 
 
-void eth_test(void){
+void eth_test_start(void){
     struct route_info route_info;
     ehip_netdev_t * eth0_netdev;
     struct ipv4_netdev* eth0_ipv4_netdev;
@@ -463,40 +473,27 @@ void eth_test(void){
     rr.version = 0x4;
     eh_infoln("rr.addr %02x rr.ihl %02x rr.version %02x", rr.addr, rr.ihl, rr.version);
     arp_test();
-    
-    char buf0[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
-    char buf1[17] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
-    char buf2[18] = {0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
-    char buf3[19] = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
-    uint16_t sum;
-    
-    sum = ehip_standard_chksum(0x00, buf0, 16);
-    eh_debugln("buf0 sum %04hx", sum);
-
-    sum = ehip_standard_chksum(0x00, buf1+1, 16);
-    eh_debugln("buf1 sum %04hx", sum);
-
-    sum = ehip_standard_chksum(0x00, buf2+2, 16);
-    eh_debugln("buf2 sum %04hx", sum);
-
-    sum = ehip_standard_chksum(0x00, buf3+3, 16);
-    eh_debugln("buf3 sum %04hx", sum);
 
 }
 
 
-static int task_task(void *arg){
+static int test_task(void *arg){
     (void) arg;
     // llist_test();
-    eth_test();
+    eth_test_start();
     return 0;
 }
 
 
 static int __init test_init(void){
     eh_infofl("test init");
-    eh_task_create("test", EH_TASK_FLAGS_DETACH, 4096, NULL, task_task);
+    task_test_handle = eh_task_create("test", 0, 4096, NULL, test_task);
     return 0;
 }
 
-eh_module_level9_export(test_init, NULL);
+static void __exit test_exit(void){
+    eh_infofl("test exit");
+    eh_task_join(task_test_handle, NULL, EH_TIME_FOREVER);
+}
+
+eh_module_level9_export(test_init, test_exit);
