@@ -23,12 +23,6 @@ project(fly LANGUAGES C CXX ASM)
 
 arch_build_config()
 
-add_compile_options(
-    "$<$<CONFIG:Debug>:-g;-O0>"
-    "$<$<CONFIG:Release>:-g;-O3>"
-    "$<$<CONFIG:MinSizeRel>:-g;-Os>"
-)
-
 include_directories("${FLY_TOP_DIR}/auto-generate/")
 
 add_subdirectory("${FLY_TOP_DIR}/arch/" "${CMAKE_CURRENT_BINARY_DIR}/arch/")
