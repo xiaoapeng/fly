@@ -8,6 +8,9 @@ set(TARGET_FLAGS
     "-Wconversion"
     "-Wsign-conversion"
     "-Wno-psabi"
+    "$<$<CONFIG:Debug>:-g;-O1>"
+    "$<$<CONFIG:Release>:-g;-O2>"
+    "$<$<CONFIG:MinSizeRel>:-g;-Os>"
 )
 
 # app程序生成
@@ -17,17 +20,20 @@ target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
 
 target_compile_definitions(eventhub PUBLIC
-    #"-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
-    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
+    "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    # "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
     "-DMEM_POOL_DEBUG=0"
 )
 
 target_compile_definitions(ehip PUBLIC
-    "-DEHIP_NETDEV_TYPE_ETHERNET_POOL_BUFFER_NUM=28" 
-    "-DEHIP_ARP_DEBUG=0"
-    "-DEHIP_IP_DEBUG=0"
-    "-DEHIP_ETHERNET_V2_DEBUG=0"
+    "-DEHIP_NETDEV_TYPE_GENERAL_POOL_BUFFER_NUM=28"
     "-DEHIP_IP_MAX_FRAGMENT_NUM=16"
+    "-DEH_DBG_MODEULE_LEVEL_UDP_INPUT=EH_DBG_INFO"
+    "-DEH_DBG_MODEULE_LEVEL_LAN8741_XMIT=EH_DBG_SUPPRESS"
+    "-DEH_DBG_MODEULE_LEVEL_ETHERNET_V2=EH_DBG_SUPPRESS"
+    "-DEH_DBG_MODEULE_LEVEL_ARP=EH_DBG_SUPPRESS"
+    "-DEH_DBG_MODEULE_LEVEL_IP_REASSE=EH_DBG_SUPPRESS"
+    "-DEH_DBG_MODEULE_LEVEL_IP_INPUT=EH_DBG_SUPPRESS"
 )
 
 target_compile_options(segger-rtt PRIVATE 
@@ -70,6 +76,10 @@ target_sources(mcxn947_eth_demo_app PRIVATE
 target_compile_options(mcxn947_eth_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_options(mcxn947_eth_demo_app  PRIVATE
     "-T${CMAKE_CURRENT_SOURCE_DIR}/app/MCXN947_cm33_core0_flash.ld"
+)
+
+target_compile_definitions(mcxn947_eth_demo_app PRIVATE
+    "-DEH_DBG_MODEULE_LEVEL_UDP_TEST=EH_DBG_INFO"
 )
 # 自动生成map
 add_target_make_map(mcxn947_eth_demo_app)

@@ -30,7 +30,7 @@ static void udp_sender_timer_handler(eh_event_t *e, void *slot_param){
     static uint32_t count = 0;
     ehip_buffer_t *out_buffer;
     ehip_buffer_size_t out_buffer_capacity_size;
-    eh_infofl("udp sender timer handler");
+    eh_modeule_debugfl(UDP_TEST, "udp sender timer handler");
     if(!ehip_udp_sender_is_init(&udp_sender)){
         ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(192, 168, 9, 44), eh_hton16(9000));
         if(ret < 0){

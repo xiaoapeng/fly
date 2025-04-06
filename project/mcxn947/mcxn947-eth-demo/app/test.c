@@ -280,6 +280,7 @@ sudo arping -S 192.168.12.75 192.168.12.88 -C 1
 void eth_test_start(void){
     struct route_info route_info;
     ehip_netdev_t * eth0_netdev;
+    ehip_netdev_t * lo_netdev;
     struct ipv4_netdev* eth0_ipv4_netdev;
     enum route_table_type route_table_type;
     ipv4_addr_t  best_src_addr;
@@ -358,6 +359,16 @@ void eth_test_start(void){
     route_info.src_addr = ipv4_make_addr(192,168,11,89);
 
     EH_DBG_ERROR_EXEC( ipv4_route_add(&route_info) != 0, return );
+
+
+    lo_netdev = ehip_netdev_tool_find("lo");
+    eh_infoln("lo netdev %p", lo_netdev);
+    
+    EH_DBG_ERROR_EXEC( ehip_netdev_tool_up(lo_netdev) != 0, return );
+    eh_infoln("lo netdev up");
+    ipv4_netdev_set_main_addr(ehip_netdev_trait_ipv4_dev(lo_netdev), ipv4_make_addr(127,0,0,1), 8);
+    eh_infoln("lo netdev ipv4_netdev_set_main_addr");
+
 
     {
         unsigned int i=0;
@@ -494,6 +505,8 @@ static int __init test_init(void){
 static void __exit test_exit(void){
     eh_infofl("test exit");
     eh_task_join(task_test_handle, NULL, EH_TIME_FOREVER);
+    ehip_netdev_tool_down(ehip_netdev_tool_find("lo"));
+    ehip_netdev_tool_down(ehip_netdev_tool_find("eth0"));
 }
 
-eh_module_level9_export(test_init, test_exit);
+eh_module_level0_export(test_init, test_exit);

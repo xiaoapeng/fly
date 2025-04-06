@@ -239,7 +239,7 @@ static void *ethernetif_rx_alloc(ENET_Type *base, void *userData, uint8_t ringId
     (void) userData;
     (void) ringId;
     void *new;
-    new = ehip_buffer_new_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME);
+    new = ehip_buffer_new_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME);
     if(new == NULL)
         eh_warnfl("Failed to allocate buffer!!");
     return new;
@@ -249,7 +249,7 @@ static void ethernetif_rx_free(ENET_Type *base, void *buffer, void *userData, ui
     (void) base;
     (void) userData;
     (void) ringId;
-    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, buffer);
+    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME, buffer);
 }
 
 static void ethernet_callback(ENET_Type *base,
@@ -312,7 +312,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         ){
             for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
                 if(rx_frame.rxBuffArray[i].buffer)
-                    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[i].buffer);
+                    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[i].buffer);
             }
             // eh_warnfl("rx frame len = %d", rx_frame.totLen);
             // eh_warnfl("rx_frame.rxBuffArray[0].length = %d", rx_frame.rxBuffArray[0].length);
@@ -320,10 +320,10 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             continue;
         }
 
-        ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+        ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[0].buffer);
         if(eh_ptr_to_error(ehip_buf) < 0){
             eh_warnfl("ehip_buffer_new_from_buf fail ret = %d", eh_ptr_to_error(ehip_buf));
-            ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_ETHERNET_FRAME, rx_frame.rxBuffArray[0].buffer);
+            ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[0].buffer);
             continue;
         }
         ehip_buffer_payload_append(ehip_buf, rx_frame.rxBuffArray[0].length);
@@ -487,8 +487,8 @@ static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
     tx_buff.buffer = ehip_buffer_get_payload_ptr(buf);
     tx_buff.length = ehip_buffer_get_payload_size(buf);
 
-    eh_debugfl("tx frame len = %d", tx_buff.length);
-    eh_debugfl("tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
+    eh_modeule_debugln( LAN8741_XMIT, "tx frame len = %d", tx_buff.length);
+    eh_modeule_debugln( LAN8741_XMIT, "tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
 
     ret = ENET_SendFrame(ENET0, &s_enet_handle, &tx_frame, 0);
     if(ret == kStatus_Success){
