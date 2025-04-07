@@ -69,6 +69,7 @@ static void udp_error_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port
 
 static void udp_recv_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port, struct ip_message *udp_rx_meg){
     (void) pcb;
+    static uint32_t rx_byte = 0;
     eh_minfofl(UDP_TEST, "udp recv callback ip:" IPV4_FORMATIO ":%d", 
         ipv4_formatio(addr), eh_ntoh16(port));
     if(ip_message_flag_is_fragment(udp_rx_meg)){
@@ -83,7 +84,8 @@ static void udp_recv_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port,
         eh_minfofl(UDP_TEST, "payload %.*hhq", ehip_buffer_get_payload_size(udp_rx_meg->buffer), 
             ehip_buffer_get_payload_ptr(udp_rx_meg->buffer));
     }
-    eh_minfofl(UDP_TEST, "");
+    rx_byte += (uint32_t)ip_message_rx_data_size(udp_rx_meg);
+    eh_minfofl(UDP_TEST, "rx total size %d \n", rx_byte);
 }
 
 static int __init udp_test_init(void)
