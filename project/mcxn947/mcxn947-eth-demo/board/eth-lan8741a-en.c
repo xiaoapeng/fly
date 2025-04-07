@@ -487,8 +487,8 @@ static int eth_lan8741aen_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
     tx_buff.buffer = ehip_buffer_get_payload_ptr(buf);
     tx_buff.length = ehip_buffer_get_payload_size(buf);
 
-    eh_modeule_debugln( LAN8741_XMIT, "tx frame len = %d", tx_buff.length);
-    eh_modeule_debugln( LAN8741_XMIT, "tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
+    eh_mdebugln( LAN8741_XMIT, "tx frame len = %d", tx_buff.length);
+    eh_mdebugln( LAN8741_XMIT, "tx data :|%.*hhq|", tx_buff.length, tx_buff.buffer);
 
     ret = ENET_SendFrame(ENET0, &s_enet_handle, &tx_frame, 0);
     if(ret == kStatus_Success){

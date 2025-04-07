@@ -28,12 +28,12 @@ target_compile_definitions(eventhub PUBLIC
 target_compile_definitions(ehip PUBLIC
     "-DEHIP_NETDEV_TYPE_GENERAL_POOL_BUFFER_NUM=28"
     "-DEHIP_IP_MAX_FRAGMENT_NUM=16"
-    "-DEH_DBG_MODEULE_LEVEL_UDP_INPUT=EH_DBG_INFO"
-    "-DEH_DBG_MODEULE_LEVEL_LAN8741_XMIT=EH_DBG_SUPPRESS"
-    "-DEH_DBG_MODEULE_LEVEL_ETHERNET_V2=EH_DBG_SUPPRESS"
-    "-DEH_DBG_MODEULE_LEVEL_ARP=EH_DBG_SUPPRESS"
-    "-DEH_DBG_MODEULE_LEVEL_IP_REASSE=EH_DBG_SUPPRESS"
-    "-DEH_DBG_MODEULE_LEVEL_IP_INPUT=EH_DBG_SUPPRESS"
+    "-DEH_DBG_MODEULE_LEVEL_UDP_INPUT=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_LAN8741_XMIT=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_ETHERNET_V2=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_ARP=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_IP_REASSE=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_IP_INPUT=EH_DBG_WARNING"
 )
 
 target_compile_options(segger-rtt PRIVATE 
@@ -41,7 +41,7 @@ target_compile_options(segger-rtt PRIVATE
 )
 
 add_executable(mcxn947_eth_demo_app )
-target_link_libraries(mcxn947_eth_demo_app  arch-mcxn947-core0 eventhub ehip segger-rtt c rdimon m gcc  )
+target_link_libraries(mcxn947_eth_demo_app arch-mcxn947-core0 eventhub ehip segger-rtt c rdimon m gcc  )
 target_include_directories( mcxn947_eth_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/general/inc"

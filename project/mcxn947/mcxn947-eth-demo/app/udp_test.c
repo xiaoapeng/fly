@@ -13,8 +13,10 @@
 #include <eh_debug.h>
 #include <eh_module.h>
 #include <ehip_error.h>
+#include <ehip_buffer.h>
 #include <ehip-ipv4/udp.h>
 #include <ehip-ipv4/ip.h>
+#include <ehip-ipv4/ip_message.h>
 
 
 
@@ -30,7 +32,7 @@ static void udp_sender_timer_handler(eh_event_t *e, void *slot_param){
     static uint32_t count = 0;
     ehip_buffer_t *out_buffer;
     ehip_buffer_size_t out_buffer_capacity_size;
-    eh_modeule_debugfl(UDP_TEST, "udp sender timer handler");
+    eh_minfofl(UDP_TEST, "udp sender timer handler");
     if(!ehip_udp_sender_is_init(&udp_sender)){
         ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(192, 168, 9, 44), eh_hton16(9000));
         if(ret < 0){
@@ -64,6 +66,26 @@ static void udp_error_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port
         ipv4_formatio(addr), eh_ntoh16(port), err);
 }
 
+
+static void udp_recv_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port, struct ip_message *udp_rx_meg){
+    (void) pcb;
+    eh_minfofl(UDP_TEST, "udp recv callback ip:" IPV4_FORMATIO ":%d", 
+        ipv4_formatio(addr), eh_ntoh16(port));
+    if(ip_message_flag_is_fragment(udp_rx_meg)){
+        ehip_buffer_t *pos_buffer;
+        int int_tmp_i, int_tmp_sort_i;
+        ip_message_rx_fragment_for_each(pos_buffer, int_tmp_i, int_tmp_sort_i, udp_rx_meg){
+            eh_minfofl(UDP_TEST, "fragment[%03d]:%04d|%.*hhq ...|", int_tmp_i, ehip_buffer_get_payload_size(pos_buffer), 
+                ehip_buffer_get_payload_size(pos_buffer) > 32 ? 32 : ehip_buffer_get_payload_size(pos_buffer) ,
+                 ehip_buffer_get_payload_ptr(pos_buffer));
+        }
+    }else{
+        eh_minfofl(UDP_TEST, "payload %.*hhq", ehip_buffer_get_payload_size(udp_rx_meg->buffer), 
+            ehip_buffer_get_payload_ptr(udp_rx_meg->buffer));
+    }
+    eh_minfofl(UDP_TEST, "");
+}
+
 static int __init udp_test_init(void)
 {
     int ret;
@@ -74,7 +96,7 @@ static int __init udp_test_init(void)
     }
 
     ehip_udp_set_error_callback(udp_pcb, udp_error_callback);
-
+    ehip_udp_set_recv_callback(udp_pcb, udp_recv_callback);
 
     eh_timer_advanced_init(
         eh_signal_to_custom_event(&udp_sender_timer_signal), 
