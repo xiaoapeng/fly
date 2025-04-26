@@ -100,6 +100,7 @@ static int  ip_message_test_task(void *arg){
             }
         }
         eh_minfoln(IP_MESSAGE_TEST, "ip_message_rx_fragment_for_each TEST PASS");
+        ip_message_free(ip_message);
     }
 
     {
@@ -132,6 +133,7 @@ static int  ip_message_test_task(void *arg){
             }
         }
         eh_minfoln(IP_MESSAGE_TEST, "ip_message_rx_data_tail_trim TEST PASS");
+        ip_message_free(ip_message);
     }
 
 
