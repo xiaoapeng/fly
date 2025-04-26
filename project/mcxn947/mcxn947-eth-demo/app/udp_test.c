@@ -32,8 +32,10 @@ static void udp_sender_timer_handler(eh_event_t *e, void *slot_param){
     static uint32_t count = 0;
     ehip_buffer_t *out_buffer;
     ehip_buffer_size_t out_buffer_capacity_size;
-    eh_minfofl(UDP_TEST, "udp sender timer handler");
+    eh_mdebugfl(UDP_TEST, "udp sender timer handler");
     if(!ehip_udp_sender_is_init(&udp_sender)){
+        //112,125,89,8:45875
+        // ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(112,125,89,8), eh_hton16(45875));
         ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(192, 168, 9, 44), eh_hton16(9000));
         if(ret < 0){
             eh_errln("udp sender init fail %d", ret);

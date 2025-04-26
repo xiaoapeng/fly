@@ -21,8 +21,7 @@ target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
 
 target_compile_definitions(eventhub PUBLIC
     "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
-    # "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_INFO"
-    "-DMEM_POOL_DEBUG=0"
+    "-DEH_DBG_MODEULE_LEVEL_MEM_POOL=EH_DBG_WARNING"
 )
 
 target_compile_definitions(ehip PUBLIC
@@ -34,6 +33,10 @@ target_compile_definitions(ehip PUBLIC
     "-DEH_DBG_MODEULE_LEVEL_ARP=EH_DBG_WARNING"
     "-DEH_DBG_MODEULE_LEVEL_IP_REASSE=EH_DBG_WARNING"
     "-DEH_DBG_MODEULE_LEVEL_IP_INPUT=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_ARP_REQUEST=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_PING_REQUEST=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_RX_FRAGMENT=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_ICMP_ERROR_INPUT=EH_DBG_DEBUG"
 )
 
 target_compile_options(segger-rtt PRIVATE 
@@ -68,6 +71,8 @@ target_sources(mcxn947_eth_demo_app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/ip_message_test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/udp_test.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/ping_test.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/traceroute_test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"
@@ -80,6 +85,8 @@ target_link_options(mcxn947_eth_demo_app  PRIVATE
 
 target_compile_definitions(mcxn947_eth_demo_app PRIVATE
     "-DEH_DBG_MODEULE_LEVEL_UDP_TEST=EH_DBG_INFO"
+    "-DEH_DBG_MODEULE_LEVEL_PING_TEST=EH_DBG_WARNING"
+    
 )
 # 自动生成map
 add_target_make_map(mcxn947_eth_demo_app)
