@@ -263,8 +263,12 @@ static void ethernet_callback(ENET_Type *base,
     (void) channel;
     (void) txReclaimInfo;
     (void) userData;
+    eh_flags_t f = 1UL << event;
+
+    if( !(f & BOARD_ETH_EVENT_FLAGS_MASK) )
+        eh_mdebugfl(LAN8741, "Unknown event %d", event);
     
-    eh_event_flags_set_bits(eh_signal_to_custom_event(&signal_eth_event_flags), 1UL << event);
+    eh_event_flags_set_bits(eh_signal_to_custom_event(&signal_eth_event_flags), f);
     if(event == kENET_TxIntEvent && txReclaimInfo){
         eh_ringbuf_write(s_tx_event, (uint8_t*)&txReclaimInfo->context, sizeof(txReclaimInfo->context));
     }
@@ -461,6 +465,8 @@ static void eth_lan8741aen_down(ehip_netdev_t *netdev){
     eh_signal_slot_disconnect(&slot_eth_event);
     eh_signal_unregister(&signal_eth_event_flags);
     eh_event_flags_clean(eh_signal_to_custom_event(&signal_eth_event_flags));
+    ENET_RxBufferFreeAll(ENET0, &s_enet_handle);
+    ENET_Deinit(ENET0);
     return ;
 }
 
