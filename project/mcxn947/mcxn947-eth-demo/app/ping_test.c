@@ -34,7 +34,7 @@ static void ping_sender_timer_handler(eh_event_t *e, void *slot_param){
     eh_mdebugfl(PING_TEST, "%p ping request:", pcb);
     ret = ehip_ping_request(pcb, 200);
     if(ret < 0){
-        eh_errln("%p ehip_ping_request failed", pcb);
+        eh_errln("%p ehip_ping_request failed ret %d", pcb, ret);
     }
 }
 
@@ -47,7 +47,7 @@ void ping_error_callback(ping_pcb_t pcb, ipv4_addr_t addr, uint16_t seq, int err
     eh_mdebugfl(PING_TEST, "%p ping request:", pcb);
     ret = ehip_ping_request(pcb, 200);
     if(ret < 0){
-        eh_errln("%p ehip_ping_request failed", pcb);
+        eh_errfl("%p ehip_ping_request failed %d", pcb, ret);
     } 
 }
 
@@ -60,7 +60,7 @@ void ping_response_callback(ping_pcb_t pcb, ipv4_addr_t addr, uint16_t seq, uint
 static int __init ping_test_init(void)
 {
     int ret;
-    ping_pcb_test0 = ehip_ping_any_new(ipv4_make_addr(110,242,68,66));
+    ping_pcb_test0 = ehip_ping_any_new(ipv4_make_addr(192,168,12,89));
     if(eh_ptr_to_error(ping_pcb_test0) < 0){
         eh_errln("ping_pcb create failed %d", eh_ptr_to_error(ping_pcb_test0));
         return eh_ptr_to_error(ping_pcb_test0);
