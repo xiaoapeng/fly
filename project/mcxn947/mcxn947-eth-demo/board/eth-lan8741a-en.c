@@ -31,9 +31,12 @@
 #include <ehip_netdev_trait.h>
 #include <ehip-mac/ethernet.h>
 #include <ehip-netdev-class/ethernet_dev.h>
+#include <stdint.h>
 
 
+#include "eh_platform.h"
 #include "eh_ringbuf.h"
+#include "eh_timer.h"
 #include "fsl_common.h"
 #include "fsl_flash.h"
 #include "fsl_port.h"
@@ -54,6 +57,13 @@
 #define PHY_MMD_ACCESS_CONTROL_REG  (0x0DU) /*!< The PHY MMD access control register. */
 #define PHY_MMD_ACCESS_DATA_REG     (0x0EU) /*!< The PHY MMD access data register. */
 
+
+/*! @brief Defines the mask flag in basic status register(Address 0x01). */
+#define PHY_BSTATUS_LINKSTATUS_MASK  ((uint16_t)0x0004U) /*!< The PHY link status mask. */
+#define PHY_BSTATUS_AUTONEGABLE_MASK ((uint16_t)0x0008U) /*!< The PHY auto-negotiation ability mask. */
+#define PHY_BSTATUS_SPEEDUPLX_MASK   ((uint16_t)0x001CU) /*!< The PHY speed and duplex mask. */
+#define PHY_BSTATUS_AUTONEGCOMP_MASK ((uint16_t)0x0020U) /*!< The PHY auto-negotiation complete mask. */
+
 /* Symbols to be used with GPIO driver */
 #define BOARD_ETH_PINS_ETH_RESET_GPIO GPIO5               /*!<@brief GPIO peripheral base pointer */
 #define BOARD_ETH_PINS_ETH_RESET_GPIO_PIN 8U              /*!<@brief GPIO pin number */
@@ -64,8 +74,8 @@
 #define BOARD_ETH_PINS_ETH_RESET_PIN 8U                   /*!<@brief PORT pin number */
 #define BOARD_ETH_PINS_ETH_RESET_PIN_MASK (1U << 8U)      /*!<@brief PORT pin mask */
                                                           /* @} */
-#define BOARD_ETH_ENET_RXBD_NUM 4
-#define BOARD_ETH_ENET_TXBD_NUM 4
+#define BOARD_ETH_ENET_RXBD_NUM 12
+#define BOARD_ETH_ENET_TXBD_NUM 12
 #define BOARD_ETH_ENET_FRAME_MAX_FRAMELEN  EHIP_ETH_FRAME_MAX_LEN
 #define BOARD_ETH_ENET_PRIORITY (2U)
 #define BOARD_ETH_ENET_PHY_ADDR (0x00)
@@ -91,9 +101,10 @@ EH_DEFINE_STATIC_CUSTOM_SIGNAL(signal_eth_event_flags, eh_event_flags_t, {});
 
 
 static void eth_event_slot_function(eh_event_t *e, void *slot_param);
+static void eth_eth_link_status_poll_read(eh_event_t *e, void *slot_param);
 
-EH_DEFINE_SLOT(slot_eth_event, eth_event_slot_function, NULL);
-
+static EH_DEFINE_SLOT(slot_eth_event, eth_event_slot_function, NULL);
+static EH_DEFINE_SLOT(slot_eth_link_status_poll_read, eth_eth_link_status_poll_read, NULL);
 /* clang-format off */
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
@@ -294,7 +305,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
     enum ehip_ptype             protocol;
     ret = eh_event_flags_wait_bits_set(ef, BOARD_ETH_EVENT_FLAGS_MASK, BOARD_ETH_EVENT_FLAGS_MASK, &reality_flags, 0);
     if(ret < 0){
-        eh_warnfl("eh_event_flags_wait fail ret = %d", ret);
+        // eh_warnfl("eh_event_flags_wait fail ret = %d", ret);
         return ;
     }
     do{
@@ -304,7 +315,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
         if(status == kStatus_ENET_RxFrameEmpty)
             break;
         if(status != kStatus_Success){
-            eh_debugfl("status = %08x", status);
+            // eh_debugfl("status = %08x", status);
             continue;
         }
         // eh_infoln("rx frame len = %d", rx_frame.totLen);
@@ -323,6 +334,11 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             // eh_warnfl("protocol = %04x", protocol);
             continue;
         }
+
+        // if(eh_mem_pool_ptr_to_idx((eh_mem_pool_t)0x20001ad8, rx_frame.rxBuffArray[0].buffer) < 0){
+        //     eh_warnfl("rx_frame.rxBuffArray[0].buffer is not from mem pool!!");
+        //     continue;
+        // }
 
         ehip_buf = ehip_buffer_new_from_buf(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[0].buffer);
         if(eh_ptr_to_error(ehip_buf) < 0){
@@ -349,6 +365,29 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
 
 }
 
+
+static bool eth_phy_is_link(void){
+    uint16_t v16 = 0;
+    phy_mdio_read(BOARD_ETH_ENET_PHY_ADDR, PHY_BASICSTATUS_REG, &v16);
+    if(v16 & PHY_BSTATUS_LINKSTATUS_MASK)
+        return true;
+    return false;
+}
+
+static void eth_eth_link_status_poll_read(eh_event_t *e, void *slot_param){
+    (void)slot_param;
+    (void)e;
+    bool link_status;
+    static bool last_link_status = false;
+    link_status = eth_phy_is_link();
+    if(link_status != last_link_status){
+        last_link_status = link_status;
+        ehip_netdev_set_link_status(s_lan8741a_en_netdev, link_status);
+    }
+}
+
+
+
 static void eth_phy_reset(void){
     GPIO_PinWrite(GPIO5, 8, 0);
     eh_usleep(1000*10);
@@ -362,9 +401,9 @@ static int eth_phy_init_task(void* arg){
     (void)arg;
     uint16_t data;
     uint32_t phy_id;
+
     int ret;
     eth_phy_reset();
-
     phy_mdio_read(BOARD_ETH_ENET_PHY_ADDR, PHY_ID1_REG, &data);
     phy_id = (uint32_t)data << 16;
     phy_mdio_read(BOARD_ETH_ENET_PHY_ADDR, PHY_ID2_REG, &data);
@@ -456,6 +495,8 @@ static int eth_lan8741aen_up(ehip_netdev_t *netdev){
     eh_signal_register(&signal_eth_event_flags);
     
     eh_signal_slot_connect(&signal_eth_event_flags, &slot_eth_event);
+
+    eh_signal_slot_connect(&signal_ehip_timer_100ms, &slot_eth_link_status_poll_read);
     
     return 0;
 }
@@ -528,6 +569,7 @@ static const struct ehip_netdev_param netdev_lan8741a_en_param = {
     .ops = &netdev_lan8741a_en_ops,
     .userdata = NULL
 };
+
 
 
 static int __init eth_lan8741a_en_init(void){

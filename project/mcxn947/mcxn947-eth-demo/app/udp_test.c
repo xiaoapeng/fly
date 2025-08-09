@@ -14,6 +14,7 @@
 #include <eh_module.h>
 #include <ehip_error.h>
 #include <ehip_buffer.h>
+#include <ehip_netdev_tool.h>
 #include <ehip-ipv4/udp.h>
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/ip_message.h>
@@ -33,29 +34,27 @@ static void udp_sender_timer_handler(eh_event_t *e, void *slot_param){
     ehip_buffer_t *out_buffer;
     ehip_buffer_size_t out_buffer_capacity_size;
     eh_mdebugfl(UDP_TEST, "udp sender timer handler");
-    if(!ehip_udp_sender_is_init(&udp_sender)){
-        //112,125,89,8:45875
-        // ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(112,125,89,8), eh_hton16(45875));
-        ret = ehip_udp_sender_init_ready(udp_pcb, &udp_sender, ipv4_make_addr(192, 168, 9, 44), eh_hton16(9000));
-        if(ret < 0){
-            eh_errln("udp sender init fail %d", ret);
-            return ;
-        }
+    ret = ehip_udp_sender_route_ready(&udp_sender);
+    if(ret < 0){
+        eh_merrfl(UDP_TEST, "udp sender route fail %d", ret);
+        return ;
+    }
+    
+    ret = ehip_udp_sender_add_buffer(&udp_sender, &out_buffer, &out_buffer_capacity_size);
+    if(ret < 0){
+        eh_merrfl(UDP_TEST, "udp sender add buffer fail %d", ret);
+        return ;
     }
 
-    ehip_udp_sender_buffer_clean(&udp_sender);
-    EH_DBG_ERROR_EXEC(ehip_udp_sender_add_buffer(&udp_sender, &out_buffer, &out_buffer_capacity_size) < 0, return );
-
     if(out_buffer_capacity_size < 4){
-        eh_errln("buffer size %d", out_buffer_capacity_size);
-        ehip_udp_sender_buffer_clean(&udp_sender);
+        eh_merrfl(UDP_TEST, "buffer size %d", out_buffer_capacity_size);
         return ;
     }
     *(uint32_t *)ehip_buffer_payload_append(out_buffer, 4) = eh_swab32(count++);
 
     ret = ehip_udp_send(udp_pcb, &udp_sender);
     if(ret < 0){
-        eh_errln("udp send fail %d", ret);
+        eh_merrfl(UDP_TEST, "udp send fail %d", ret);
         return ;
     }
 }
@@ -64,7 +63,7 @@ static EH_DEFINE_SLOT(slot_udp_sender_timer, udp_sender_timer_handler, NULL);
 
 static void udp_error_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port, int err){
     (void) pcb;
-    eh_errln("udp error callback ip:" IPV4_FORMATIO ":%d err:%d", 
+    eh_merrfl(UDP_TEST, "udp error callback ip:" IPV4_FORMATIO ":%d err:%d", 
         ipv4_formatio(addr), eh_ntoh16(port), err);
 }
 
@@ -93,9 +92,9 @@ static void udp_recv_callback(udp_pcb_t pcb, ipv4_addr_t addr, uint16_be_t port,
 static int __init udp_test_init(void)
 {
     int ret;
-    udp_pcb = ehip_udp_any_new(eh_hton16(9000));
+    udp_pcb = ehip_udp_any_new(eh_hton16(800));
     if (eh_ptr_to_error(udp_pcb) < 0) {
-        eh_errln("udp pcb create fail %d", eh_ptr_to_error(udp_pcb));
+        eh_merrfl(UDP_TEST, "udp pcb create fail %d", eh_ptr_to_error(udp_pcb));
         return -1;
     }
 
@@ -112,6 +111,7 @@ static int __init udp_test_init(void)
     if(ret < 0) goto eh_timer_start_error;
     eh_signal_slot_connect(&udp_sender_timer_signal, &slot_udp_sender_timer);
     
+    ehip_udp_sender_init(udp_pcb, &udp_sender, ipv4_make_addr(192,168,12,88), eh_hton16(9000));
     return 0;   
 eh_timer_start_error:
     eh_signal_unregister(&udp_sender_timer_signal);
@@ -122,13 +122,11 @@ eh_signal_register_error:
 
 static void __exit udp_test_exit(void)
 {
-    if(ehip_udp_sender_is_init(&udp_sender)){
-        ehip_udp_sender_buffer_clean(&udp_sender);
-    }
+    ehip_udp_sender_deinit(&udp_sender);
     eh_signal_slot_disconnect(&slot_udp_sender_timer);
     eh_timer_stop(eh_signal_to_custom_event(&udp_sender_timer_signal));
     eh_signal_unregister(&udp_sender_timer_signal);
     ehip_udp_delete(udp_pcb);
 
 }
-eh_module_level9_export(udp_test_init, udp_test_exit);
+// eh_module_level9_export(udp_test_init, udp_test_exit);

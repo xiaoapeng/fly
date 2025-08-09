@@ -8,6 +8,7 @@
  * 
  */
 
+#include <stdint.h>
 #include <string.h>
 #include <eh.h>
 #include <eh_error.h>
@@ -47,6 +48,7 @@ void traceroute_error_callback(ping_pcb_t pcb, ipv4_addr_t addr, uint16_t seq, i
         }
         g_ttl++;
         g_retry = 0;
+        g_strat_seg = INT32_MAX;
     }
 }
 
@@ -79,6 +81,7 @@ static void ping_sender_timer_handler(eh_event_t *e, void *slot_param){
         return ;
     }
 
+    // eh_merrfl(TRACEROUTE_TEST,"ehip_ping_request ttl %d!", g_ttl);
     ret = ehip_ping_request(pcb, 40);
     if(ret < 0){
         eh_merrfl(TRACEROUTE_TEST,"%p ehip_ping_request failed ret = %d", pcb, ret);
@@ -102,11 +105,11 @@ static int __init  traceroute_init(void){
     }
     ehip_ping_set_error_callback(traceroute_pcb_test0, traceroute_error_callback);
     ehip_ping_set_response_callback(traceroute_pcb_test0, traceroute_response_callback);
-    ehip_ping_set_timeout(traceroute_pcb_test0, 0); // 90 * 100ms = 9s
+    ehip_ping_set_timeout(traceroute_pcb_test0, 255); // 90 * 100ms = 9s
 
     eh_timer_advanced_init(
         eh_signal_to_custom_event(&ping_response_sender_timer_signal), 
-        (eh_sclock_t)eh_msec_to_clock(200),
+        (eh_sclock_t)eh_msec_to_clock(100),
         EH_TIMER_ATTR_AUTO_CIRCULATION);
 
     ret = eh_signal_register(&ping_response_sender_timer_signal);
@@ -131,4 +134,4 @@ static void __exit traceroute_exit(void){
 }
 
 
-eh_module_level9_export(traceroute_init, traceroute_exit);
+// eh_module_level9_export(traceroute_init, traceroute_exit);

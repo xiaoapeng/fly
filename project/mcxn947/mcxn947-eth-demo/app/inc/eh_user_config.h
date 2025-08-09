@@ -9,7 +9,7 @@
 /**
  *  配置事件回调函数的栈大小
  */
-#define EH_CONFIG_EVENT_CALLBACK_FUNCTION_STACK_SIZE            (1*1024U)
+#define EH_CONFIG_EVENT_CALLBACK_FUNCTION_STACK_SIZE            (2*1024U)
 
 
 /**

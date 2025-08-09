@@ -15,6 +15,7 @@
 #include <eh_debug.h>
 #include <eh_mem_pool.h>
 #include <eh_sleep.h>
+#include <eh_error.h>
 #include <ehip_buffer.h>
 #include <ehip-ipv4/ip.h>
 #include <ehip-ipv4/ip_message.h>
@@ -54,9 +55,12 @@ static struct ip_message* ip_message_test_create_multi_part_rx_ip_message(uint32
             write[i] = (uint8_t)fragment_i;
 
         if(!new_ip_message){
-            new_ip_message = ip_message_rx_new_fragment(NULL, buffer, &ip_hdr);
+            new_ip_message = ip_message_rx_new_fragment(NULL, buffer, &ip_hdr, ROUTE_TABLE_UNICAST);
+            if(eh_ptr_to_error(new_ip_message) < 0){
+                new_ip_message = NULL;
+            }
         }else{
-            ret = ip_message_rx_merge_fragment(new_ip_message, buffer, &ip_hdr);
+            ret = ip_message_rx_add_fragment(new_ip_message, buffer, &ip_hdr);
             if(ret < 0){
                 eh_errfl("ip_message_rx_merge_fragment fail ret = %d", ret);
                 goto error;
