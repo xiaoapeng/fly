@@ -272,7 +272,7 @@ cd fly
     虽然复制了gd32vf103c-demo,但是项目名称和目标名称还是没有变，需要进入test-demo来进行修改project/gd32vf103x/test-demo/CMakeLists.txt，需要了解一些cmake语法。
 
     ```cmake
-    cmake_minimum_required(VERSION 3.5)
+    cmake_minimum_required(VERSION 3.10)
 
     project(test-demo LANGUAGES C CXX ASM)
 
@@ -485,7 +485,7 @@ simon@:~/fly/package/segger-rtt$ tree
 - 编写CMakeLists.txt
 
     ```cmake
-    cmake_minimum_required(VERSION 3.5)
+    cmake_minimum_required(VERSION 3.10)
 
     # 如果没有使能这个配置，就不要add_library
     if(CONFIG_PACKAGE_TEST_ADD)

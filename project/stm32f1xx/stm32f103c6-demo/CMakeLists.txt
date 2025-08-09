@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 project(stm32f103c6-demo LANGUAGES C CXX ASM)
 
