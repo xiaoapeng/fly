@@ -171,6 +171,17 @@ def run_build(source_dir, build_type=None, jobs=None):
     elif ('make' == build_program or 'gmake' == build_program) and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/Makefile"):
         rebuild = True
 
+    generator_args = ''
+
+    if platform.system() == 'Windows' and build_program == None :
+        if shutil.which("ninja") is not None:
+            generator_args = '-G Ninja'
+        elif shutil.which("make") is not None:
+            generator_args = '-G "Unix Makefiles"'
+        else:
+            print("No build tool found. Please install ninja or make.")
+            sys.exit(1)
+        
     if build_type == None:
         build_type = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE")
         if build_type == None:
@@ -184,6 +195,7 @@ def run_build(source_dir, build_type=None, jobs=None):
             f'--no-warn-unused-cli '
             f'-S{source_dir} '
             f'-B{source_dir}/build '
+            f'{generator_args}'
         )
 
     cmake_ret = os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
