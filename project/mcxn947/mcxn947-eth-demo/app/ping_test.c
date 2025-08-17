@@ -100,4 +100,4 @@ static void __exit ping_test_exit(void)
 
 }
 
-// eh_module_level9_export(ping_test_init, ping_test_exit);
+eh_module_level9_export(ping_test_init, ping_test_exit);

@@ -35,52 +35,36 @@ static void slot_function_ip_setting_ok(eh_event_t  *e, void*  arg){
 
 static EH_DEFINE_SLOT(slot_ip_setting_ok, slot_function_ip_setting_ok, NULL);
 
-static void tcp_test_send_callback(tcp_pcb_t pcb){
-    int data = (int)(intptr_t)ehip_tcp_client_get_userdata(pcb);
-    eh_ringbuf_t *tx_ringbuf = ehip_tcp_client_get_send_ringbuf(pcb);
-    
-    if(data >= 10*1024*1024){
-        ehip_tcp_client_delete(pcb);
-        return ;
-    }
-
-    while(eh_ringbuf_write(tx_ringbuf, (uint8_t*)&data, sizeof(data)) > 0){
-        data++;
-    }
-    ehip_tcp_client_request_send(pcb);
-    ehip_tcp_client_set_userdata(pcb, (void*)(intptr_t)data);
-}
-
 static void tcp_test_echo_recv_callback(tcp_pcb_t pcb, enum tcp_event state){
     (void) pcb;
-    // tcp_client_info_t info;
-    // uint8_t *data_ptr;
-    // int32_t len;
-    // int32_t offset;
-    // int32_t wl = 0;
-    // eh_ringbuf_t *tx_ringbuf = ehip_tcp_client_get_send_ringbuf(pcb);
+    tcp_client_info_t info;
+    uint8_t *data_ptr;
+    int32_t len;
+    int32_t offset;
+    int32_t wl = 0;
+    eh_ringbuf_t *tx_ringbuf = ehip_tcp_client_get_send_ringbuf(pcb);
     eh_ringbuf_t *rx_ringbuf = ehip_tcp_client_get_recv_ringbuf(pcb);
-    // ehip_tcp_client_get_info(pcb, &info);
+    ehip_tcp_client_get_info(pcb, &info);
 
-    eh_ringbuf_clear(rx_ringbuf);
-    // eh_mdebugfl(TCP_TEST_ECHO,"("IPV4_FORMATIO":%d)->("IPV4_FORMATIO":%d) size:%d", 
-    //     ipv4_formatio(info.remote_addr),
-    //     info.remote_port,
-    //     ipv4_formatio(info.local_addr), 
-    //     info.local_port,
-    //     eh_ringbuf_size(rx_ringbuf));
+    // eh_ringbuf_clear(rx_ringbuf);
+    eh_mdebugfl(TCP_TEST_ECHO,"("IPV4_FORMATIO":%d)->("IPV4_FORMATIO":%d) size:%d", 
+        ipv4_formatio(info.remote_addr),
+        info.remote_port,
+        ipv4_formatio(info.local_addr), 
+        info.local_port,
+        eh_ringbuf_size(rx_ringbuf));
     
-    // len = 0;
-    // data_ptr = (uint8_t *)eh_ringbuf_peek(rx_ringbuf, 0, NULL, &len);
-    // wl += eh_ringbuf_write(tx_ringbuf, data_ptr, len);
-    // offset = len;
-    // len = 0;
-    // data_ptr = (uint8_t *)eh_ringbuf_peek(rx_ringbuf, offset, NULL, &len);
-    // wl += eh_ringbuf_write(tx_ringbuf, data_ptr, len);
-    // eh_ringbuf_read_skip(rx_ringbuf, wl);
-    // if(state == TCP_RECV_DATA || eh_ringbuf_free_size(tx_ringbuf) == 0 || eh_ringbuf_size(rx_ringbuf) == 0){
-    //     ehip_tcp_client_request_send(pcb);
-    // }
+    len = 0;
+    data_ptr = (uint8_t *)eh_ringbuf_peek(rx_ringbuf, 0, NULL, &len);
+    wl += eh_ringbuf_write(tx_ringbuf, data_ptr, len);
+    offset = len;
+    len = 0;
+    data_ptr = (uint8_t *)eh_ringbuf_peek(rx_ringbuf, offset, NULL, &len);
+    wl += eh_ringbuf_write(tx_ringbuf, data_ptr, len);
+    eh_ringbuf_read_skip(rx_ringbuf, wl);
+    if(state == TCP_RECV_DATA || eh_ringbuf_free_size(tx_ringbuf) == 0 || eh_ringbuf_size(rx_ringbuf) == 0){
+        ehip_tcp_client_request_send(pcb);
+    }
 }
 
 
@@ -106,13 +90,12 @@ static void tcp_test_echo_connect_change_callback(tcp_pcb_t pcb, enum tcp_event 
             ehip_tcp_client_delete(pcb);
             break;
         case TCP_CONNECTED:
-            tcp_test_send_callback(pcb);
             break;
         case TCP_RECV_DATA:
             tcp_test_echo_recv_callback(pcb, state);
             break;
         case TCP_RECV_ACK:
-            tcp_test_send_callback(pcb);
+            tcp_test_echo_recv_callback(pcb, state);
             break;
     }
 }
@@ -126,7 +109,7 @@ static void tcp_new_connect(tcp_pcb_t new_client){
 
 static int __init tcp_test_echo_init(void){
 
-    tcp_server = ehip_tcp_server_any_new(eh_hton16(8888), 1024*10 , 1024*10);
+    tcp_server = ehip_tcp_server_any_new(eh_hton16(8888), 1448*10 , 1448*3);
     ehip_tcp_server_set_new_connect_callback(tcp_server, tcp_new_connect);
 
     eh_signal_slot_connect(&sig_eth0_ip_add, &slot_ip_setting_ok);

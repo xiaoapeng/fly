@@ -38,6 +38,7 @@ static EH_DEFINE_SLOT(slot_ip_setting_ok, slot_function_ip_setting_ok, NULL);
 
 static void tcp_test_recv_callback(tcp_pcb_t pcb, enum tcp_event state){
     (void) pcb;
+    (void) state;
     eh_ringbuf_t *rx_ringbuf = ehip_tcp_client_get_recv_ringbuf(pcb);
     eh_ringbuf_clear(rx_ringbuf);
 }

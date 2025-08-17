@@ -129,4 +129,4 @@ static void __exit udp_test_exit(void)
     ehip_udp_delete(udp_pcb);
 
 }
-// eh_module_level9_export(udp_test_init, udp_test_exit);
+eh_module_level9_export(udp_test_init, udp_test_exit);

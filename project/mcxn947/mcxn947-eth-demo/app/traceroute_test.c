@@ -134,4 +134,4 @@ static void __exit traceroute_exit(void){
 }
 
 
-// eh_module_level9_export(traceroute_init, traceroute_exit);
+eh_module_level9_export(traceroute_init, traceroute_exit);
