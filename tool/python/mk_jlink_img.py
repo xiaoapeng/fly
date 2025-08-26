@@ -267,7 +267,16 @@ exit 0
     # 制作同名压缩包，避免手动压缩
 
     shutil.make_archive(make_firmware_path, 'zip', make_firmware_path)
-    os.symlink(make_firmware_name, firmware_link_path)
+    try:
+        os.symlink(make_firmware_name, firmware_link_path)
+    except (OSError, PermissionError) as e:
+        if sys.platform.startswith("win"):
+            print(
+                "Failed to create symlink. On Windows, please enable Developer Mode "
+                "to allow symlink creation.\nError details:", e
+            )
+        else:
+            print("Failed to create symlink. Error details:", e)
     
 
 
