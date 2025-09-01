@@ -29,9 +29,9 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 #define FSL_POWERQUAD_DRIVER_VERSION (MAKE_VERSION(2, 2, 0)) /*!< Version. */
-/*@}*/
+/*! @} */
 
 /* For backword compatibility. */
 #define PQ_VectorBiqaudDf2F32             PQ_VectorBiquadDf2F32
@@ -2794,7 +2794,7 @@ void PQ_MatrixTranspose(POWERQUAD_Type *base, uint32_t length, void *pData, void
  */
 void PQ_MatrixScale(POWERQUAD_Type *base, uint32_t length, float misc, const void *pData, void *pResult);
 
-/* @} */
+/*! @} */
 
 #if defined(__cplusplus)
 }

@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef _FSL_FLASH_H_
-#define _FSL_FLASH_H_
+#ifndef FSL_FLASH_H_
+#define FSL_FLASH_H_
 
 #include "fsl_common.h"
 /*!
@@ -29,8 +29,11 @@
 #define MAKE_VERSION(major, minor, bugfix) (((major) << 16) | ((minor) << 8) | (bugfix))
 #endif
 
-/*! @brief Flash driver version for SDK*/
-#define FSL_FLASH_DRIVER_VERSION (MAKE_VERSION(1, 0, 0)) /*!< Version 1.0.0. */
+/*! @name Driver version */
+/*@{*/
+/*! @brief ROMAPI_FLASH driver version 2.0.0. */
+#define FSL_ROMAPI_FLASH_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
+/*@}*/
 
 /*! @brief Flash driver version for ROM*/
 enum _flash_driver_version_constants
@@ -40,7 +43,7 @@ enum _flash_driver_version_constants
     kFLASH_DriverVersionMinor  = 0,   /*!< Minor flash driver version.*/
     kFLASH_DriverVersionBugfix = 0    /*!< Bugfix for flash driver version.*/
 };
-/*@}*/
+/*! @} */
 
 /*!
  * @name Flash driver support feature
@@ -48,7 +51,7 @@ enum _flash_driver_version_constants
  */
 #define FSL_FEATURE_SYSCON_HAS_FLASH_HIDING 1U
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Flash status
@@ -137,7 +140,7 @@ enum
     kStatus_FLASH_CommandOperationInProgress = MAKE_STATUS(
         kStatusGroupFlashDriver, 0x34), /*!< The flash state is busy, indicate that a flash command in progress. */
 };
-/*@}*/
+/*! @} */
 
 /*!
  * @name Flash API key
@@ -159,7 +162,7 @@ enum _flash_driver_api_keys
 {
     kFLASH_ApiEraseKey = FOUR_CHAR_CODE('l', 'f', 'e', 'k') /*!< Key value used to validate all flash erase APIs.*/
 };
-/*@}*/
+/*! @} */
 
 /*!
  * @brief Enumeration for various flash properties.
@@ -285,6 +288,7 @@ typedef struct _flash_ffr_config
     uint32_t ffrBlockBase;
     uint32_t ffrTotalSize;
     uint32_t ffrPageSize;
+    uint32_t sectorSize;
     uint32_t cfpaPageVersion;
     uint32_t cfpaPageOffset;
 } flash_ffr_config_t;
@@ -349,7 +353,7 @@ status_t FLASH_Init(flash_config_t *config);
  */
 status_t FLASH_Deinit(flash_config_t *config);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Erasing
@@ -383,7 +387,7 @@ status_t FLASH_Deinit(flash_config_t *config);
  */
 status_t FLASH_Erase(flash_config_t *config, uint32_t start, uint32_t lengthInBytes, uint32_t key);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Programming
@@ -447,7 +451,7 @@ status_t FLASH_Program(flash_config_t *config, uint32_t start, uint8_t *src, uin
  */
 status_t FLASH_Read(flash_config_t *config, uint32_t start, uint8_t *dest, uint32_t lengthInBytes);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Verification
@@ -517,7 +521,7 @@ status_t FLASH_VerifyProgram(flash_config_t *config,
                              uint32_t *failedAddress,
                              uint32_t *failedData);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Properties
@@ -538,7 +542,7 @@ status_t FLASH_VerifyProgram(flash_config_t *config,
  */
 status_t FLASH_GetProperty(flash_config_t *config, flash_property_tag_t whichProperty, uint32_t *value);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name CustKeyStore
@@ -558,7 +562,7 @@ status_t FLASH_GetProperty(flash_config_t *config, flash_property_tag_t whichPro
  */
 status_t FLASH_GetCustKeyStore(flash_config_t *config, uint8_t *pData, uint32_t offset, uint32_t len);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name flash status
@@ -580,12 +584,12 @@ status_t FLASH_GetCustKeyStore(flash_config_t *config, uint8_t *pData, uint32_t 
 status_t FLASH_IsFlashAreaReadable(flash_config_t *config, uint32_t startAddress, uint32_t lengthInBytes);
 #endif
 
-/*@}*/
+/*! @} */
 
 #ifdef __cplusplus
 }
 #endif
 
-/*@}*/
+/*! @} */
 
 #endif /* _FLASH_FLASH_H_ */

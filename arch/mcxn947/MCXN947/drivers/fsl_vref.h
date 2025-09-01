@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 NXP
+ * Copyright 2019-2024 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -20,9 +20,9 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
-#define FSL_VREF_DRIVER_VERSION (MAKE_VERSION(2, 2, 2)) /*!< Version 2.2.2. */
-/*@}*/
+/*! @{ */
+#define FSL_VREF_DRIVER_VERSION (MAKE_VERSION(2, 4, 0)) /*!< Version 2.4.0. */
+/*! @} */
 
 /*! @brief VREF buffer modes. */
 typedef enum _vref_buffer_mode
@@ -40,7 +40,9 @@ typedef struct _vref_config
     bool enableChopOscillator;           /*!< Enable Chop oscillator.*/
     bool enableHCBandgap;                /*!< Enable High-Accurate bandgap.*/
     bool enableCurvatureCompensation;    /*!< Enable second order curvature compensation. */
+#if !(defined(FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER) && (FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER == 0U))
     bool enableLowPowerBuff;             /*!< Provides bias current for other peripherals.*/
+#endif /* FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER */
 
 } vref_config_t;
 
@@ -110,7 +112,7 @@ void VREF_Deinit(VREF_Type *base);
  */
 void VREF_GetDefaultConfig(vref_config_t *config);
 
-/* @} */
+/*! @} */
 
 /*!
  * @name Trim functions
@@ -127,6 +129,7 @@ void VREF_GetDefaultConfig(vref_config_t *config);
  */
 void VREF_SetVrefTrimVal(VREF_Type *base, uint8_t trimValue);
 
+#if !(defined(FSL_FEATURE_VREF_HAS_TRIM2V1) && (FSL_FEATURE_VREF_HAS_TRIM2V1 == 0U))
 /*!
  * @brief Sets a TRIM value for the accurate buffered VREF output.
  *
@@ -140,6 +143,7 @@ void VREF_SetVrefTrimVal(VREF_Type *base, uint8_t trimValue);
  * @param trim21Value Value of the trim register to set the output reference voltage (maximum 0xF (4-bit)).
  */
 void VREF_SetTrim21Val(VREF_Type *base, uint8_t trim21Value);
+#endif /* FSL_FEATURE_VREF_HAS_TRIM2V1 */
 
 /*!
  * @brief Reads the trim value.
@@ -151,6 +155,7 @@ void VREF_SetTrim21Val(VREF_Type *base, uint8_t trim21Value);
  */
 uint8_t VREF_GetVrefTrimVal(VREF_Type *base);
 
+#if !(defined(FSL_FEATURE_VREF_HAS_TRIM2V1) && (FSL_FEATURE_VREF_HAS_TRIM2V1 == 0U))
 /*!
  * @brief Reads the VREF 2.1V trim value.
  *
@@ -160,8 +165,207 @@ uint8_t VREF_GetVrefTrimVal(VREF_Type *base);
  * @return 4-bit value of trim setting.
  */
 uint8_t VREF_GetTrim21Val(VREF_Type *base);
+#endif /* FSL_FEATURE_VREF_HAS_TRIM2V1 */
 
-/* @} */
+#if (defined(FSL_FEATURE_VREF_HAS_TEST_UNLOCK_REG) && (FSL_FEATURE_VREF_HAS_TEST_UNLOCK_REG == 1U))
+/*!
+ * @brief Set VREF test unlock value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF test unlock value.
+ */
+static inline void VREF_SetTestUlockValue(VREF_Type *base, uint16_t value)
+{
+    base->TEST_UNLOCK |= VREF_TEST_UNLOCK_TEST_UNLOCK(value);
+}
+
+/*!
+ * @brief Get VREF test unlock value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF test unlock value.
+ */
+static inline uint16_t VREF_GetTestUlockValue(VREF_Type *base)
+{
+    return (uint16_t)(base->TEST_UNLOCK & VREF_TEST_UNLOCK_TEST_UNLOCK_VALUE_MASK >> VREF_TEST_UNLOCK_TEST_UNLOCK_VALUE_SHIFT);
+}
+
+/*!
+ * @brief Decides whether to enable/disable VREF test unlock.
+ *
+ * @param base VREF peripheral address.
+ * @param enable VREF test unlock enable/disable.
+ * - \b true  VREF test unlock enable.
+ * - \b false VREF test unlock disable.
+ */
+static inline void VREF_SetTestUlockEnable(VREF_Type *base, bool enable)
+{
+    if (enable)
+    {
+        base->TEST_UNLOCK |= VREF_TEST_UNLOCK_TEST_UNLOCK_MASK;
+    }
+    else
+    {
+        base->TEST_UNLOCK &= ~VREF_TEST_UNLOCK_TEST_UNLOCK_MASK;
+    }
+}
+#endif /* FSL_FEATURE_VREF_HAS_TEST_UNLOCK_REG */
+
+#if (defined(FSL_FEATURE_VREF_HAS_TRIM0_REG) && (FSL_FEATURE_VREF_HAS_TRIM0_REG == 1U))
+/*!
+ * @brief Decides whether to reverse VREF amplifier polarity.
+ *
+ * @param base VREF peripheral address.
+ * @param reverse VREF amplifier polarity reverse enable/disable.
+ * - \b true  VREF amplifier polarity reverse enable.
+ * - \b false VREF amplifier polarity reverse disable.
+ */
+static inline void VREF_SetAmpPolValue(VREF_Type *base, uint16_t reverse)
+{
+    if (reverse)
+    {
+        base->TRIM0 |= VREF_TRIM0_FLIP_MASK;
+    }
+    else
+    {
+        base->TRIM0 &= ~VREF_TRIM0_FLIP_MASK;
+    }
+}
+
+/*!
+ * @brief Set VREF P7 trim value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF P7 trim value.
+ */
+static inline void VREF_SetP7TrimValue(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_P7_TRIM_MASK) | VREF_TRIM0_P7_TRIM(value);
+}
+
+/*!
+ * @brief Get VREF P7 trim value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF P7 trim value.
+ */
+static inline uint8_t VREF_GetP7TrimValue(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_P7_TRIM_MASK) >> VREF_TRIM0_P7_TRIM_SHIFT);
+}
+
+/*!
+ * @brief Set VREF chop osc trim value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF chop osc trim value.
+ */
+static inline void VREF_SetChopOscTrimValue(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_CHOPOSCTRIM_MASK) | VREF_TRIM0_CHOPOSCTRIM(value);
+}
+
+/*!
+ * @brief Get VREF chop osc trim value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF chop osc trim value.
+ */
+static inline uint8_t VREF_GetChopOscTrimValue(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_CHOPOSCTRIM_MASK) >> VREF_TRIM0_CHOPOSCTRIM_SHIFT);
+}
+
+/*!
+ * @brief Set VREF bandgap MSB value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF bandgap MSB value.
+ */
+static inline void VREF_SetBandgapMsb(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_BPMSB_MASK) | VREF_TRIM0_BPMSB(value);
+}
+
+/*!
+ * @brief Get VREF bandgap MSB value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF bandgap MSB value.
+ */
+static inline uint8_t VREF_GetBandgapMsb(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_BPMSB_MASK) >> VREF_TRIM0_BPMSB_SHIFT);
+}
+
+/*!
+ * @brief Set VREF bandgap LSB value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF bandgap LSB value.
+ */
+static inline void VREF_SetBandgapLsb(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_BPLSB_MASK) | VREF_TRIM0_BPLSB(value);
+}
+
+/*!
+ * @brief Get VREF bandgap LSB value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF bandgap LSB value.
+ */
+static inline uint8_t VREF_GetBandgapLsb(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_BPLSB_MASK) >> VREF_TRIM0_BPLSB_SHIFT);
+}
+
+/*!
+ * @brief Set VREF temperature compensation MSB value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF temperature compensation MSB value.
+ */
+static inline void VREF_SetTempCompMsb(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_COMPMSB_MASK) | VREF_TRIM0_COMPMSB(value);
+}
+
+/*!
+ * @brief Get VREF temperature compensation MSB value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF temperature compensation MSB value.
+ */
+static inline uint8_t VREF_GetTempCompMsb(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_COMPMSB_MASK) >> VREF_TRIM0_COMPMSB_SHIFT);
+}
+
+/*!
+ * @brief Set VREF temperature compensation LSB value.
+ *
+ * @param base VREF peripheral address.
+ * @param value VREF temperature compensation LSB value.
+ */
+static inline void VREF_SetTempCompLsb(VREF_Type *base, uint8_t value)
+{
+    base->TRIM0 = (base->TRIM0 & ~VREF_TRIM0_COMPLSB_MASK) | VREF_TRIM0_COMPLSB(value);
+}
+
+/*!
+ * @brief Get VREF temperature compensation LSB value.
+ *
+ * @param base VREF peripheral address.
+ * @return VREF temperature compensation LSB value.
+ */
+static inline uint8_t VREF_GetTempCompLsb(VREF_Type *base)
+{
+    return (uint8_t)((base->TRIM0 & VREF_TRIM0_COMPLSB_MASK) >> VREF_TRIM0_COMPLSB_SHIFT);
+}
+#endif /* FSL_FEATURE_VREF_HAS_TRIM0_REG */
+
+/*! @} */
 
 #if defined(__cplusplus)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 NXP
+ * Copyright 2022-2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -334,8 +334,8 @@ status_t CLOCK_SetupOsc32KClocking(uint32_t id)
 
     VBAT0->OSCCTLA =
         (VBAT0->OSCCTLA & ~(VBAT_OSCCTLA_MODE_EN_MASK | VBAT_OSCCTLA_CAP_SEL_EN_MASK | VBAT_OSCCTLA_OSC_EN_MASK)) |
-        VBAT_OSCCTLA_MODE_EN(0x2) | VBAT_OSCCTLA_OSC_EN_MASK | VBAT_OSCCTLA_OSC_EN_MASK;
-    VBAT0->OSCCTLB = VBAT_OSCCTLB_INVERSE(0xDFF7E);
+        VBAT_OSCCTLA_MODE_EN(0x0) | VBAT_OSCCTLA_CAP_SEL_EN_MASK | VBAT_OSCCTLA_OSC_EN_MASK;
+    VBAT0->OSCCTLB = VBAT_OSCCTLB_INVERSE(0xFFF7E);
     /* Wait for STATUSA[OSC_RDY] to set. */
     while ((VBAT0->STATUSA & VBAT_STATUSA_OSC_RDY_MASK) == 0U)
     {
@@ -344,6 +344,90 @@ status_t CLOCK_SetupOsc32KClocking(uint32_t id)
     VBAT0->OSCLCKB &= ~VBAT_OSCLCKA_LOCK_MASK;
 
     VBAT0->OSCCLKE |= VBAT_OSCCLKE_CLKE(id);
+
+    /* De-initializes the SCG ROSC */
+    SCG0->ROSCCSR = SCG_ROSCCSR_ROSCERR_MASK;
+
+    /* Unlock ROSCCSR */
+    SCG0->ROSCCSR &= ~SCG_ROSCCSR_LK_MASK;
+
+    /* Enable SOSC clock monitor and Enable ROSC */
+    SCG0->ROSCCSR |= SCG_ROSCCSR_ROSCCM_MASK;
+
+    /* Wait for ROSC clock to be valid. */
+    while ((SCG0->ROSCCSR & SCG_ROSCCSR_ROSCVLD_MASK) == 0U)
+    {
+    }
+
+    s_Xtal32_Freq = 32768U;
+
+    return kStatus_Success;
+}
+
+/**
+ * @brief   Get default XTAL32/EXTAL32 clock configuration structure.
+ * This function initializes the osc 32k configuration structure to a default value. The default
+ * values are:
+ *   config->initTrim = kVBAT_OscInitTrim500ms;
+ *   config->capTrim  = kVBAT_OscCapTrimDefault;
+ *   config->dlyTrim  = kVBAT_OscDlyTrim5;
+ *   config->cap2Trim = kVBAT_OscCap2Trim0;
+ *   config->cmpTrim  = kVBAT_OscCmpTrim760mv;
+ *   config->mode     = kVBAT_OscNormalModeEnable;
+ *   config->xtalCap  = kVBAT_OscXtal24pFCap;
+ *   config->extalCap = kVBAT_OscExtal22pFCap;
+ *   config->ampGain  = kVBAT_OscCoarseAdjustment05;
+ *   config->id       = kCLOCK_Osc32kToVbat;
+ * @param   config: Pointer to a configuration structure
+ */
+void CLOCK_GetDefaultOsc32KConfig(osc_32k_config_t *config)
+{
+    config->initTrim = kVBAT_OscInitTrim500ms;
+    config->capTrim  = kVBAT_OscCapTrimDefault;
+    config->dlyTrim  = kVBAT_OscDlyTrim5;
+    config->cap2Trim = kVBAT_OscCap2Trim0;
+    config->cmpTrim  = kVBAT_OscCmpTrim760mv;
+    
+    config->mode     = kVBAT_OscNormalModeEnable;
+    config->xtalCap  = kVBAT_OscXtal24pFCap;
+    config->extalCap = kVBAT_OscExtal22pFCap;
+    config->ampGain  = kVBAT_OscCoarseAdjustment05;
+    
+    config->id = kCLOCK_Osc32kToVbat;
+}
+
+/**
+ * @brief   Initialize the OSC 32K with user-defined settings.
+ * @param   config   : OSC 32K configuration structure
+ * @return  returns success or fail status.
+ */
+status_t CLOCK_SetupOsc32KClockingConfig(osc_32k_config_t config)
+{
+    uint32_t temp32;
+
+    /* Enable LDO */
+    SCG0->LDOCSR |= SCG_LDOCSR_LDOEN_MASK | SCG_LDOCSR_VOUT_OK_MASK;
+
+    temp32 = VBAT_OSCCFGA_INIT_TRIM(config.initTrim) | VBAT_OSCCFGA_CAP_TRIM(config.capTrim) | VBAT_OSCCFGA_DLY_TRIM(config.dlyTrim) |
+    		VBAT_OSCCFGA_CAP2_TRIM(config.cap2Trim) | VBAT_OSCCFGA_CMP_TRIM(config.cmpTrim);
+    VBAT0->OSCCFGA = temp32;
+    VBAT0->OSCCFGB = VBAT_OSCCFGB_INVERSE(~temp32);
+
+    temp32 =
+        (VBAT0->OSCCTLA & ~(VBAT_OSCCTLA_MODE_EN_MASK | VBAT_OSCCTLA_CAP_SEL_EN_MASK | VBAT_OSCCTLA_OSC_EN_MASK | VBAT_OSCCTLA_XTAL_CAP_SEL_MASK | VBAT_OSCCTLA_EXTAL_CAP_SEL_MASK | VBAT_OSCCTLA_COARSE_AMP_GAIN_MASK)) |
+        VBAT_OSCCTLA_MODE_EN(config.mode) | VBAT_OSCCTLA_OSC_EN_MASK | VBAT_OSCCTLA_XTAL_CAP_SEL(config.xtalCap) |
+		VBAT_OSCCTLA_EXTAL_CAP_SEL(config.extalCap) | VBAT_OSCCTLA_CAP_SEL_EN_MASK | VBAT_OSCCTLA_COARSE_AMP_GAIN(config.ampGain);
+
+
+    VBAT0->OSCCTLA = temp32;
+    VBAT0->OSCCTLB = VBAT_OSCCTLB_INVERSE(~temp32);
+
+    /* Wait for STATUSA[OSC_RDY] to set. */
+    while ((VBAT0->STATUSA & VBAT_STATUSA_OSC_RDY_MASK) == 0U)
+    {
+    }
+
+    VBAT0->OSCCLKE |= VBAT_OSCCLKE_CLKE(config.id);
 
     /* De-initializes the SCG ROSC */
     SCG0->ROSCCSR = SCG_ROSCCSR_ROSCERR_MASK;
@@ -397,9 +481,19 @@ status_t CLOCK_FROHFTrimConfig(firc_trim_config_t config)
     }
 
     /* Set trim mode. */
-    SCG0->FIRCCSR = (uint32_t)config.trimMode;
+    SCG0->FIRCCSR = (SCG0->FIRCCSR & ~(SCG_FIRCCSR_FIRCTREN_MASK | SCG_FIRCCSR_FIRCTRUP_MASK)) | (uint32_t)config.trimMode;
+
+    if ((SCG0->FIRCCSR & SCG_FIRCCSR_FIRCVLD_MASK) == 0U)
+    {
+        return (status_t)kStatus_Fail;
+    }
 
     if ((SCG0->FIRCCSR & SCG_FIRCCSR_FIRCERR_MASK) == SCG_FIRCCSR_FIRCERR_MASK)
+    {
+        return (status_t)kStatus_Fail;
+    }
+
+    if ((config.trimSrc != kSCG_FircTrimSrcUsb0) && ((SCG0->FIRCCSR & SCG_FIRCCSR_TRIM_LOCK_MASK) == 0U))
     {
         return (status_t)kStatus_Fail;
     }
@@ -418,14 +512,24 @@ status_t CLOCK_FRO12MTrimConfig(sirc_trim_config_t config)
 
     if (kSCG_SircTrimNonUpdate == config.trimMode)
     {
-        SCG0->SIRCSTAT = SCG_SIRCSTAT_CCOTRIM(config.cltrim);
-        SCG0->SIRCSTAT = SCG_SIRCSTAT_CCOTRIM(config.ccotrim);
+        SCG0->SIRCSTAT = (SCG0->SIRCSTAT & ~SCG_SIRCSTAT_CLTRIM_MASK) | SCG_SIRCSTAT_CLTRIM(config.cltrim);
+        SCG0->SIRCSTAT = (SCG0->SIRCSTAT & ~SCG_SIRCSTAT_CCOTRIM_MASK) | SCG_SIRCSTAT_CCOTRIM(config.ccotrim);
     }
 
     /* Set trim mode. */
-    SCG0->SIRCCSR = (uint32_t)config.trimMode;
+    SCG0->SIRCCSR = (SCG0->SIRCCSR & ~(SCG_SIRCCSR_SIRCTREN_MASK | SCG_SIRCCSR_SIRCTRUP_MASK)) | (uint32_t)config.trimMode;
+
+    if ((SCG0->SIRCCSR & SCG_SIRCCSR_SIRCVLD_MASK) == 0U)
+    {
+        return (status_t)kStatus_Fail;
+    }
 
     if ((SCG0->SIRCCSR & SCG_SIRCCSR_SIRCERR_MASK) == SCG_SIRCCSR_SIRCERR_MASK)
+    {
+        return (status_t)kStatus_Fail;
+    }
+
+    if ((SCG0->SIRCCSR & SCG_SIRCCSR_TRIM_LOCK_MASK) == 0U)
     {
         return (status_t)kStatus_Fail;
     }
@@ -538,15 +642,15 @@ void CLOCK_SetPll1MonitorMode(scg_pll1_monitor_mode_t mode)
 status_t CLOCK_SetFLASHAccessCyclesForFreq(uint32_t system_freq_hz, run_mode_t mode)
 {
     uint32_t num_wait_states_added = 3UL; /* Default 3 additional wait states */
-    switch (mode)
+    switch ((uint32_t)mode)
     {
-        case kMD_Mode:
+        case (uint32_t)kMD_Mode:
         {
-            if (system_freq_hz > 50000000)
+            if (system_freq_hz > 50000000U)
             {
                 return kStatus_Fail;
             }
-            if (system_freq_hz > 24000000)
+            if (system_freq_hz > 24000000U)
             {
                 num_wait_states_added = 1U;
             }
@@ -556,17 +660,17 @@ status_t CLOCK_SetFLASHAccessCyclesForFreq(uint32_t system_freq_hz, run_mode_t m
             }
             break;
         }
-        case kSD_Mode:
+        case (uint32_t)kSD_Mode:
         {
-            if (system_freq_hz > 100000000)
+            if (system_freq_hz > 100000000U)
             {
                 return kStatus_Fail;
             }
-            if (system_freq_hz > 64000000)
+            if (system_freq_hz > 64000000U)
             {
                 num_wait_states_added = 2U;
             }
-            else if (system_freq_hz > 36000000)
+            else if (system_freq_hz > 36000000U)
             {
                 num_wait_states_added = 1U;
             }
@@ -576,21 +680,21 @@ status_t CLOCK_SetFLASHAccessCyclesForFreq(uint32_t system_freq_hz, run_mode_t m
             }
             break;
         }
-        case kOD_Mode:
+        case (uint32_t)kOD_Mode:
         {
-            if (system_freq_hz > 150000000)
+            if (system_freq_hz > 150000000U)
             {
                 return kStatus_Fail;
             }
-            if (system_freq_hz > 100000000)
+            if (system_freq_hz > 100000000U)
             {
                 num_wait_states_added = 3U;
             }
-            else if (system_freq_hz > 64000000)
+            else if (system_freq_hz > 64000000U)
             {
                 num_wait_states_added = 2U;
             }
-            else if (system_freq_hz > 36000000)
+            else if (system_freq_hz > 36000000U)
             {
                 num_wait_states_added = 1U;
             }
@@ -598,7 +702,11 @@ status_t CLOCK_SetFLASHAccessCyclesForFreq(uint32_t system_freq_hz, run_mode_t m
             {
                 num_wait_states_added = 0U;
             }
+            break;
         }
+        default:
+            num_wait_states_added = 0U;
+            break;
     }
 
     /* additional wait-states are added */
@@ -1252,9 +1360,9 @@ uint32_t CLOCK_GetFlexspiClkFreq(void)
  */
 uint32_t CLOCK_GetPll0OutFreq(void)
 {
-    uint32_t clkRate = 0;
-    uint32_t prediv, postdiv;
-    float workRate = 0.0F;
+    volatile uint32_t clkRate = 0;
+    volatile uint32_t prediv, postdiv;
+    volatile float workRate = 0.0F;
 
     /* Get the input clock frequency of PLL. */
     clkRate = CLOCK_GetPLL0InClockRate();
@@ -1734,6 +1842,9 @@ uint32_t CLOCK_GetWdtClkFreq(uint32_t id)
             case 2U:
                 freq = CLOCK_GetClk1MFreq();
                 break;
+            case 3U:
+                freq = CLOCK_GetClk1MFreq();
+                break;
             default:
                 freq = 0U;
                 break;
@@ -1992,7 +2103,7 @@ uint32_t CLOCK_GetEmvsimClkFreq(uint32_t id)
  */
 uint32_t CLOCK_GetPLL0InClockRate(void)
 {
-    uint32_t clkRate = 0U;
+    volatile uint32_t clkRate = 0U;
 
     switch ((SCG0->APLLCTRL & SCG_APLLCTRL_SOURCE_MASK) >> SCG_APLLCTRL_SOURCE_SHIFT)
     {
@@ -2331,7 +2442,7 @@ static uint32_t CLOCK_GetOsc32KFreq(uint32_t id)
  */
 uint32_t CLOCK_GetMainClkFreq(void)
 {
-    uint32_t freq = 0U;
+    volatile uint32_t freq = 0U;
 
     switch ((SCG0->CSR & SCG_CSR_SCS_MASK) >> SCG_CSR_SCS_SHIFT)
     {
@@ -2370,7 +2481,7 @@ uint32_t CLOCK_GetMainClkFreq(void)
  */
 uint32_t CLOCK_GetCoreSysClkFreq(void)
 {
-    uint32_t freq = 0U;
+    volatile uint32_t freq = 0U;
 
     freq = CLOCK_GetMainClkFreq() / ((SYSCON->AHBCLKDIV & 0xffU) + 1U);
 
@@ -2455,11 +2566,11 @@ static uint32_t CLOCK_GetLposcFreq(void)
 
     switch ((RTC0->CTRL & RTC_CTRL_CLK_SEL_MASK) >> RTC_CTRL_CLK_SEL_SHIFT)
     {
+        case 0U:
+            freq = CLOCK_GetClk16KFreq((uint32_t)kCLOCK_Clk16KToVbat);
+            break;
         case 1U:
             freq = CLOCK_GetOsc32KFreq((uint32_t)kCLOCK_Osc32kToVbat);
-            break;
-        case 2U:
-            freq = CLOCK_GetClk16KFreq((uint32_t)kCLOCK_Clk16KToVbat);
             break;
         default:
             freq = 0U;
@@ -3118,13 +3229,12 @@ status_t CLOCK_FIRCAutoTrimWithSOF(void)
     CLOCK_SetSysOscMonitorMode(kSCG_SysOscMonitorDisable);
 
     firc_trim_config_t fircAutoTrimConfig = {
-        .trimMode = kSCG_FircTrimUpdate,        /* FIRC trim is enabled and trim value update is enabled */
-        .trimSrc  = kSCG_FircTrimSrcUsb0,       /* Trim source is USB0 start of frame (1kHz) */
-        .trimDiv  = 1U,                         /* Divided value */
-        .trimCoar = 0U,                         /* Trim value, see Reference Manual for more information */
-        .trimFine = 0U,                         /* Trim value, see Reference Manual for more information */
+        .trimMode = kSCG_FircTrimUpdate,  /* FIRC trim is enabled and trim value update is enabled */
+        .trimSrc  = kSCG_FircTrimSrcUsb0, /* Trim source is USB0 start of frame (1kHz) */
+        .trimDiv  = 1U,                   /* Divided value */
+        .trimCoar = 0U,                   /* Trim value, see Reference Manual for more information */
+        .trimFine = 0U,                   /* Trim value, see Reference Manual for more information */
     };
-    CLOCK_FROHFTrimConfig(fircAutoTrimConfig);
 
-    return (status_t)kStatus_Success;
+    return CLOCK_FROHFTrimConfig(fircAutoTrimConfig);
 }

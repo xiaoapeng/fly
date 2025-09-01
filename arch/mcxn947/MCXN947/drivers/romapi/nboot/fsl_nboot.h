@@ -4,8 +4,8 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef _FSL_NBOOT_H_
-#define _FSL_NBOOT_H_
+#ifndef FSL_NBOOT_H_
+#define FSL_NBOOT_H_
 
 #include "fsl_common.h"
 
@@ -16,6 +16,13 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+
+/*! @name Driver version */
+/*@{*/
+/*! @brief ROMAPI_NBOOT driver version 2.0.0. */
+#define FSL_ROMAPI_NBOOT_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
+/*@}*/
+
 /** @def NXPCLHASH_WA_SIZE_MAX
  *  @brief Define the max workarea size required for this component
  */
@@ -343,4 +350,4 @@ nboot_status_protected_t NBOOT_ImgAuthenticateCmac(nboot_context_t *context,
  * @}
  */
 
-#endif /* _FSL_NBOOT_H_ */
+#endif /* FSL_NBOOT_H_ */

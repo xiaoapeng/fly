@@ -1,6 +1,5 @@
 /*
- * Copyright 2018-2021 NXP
- * All rights reserved.
+ * Copyright 2018-2021, 2025 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -21,10 +20,10 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief OSTIMER driver version. */
-#define FSL_OSTIMER_DRIVER_VERSION (MAKE_VERSION(2, 2, 1))
-/*@}*/
+#define FSL_OSTIMER_DRIVER_VERSION (MAKE_VERSION(2, 2, 4))
+/*! @} */
 
 /*!
  * @brief OSTIMER status flags.
@@ -149,7 +148,7 @@ status_t OSTIMER_SetMatchValue(OSTIMER_Type *base, uint64_t count, ostimer_callb
  * value to gray code.
  *
  * @param base   OSTIMER peripheral base address.
- * @param count  OSTIMER timer match value (Value is gray-code format).
+ * @param value  OSTIMER timer match value (Value is gray-code format).
  */
 static inline void OSTIMER_SetMatchRegister(OSTIMER_Type *base, uint64_t value)
 {
@@ -160,7 +159,7 @@ static inline void OSTIMER_SetMatchRegister(OSTIMER_Type *base, uint64_t value)
     }
 #endif
 
-    base->MATCH_L = (uint32_t)value;
+    base->MATCH_L = (uint32_t)(value & 0xFFFFFFFFU);
     base->MATCH_H = (uint32_t)(value >> 32U);
 }
 
@@ -262,7 +261,7 @@ uint64_t OSTIMER_GetCaptureValue(OSTIMER_Type *base);
  * @return       none
  */
 void OSTIMER_HandleIRQ(OSTIMER_Type *base, ostimer_callback_t cb);
-/* @} */
+/*! @} */
 
 #if defined(__cplusplus)
 }

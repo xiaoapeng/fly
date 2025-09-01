@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2020, 2022 NXP
+ * Copyright 2016-2020, 2022, 2024-2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -20,10 +20,10 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief FlexIO driver version. */
-#define FSL_FLEXIO_DRIVER_VERSION (MAKE_VERSION(2, 2, 2))
-/*@}*/
+#define FSL_FLEXIO_DRIVER_VERSION (MAKE_VERSION(2, 3, 0))
+/*! @} */
 
 /*! @brief Calculate FlexIO timer trigger.*/
 #define FLEXIO_TIMER_TRIGGER_SEL_PININPUT(x)   ((uint32_t)(x) << 1U)
@@ -67,6 +67,7 @@ typedef enum _flexio_timer_mode
     kFLEXIO_TimerModeDual8BitBaudBit = 0x1U, /*!< Dual 8-bit counters baud/bit mode. */
     kFLEXIO_TimerModeDual8BitPWM     = 0x2U, /*!< Dual 8-bit counters PWM mode. */
     kFLEXIO_TimerModeSingle16Bit     = 0x3U, /*!< Single 16-bit counter mode. */
+    kFLEXIO_TimerModeDual8BitPWMLow  = 0x6U, /*!< Dual 8-bit counters PWM Low mode. */
 } flexio_timer_mode_t;
 
 /*! @brief Define type of timer initial output or timer reset condition.*/
@@ -239,7 +240,9 @@ typedef enum _flexio_shifter_buffer_type
 typedef struct _flexio_config_
 {
     bool enableFlexio;     /*!< Enable/disable FlexIO module */
+#if !(defined(FSL_FEATURE_FLEXIO_HAS_DOZE_MODE_SUPPORT) && (FSL_FEATURE_FLEXIO_HAS_DOZE_MODE_SUPPORT == 0))
     bool enableInDoze;     /*!< Enable/disable FlexIO operation in doze mode */
+#endif
     bool enableInDebug;    /*!< Enable/disable FlexIO operation in debug mode */
     bool enableFastAccess; /*!< Enable/disable fast access to FlexIO registers, fast access requires
                            the FlexIO clock to be at least twice the frequency of the bus clock. */
@@ -402,7 +405,7 @@ void FLEXIO_Deinit(FLEXIO_Type *base);
  */
 uint32_t FLEXIO_GetInstance(FLEXIO_Type *base);
 
-/* @} */
+/*! @} */
 
 /*!
  * @name FlexIO Basic Operation
@@ -536,7 +539,7 @@ static inline void FLEXIO_SetClockMode(FLEXIO_Type *base, uint8_t index, flexio_
     base->TIMCFG[index] = reg;
 }
 
-/* @} */
+/*! @} */
 
 /*!
  * @name FlexIO Interrupt Operation
@@ -621,7 +624,7 @@ static inline void FLEXIO_DisableTimerStatusInterrupts(FLEXIO_Type *base, uint32
     base->TIMIEN &= ~mask;
 }
 
-/* @} */
+/*! @} */
 
 /*!
  * @name FlexIO Status Operation
@@ -700,7 +703,7 @@ static inline void FLEXIO_ClearTimerStatusFlags(FLEXIO_Type *base, uint32_t mask
     base->TIMSTAT = mask;
 }
 
-/* @} */
+/*! @} */
 
 /*!
  * @name FlexIO DMA Operation
@@ -758,7 +761,7 @@ status_t FLEXIO_RegisterHandleIRQ(void *base, void *handle, flexio_isr_t isr);
  * @retval kStatus_OutOfRange The FlexIO type/handle/ISR table out of range.
  */
 status_t FLEXIO_UnregisterHandleIRQ(void *base);
-/* @} */
+/*! @} */
 
 #if defined(FSL_FEATURE_FLEXIO_HAS_PIN_REGISTER) && FSL_FEATURE_FLEXIO_HAS_PIN_REGISTER
 
@@ -860,7 +863,7 @@ static inline void FLEXIO_EnablePinOutput(FLEXIO_Type *base, uint32_t pin)
 {
     base->PINOUTE |= (1UL << pin);
 }
-/*@}*/
+/*! @} */
 
 /*!
  * @name FLEXIO PIN Input Operations
@@ -896,6 +899,50 @@ static inline uint32_t FLEXIO_GetPinStatus(FLEXIO_Type *base, uint32_t pin)
 }
 
 /*!
+ * @brief Sets the FLEXIO output pin level.
+ *
+ * @param base   FlexIO peripheral base address
+ * @param pin    FlexIO pin number.
+ * @param level  FlexIO output pin level to set, can be either 0 or 1.
+ */
+static inline void FLEXIO_SetPinLevel(FLEXIO_Type *base, uint8_t pin, bool level)
+{
+	base->PINOUTD =
+		(base->PINOUTD & ~((uint32_t)((uint32_t)1U << pin))) |
+		(FLEXIO_PINOUTD_OUTD((uint32_t)((true == level)
+		? (uint32_t)0x1U : (uint32_t)0x0U) << pin));
+}
+
+/*!
+ * @brief Gets the enabled status of a FLEXIO output pin.
+ *
+ * @param base   FlexIO peripheral base address
+ * @param pin    FlexIO pin number.
+ * @retval       FlexIO port enabled status
+ *        - 0: corresponding output pin is in disabled state.
+ *        - 1: corresponding output pin is in enabled state.
+ */
+static inline bool FLEXIO_GetPinOverride(const FLEXIO_Type *const base, uint8_t pin)
+{
+	return ((base->PINOUTE & (uint32_t)((uint32_t)1U << pin)) != 0UL);
+}
+
+/*!
+ * @brief Enables or disables a FLEXIO output pin.
+ *
+ * @param base     FlexIO peripheral base address
+ * @param pin      Flexio pin number.
+ * @param enabled  Enable or disable the FlexIO pin.
+ */
+static inline void FLEXIO_ConfigPinOverride(FLEXIO_Type *base, uint8_t pin, bool enabled)
+{
+	base->PINOUTE =
+		(base->PINOUTE & ~((uint32_t)((uint32_t)1U << pin))) |
+		FLEXIO_PINOUTE_OUTE((uint32_t)((true == enabled)
+		? (uint32_t)0x1U : (uint32_t)0x0U) << pin);
+}
+
+/*!
  * @brief Clears the multiple FLEXIO input pins status.
  *
  * @param base   FlexIO peripheral base address
@@ -905,13 +952,13 @@ static inline void FLEXIO_ClearPortStatus(FLEXIO_Type *base, uint32_t mask)
 {
     base->PINSTAT = mask;
 }
-/*@}*/
+/*! @} */
 
 #endif /*FSL_FEATURE_FLEXIO_HAS_PIN_REGISTER*/
 
 #if defined(__cplusplus)
 }
 #endif /*_cplusplus*/
-/*@}*/
+/*! @} */
 
 #endif /*FSL_FLEXIO_H_*/

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2023 NXP
- * All rights reserved.
+ * Copyright 2016-2024 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -28,10 +27,10 @@
 #endif
 
 /*! @name Driver version */
-/*@{*/
-/*! @brief MAILBOX driver version 2.3.0. */
+/*! @{ */
+/*! @brief MAILBOX driver version */
 #define FSL_MAILBOX_DRIVER_VERSION (MAKE_VERSION(2, 3, 2))
-/*@}*/
+/*! @} */
 
 /*!
  * @brief CPU ID.
@@ -116,7 +115,7 @@ static inline void MAILBOX_Deinit(MAILBOX_Type *base)
 #endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 }
 
-/* @} */
+/*! @} */
 
 #if ((defined(LPC55S69_cm33_core0_SERIES) || defined(LPC55S69_cm33_core1_SERIES)) || \
      defined(LPC55S66_cm33_core0_SERIES) || defined(LPC55S66_cm33_core1_SERIES) || \
@@ -321,6 +320,6 @@ static inline void MAILBOX_SetMutex(MAILBOX_Type *base)
 #if defined(__cplusplus)
 }
 #endif /*_cplusplus*/
-/*@}*/
+/*! @} */
 
 #endif /* FSL_MAILBOX_H_ */

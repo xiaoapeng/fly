@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 NXP
+ * Copyright 2019-2022, 2024 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -58,7 +58,7 @@ static uint32_t VREF_GetInstance(VREF_Type *base)
          * (s_vrefBases[instance] != base) not covered. The peripheral base
          * address is always valid and checked by assert.
          */
-        if (s_vrefBases[instance] == base)
+        if (MSDK_REG_SECURE_ADDR(s_vrefBases[instance]) == MSDK_REG_SECURE_ADDR(base))
         {
             break;
         }
@@ -100,11 +100,13 @@ void VREF_Init(VREF_Type *base, const vref_config_t *config)
     /* After enabling low power bandgap, delay 20 us. */
     SDK_DelayAtLeastUs(20U, SDK_DEVICE_MAXIMUM_CPU_CLOCK_FREQUENCY);
 
+#if !(defined(FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER) && (FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER == 0U))
     /* Provides bias current for other peripherals. */
     if (config->enableLowPowerBuff)
     {
         base->CSR |= VREF_CSR_LPBG_BUF_EN_MASK;
     }
+#endif /* FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER */
 
     if (config->bufferMode != kVREF_ModeBandgapOnly)
     {
@@ -194,7 +196,9 @@ void VREF_GetDefaultConfig(vref_config_t *config)
     config->enableChopOscillator           = true;
     config->enableHCBandgap                = true;
     config->enableCurvatureCompensation    = true;
+#if !(defined(FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER) && (FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER == 0U))
     config->enableLowPowerBuff             = true;
+#endif /* FSL_FEATURE_VREF_HAS_LOWPOWER_BUFFER */
 }
 
 /*!
@@ -233,6 +237,7 @@ void VREF_SetVrefTrimVal(VREF_Type *base, uint8_t trimValue)
     }
 }
 
+#if !(defined(FSL_FEATURE_VREF_HAS_TRIM2V1) && (FSL_FEATURE_VREF_HAS_TRIM2V1 == 0U))
 /*!
  * brief Sets a TRIM value for the accurate buffered VREF output.
  *
@@ -272,6 +277,7 @@ void VREF_SetTrim21Val(VREF_Type *base, uint8_t trim21Value)
         }
     }
 }
+#endif /* FSL_FEATURE_VREF_HAS_TRIM2V1 */
 
 /*!
  * brief Reads the VREF trim value.
@@ -290,6 +296,7 @@ uint8_t VREF_GetVrefTrimVal(VREF_Type *base)
     return trimValue;
 }
 
+#if !(defined(FSL_FEATURE_VREF_HAS_TRIM2V1) && (FSL_FEATURE_VREF_HAS_TRIM2V1 == 0U))
 /*!
  * brief Reads the VREF 2.1V trim value.
  *
@@ -306,3 +313,4 @@ uint8_t VREF_GetTrim21Val(VREF_Type *base)
 
     return trimValue;
 }
+#endif /* FSL_FEATURE_VREF_HAS_TRIM2V1 */

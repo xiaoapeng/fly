@@ -1,6 +1,5 @@
 /*
- * Copyright 2022-2023 NXP
- * All rights reserved.
+ * Copyright 2022-2024 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -21,8 +20,8 @@
 
 /*! @name Driver version */
 /*@{*/
-/*! @brief CLOCK driver version 1.0.1. */
-#define FSL_CLOCK_DRIVER_VERSION (MAKE_VERSION(1, 0, 1))
+/*! @brief CLOCK driver version 2.0.0. */
+#define FSL_CLOCK_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
 /*@}*/
 
 /*! @brief Configure whether driver controls clock
@@ -84,6 +83,11 @@
 #define GPIO_CLOCKS                                                          \
     {                                                                        \
         kCLOCK_Gpio0, kCLOCK_Gpio1, kCLOCK_Gpio2, kCLOCK_Gpio3, kCLOCK_Gpio4 \
+    }
+/*! @brief Clock ip name array for GDET. */
+#define GDET_CLOCKS                                                          \
+    {                                                                        \
+        kCLOCK_Gdet                                                          \
     }
 /*! @brief Clock ip name array for PINT. */
 #define PINT_CLOCKS \
@@ -212,10 +216,10 @@
             kCLOCK_Pwm1_Sm0, kCLOCK_Pwm1_Sm1, kCLOCK_Pwm1_Sm2, kCLOCK_Pwm1_Sm3 \
         }                                                                      \
     }
-/*! @brief Clock ip name array for ENC. */
-#define ENC_CLOCKS               \
+/*! @brief Clock ip name array for QDC. */
+#define QDC_CLOCKS               \
     {                            \
-        kCLOCK_Enc0, kCLOCK_Enc1 \
+        kCLOCK_Qdc0, kCLOCK_Qdc1 \
     }
 /*! @brief Clock ip name array for FLEXIO. */
 #define FLEXIO_CLOCKS \
@@ -296,6 +300,11 @@
 #define SINC_CLOCKS \
     {               \
         kCLOCK_Sinc \
+    }
+/*! @brief Clock ip name array for SEMA42 */
+#define SEMA42_CLOCKS \
+    {                 \
+        kCLOCK_Sema42 \
     }
 /*! @brief Clock gate name used for CLOCK_EnableClock/CLOCK_DisableClock. */
 /*------------------------------------------------------------------------------
@@ -446,8 +455,8 @@ typedef enum _clock_ip_name
     kCLOCK_I3c1        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 1),  /*!< Clock gate name: I3c1. */
     kCLOCK_Sinc        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 2),  /*!< Clock gate name: Sinc. */
     kCLOCK_CoolFlux    = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 3),  /*!< Clock gate name: CoolFlux. */
-    kCLOCK_Enc0        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 4),  /*!< Clock gate name: Enc0. */
-    kCLOCK_Enc1        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 5),  /*!< Clock gate name: Enc1. */
+    kCLOCK_Qdc0        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 4),  /*!< Clock gate name: Qdc0. */
+    kCLOCK_Qdc1        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 5),  /*!< Clock gate name: Qdc1. */
     kCLOCK_Pwm0        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 6),  /*!< Clock gate name: Pwm0. */
     kCLOCK_Pwm1        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 7),  /*!< Clock gate name: Pwm1. */
     kCLOCK_Evtg        = CLK_GATE_DEFINE(AHB_CLK_CTRL3, 8),  /*!< Clock gate name: Evtg. */
@@ -934,7 +943,7 @@ typedef enum _clock_attach_id
     kCLK_16K2_to_WDT1   = MUX_A(CM_WDT1CLKSEL, 0),               /*!< Attach FRO16K clock 2 to WDT1. */
     kFRO_HF_DIV_to_WDT1 = MUX_A(CM_WDT1CLKSEL, 1),               /*!< Attach FRO_HF_DIV to WDT1. */
     kCLK_1M_to_WDT1     = MUX_A(CM_WDT1CLKSEL, 2),               /*!< Attach clk_1m to WDT1. */
-    kNONE_to_WDT1       = MUX_A(CM_WDT1CLKSEL, 3),               /*!< Attach NONE to WDT1. */
+    kCLK_1M_2_to_WDT1   = MUX_A(CM_WDT1CLKSEL, 3),               /*!< Attach clk_1m to WDT1. */
 
     kCLK_16K2_to_OSTIMER = MUX_A(CM_OSTIMERCLKSEL, 0),           /*!< Attach clk_16k[2] to OSTIMER. */
     kXTAL32K2_to_OSTIMER = MUX_A(CM_OSTIMERCLKSEL, 1),           /*!< Attach xtal32k[2] to OSTIMER. */
@@ -1373,6 +1382,96 @@ typedef enum _run_mode
     kOD_Mode, /*!< Overdrive voltage (1.2 V). */
 } run_mode_t;
 
+/*!
+ * @brief The enumerator of Initialization Trim.
+ */
+typedef enum _vbat_osc_init_trim
+{
+    kVBAT_OscInitTrim8000ms = 0x0U, /*!< Configures the start-up time of the oscillator to 8s. */
+    kVBAT_OscInitTrim4000ms = 0x1U, /*!< Configures the start-up time of the oscillator to 4s. */
+    kVBAT_OscInitTrim2000ms = 0x2U, /*!< Configures the start-up time of the oscillator to 2s. */
+    kVBAT_OscInitTrim1000ms = 0x3U, /*!< Configures the start-up time of the oscillator to 1s. */
+    kVBAT_OscInitTrim500ms  = 0x4U, /*!< Configures the start-up time of the oscillator to 0.5s. */
+    kVBAT_OscInitTrim250ms  = 0x5U, /*!< Configures the start-up time of the oscillator to 0.25s. */
+    kVBAT_OscInitTrim125ms  = 0x6U, /*!< Configures the start-up time of the oscillator to 0.125s. */
+    kVBAT_OscInitTrimHalfms = 0x7U, /*!< Configures the start-up time of the oscillator to 0.5ms. */
+} vbat_osc_init_trim_t;
+
+/*!
+ * @brief The enumerator of Capacitor Trim.
+ */
+typedef enum _vbat_osc_cap_trim
+{
+    kVBAT_OscCapTrimDefault    = 0x0U,
+    kVBAT_OscCapTrim1us        = 0x1U,
+    kVBAT_OscCapTrim2us        = 0x2U,
+    kVBAT_OscCapTrim2andhalfus = 0x3U,
+} vbat_osc_cap_trim_t;
+
+/*!
+ * @brief The enumerator of Delay Trim.
+ */
+typedef enum _vbat_osc_dly_trim
+{
+    kVBAT_OscDlyTrim0 = 0x0U, /*!< P current 9(nA) and N Current 6(nA). */
+    kVBAT_OscDlyTrim1 = 0x1U, /*!< P current 13(nA) and N Current 6(nA). */
+    kVBAT_OscDlyTrim3 = 0x3U, /*!< P current 4(nA) and N Current 6(nA). */
+    kVBAT_OscDlyTrim4 = 0x4U, /*!< P current 9(nA) and N Current 4(nA). */
+    kVBAT_OscDlyTrim5 = 0x5U, /*!< P current 13(nA) and N Current 4(nA). */
+    kVBAT_OscDlyTrim6 = 0x6U, /*!< P current 4(nA) and N Current 4(nA). */
+    kVBAT_OscDlyTrim7 = 0x7U, /*!< P current 9(nA) and N Current 2(nA). */
+    kVBAT_OscDlyTrim8 = 0x8U, /*!< P current 13(nA) and N Current 2(nA). */
+    kVBAT_OscDlyTrim9 = 0x9U, /*!< P current 4(nA) and N Current 2(nA). */
+} vbat_osc_dly_trim_t;
+
+/*!
+ * @brief The enumerator of CAP2_TRIM.
+ */
+typedef enum _vbat_osc_cap2_trim
+{
+    kVBAT_OscCap2Trim0 = 0x0U,
+    kVBAT_OscCap2Trim1 = 0x1U,
+} vbat_osc_cap2_trim_t;
+
+/*!
+ * @brief The enumerator of Comparator Trim.
+ */
+typedef enum _vbat_osc_cmp_trim
+{
+    kVBAT_OscCmpTrim760mv = 0x0U,
+    kVBAT_OscCmpTrim770mv = 0x1U,
+    kVBAT_OscCmpTrim740mv = 0x3U,
+} vbat_osc_cmp_trim_t;
+
+/*!
+ * @brief The enumerator of configures Crystal Oscillator mode..
+ */
+typedef enum _vbat_osc_mode_en
+{
+    kVBAT_OscNormalModeEnable   = 0x0U,
+    kVBAT_OscStartupModeEnable  = 0x1U,
+    kVBAT_OscLowpowerModeEnable = 0x3U,
+} vbat_osc_mode_en_t;
+
+/*!
+ * @brief The structure of oscillator configuration.
+ */
+typedef struct _osc_32k_config
+{
+    vbat_osc_init_trim_t initTrim;
+    vbat_osc_cap_trim_t capTrim;
+    vbat_osc_dly_trim_t dlyTrim;
+    vbat_osc_cap2_trim_t cap2Trim;
+    vbat_osc_cmp_trim_t cmpTrim;
+    
+    vbat_osc_mode_en_t mode;
+    vbat_osc_xtal_cap_t xtalCap;
+    vbat_osc_extal_cap_t extalCap;
+    vbat_osc_coarse_adjustment_value_t ampGain;
+    
+    osc32k_clk_gate_id_t id;    
+} osc_32k_config_t;
+
 /*******************************************************************************
  * API
  ******************************************************************************/
@@ -1390,9 +1489,6 @@ static inline void CLOCK_EnableClock(clock_ip_name_t clk)
 {
     uint32_t index = CLK_GATE_ABSTRACT_REG_OFFSET(clk);
     uint32_t bit   = CLK_GATE_ABSTRACT_BITS_SHIFT(clk);
-
-    if (clk == kCLOCK_None)
-        return;
 
     if (index == (uint32_t)REG_PWM0SUBCTL)
     {
@@ -1419,9 +1515,6 @@ static inline void CLOCK_DisableClock(clock_ip_name_t clk)
 {
     uint32_t index = CLK_GATE_ABSTRACT_REG_OFFSET(clk);
     uint32_t bit   = CLK_GATE_ABSTRACT_BITS_SHIFT(clk);
-
-    if (clk == kCLOCK_None)
-        return;
 
     if (index == (uint32_t)REG_PWM0SUBCTL)
     {
@@ -1473,6 +1566,31 @@ status_t CLOCK_SetupExtRefClocking(uint32_t iFreq);
  * @return  returns success or fail status.
  */
 status_t CLOCK_SetupOsc32KClocking(uint32_t id);
+
+/**
+ * @brief   Get default XTAL32/EXTAL32 clock configuration structure.
+ * This function initializes the osc 32k configuration structure to a default value. The default
+ * values are:
+ *   config->initTrim = kVBAT_OscInitTrim500ms;
+ *   config->capTrim  = kVBAT_OscCapTrimDefault;
+ *   config->dlyTrim  = kVBAT_OscDlyTrim5;
+ *   config->cap2Trim = kVBAT_OscCap2Trim0;
+ *   config->cmpTrim  = kVBAT_OscCmpTrim760mv;
+ *   config->mode     = kVBAT_OscNormalModeEnable;
+ *   config->xtalCap  = kVBAT_OscXtal24pFCap;
+ *   config->extalCap = kVBAT_OscExtal22pFCap;
+ *   config->ampGain  = kVBAT_OscCoarseAdjustment05;
+ *   config->id       = kCLOCK_Osc32kToVbat;
+ * @param   config: Pointer to a configuration structure
+ */
+void CLOCK_GetDefaultOsc32KConfig(osc_32k_config_t *config);
+
+/**
+ * @brief   Initialize the OSC 32K with user-defined settings.
+ * @param   config   : OSC 32K configuration structure
+ * @return  returns success or fail status.
+ */
+status_t CLOCK_SetupOsc32KClockingConfig(osc_32k_config_t config);
 
 /**
  * @brief   Initialize the FRO16K input clock to given frequency.
@@ -2043,6 +2161,23 @@ bool CLOCK_EnableUsbhsClock(void);
  * @return  returns success or fail status.
  */
 status_t CLOCK_FIRCAutoTrimWithSOF(void);
+
+/*!
+ * @brief Enable/disable the CPU1 clock
+ * 
+ * @param enable True to enable the clock, false to disable the clock.
+ */
+static inline void CLOCK_EnableCpu1Clock(SYSCON_Type *base, bool enable)
+{
+    if (enable)
+    {
+        base->CPUCTRL |= SYSCON_CPUCTRL_CPU1CLKEN_MASK;
+    }
+    else
+    {
+        base->CPUCTRL &= ~SYSCON_CPUCTRL_CPU1CLKEN_MASK;
+    }
+}
 
 #if defined(__cplusplus)
 }

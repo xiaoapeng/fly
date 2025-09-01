@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2022 NXP
+ * Copyright 2016-2022, 2024-2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -25,10 +25,10 @@
 #endif
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief PORT driver version. */
-#define FSL_PORT_DRIVER_VERSION (MAKE_VERSION(2, 4, 1))
-/*@}*/
+#define FSL_PORT_DRIVER_VERSION (MAKE_VERSION(2, 5, 1))
+/*! @} */
 
 #if defined(FSL_FEATURE_PORT_HAS_PULL_ENABLE) && FSL_FEATURE_PORT_HAS_PULL_ENABLE
 /*! @brief Internal resistor pull feature selection */
@@ -125,8 +125,12 @@ enum _port_lock_register
 /*! @brief Pin mux selection */
 typedef enum _port_mux
 {
+#if defined(FSL_FEATURE_PORT_PCR_MUX_GPIO) && (FSL_FEATURE_PORT_PCR_MUX_GPIO == 0)
+    kPORT_MuxAsGpio           = 0U,  /*!< Corresponding pin is configured as GPIO. */
+#else
     kPORT_PinDisabledOrAnalog = 0U,  /*!< Corresponding pin is disabled, but is used as an analog pin. */
     kPORT_MuxAsGpio           = 1U,  /*!< Corresponding pin is configured as GPIO. */
+#endif
     kPORT_MuxAlt0             = 0U,  /*!< Chip-specific */
     kPORT_MuxAlt1             = 1U,  /*!< Chip-specific */
     kPORT_MuxAlt2             = 2U,  /*!< Chip-specific */
@@ -295,9 +299,10 @@ typedef enum _port_voltage_range
 extern "C" {
 #endif
 
-#if defined(FSL_FEATURE_PORT_PCR_MUX_WIDTH) && FSL_FEATURE_PORT_PCR_MUX_WIDTH
 /*! @name Configuration */
-/*@{*/
+/*! @{ */
+
+#if defined(FSL_FEATURE_PORT_PCR_MUX_WIDTH) && FSL_FEATURE_PORT_PCR_MUX_WIDTH
 
 #if defined(FSL_FEATURE_PORT_HAS_VERSION_INFO_REGISTER) && FSL_FEATURE_PORT_HAS_VERSION_INFO_REGISTER
 /*!
@@ -309,9 +314,9 @@ extern "C" {
 static inline void PORT_GetVersionInfo(PORT_Type *base, port_version_info_t *info)
 {
     uint32_t verid = base->VERID;
-    info->feature  = (uint16_t)verid;
-    info->minor    = (uint8_t)(verid >> PORT_VERID_MINOR_SHIFT);
-    info->major    = (uint8_t)(verid >> PORT_VERID_MAJOR_SHIFT);
+    info->feature = (uint16_t)((verid & PORT_VERID_FEATURE_MASK) >> PORT_VERID_FEATURE_SHIFT);
+    info->minor   = (uint8_t)((verid & PORT_VERID_MINOR_MASK) >> PORT_VERID_MINOR_SHIFT);
+    info->major   = (uint8_t)((verid & PORT_VERID_MAJOR_MASK) >> PORT_VERID_MAJOR_SHIFT);
 }
 #endif /* FSL_FEATURE_PORT_HAS_VERSION_INFO_REGISTER */
 
@@ -497,10 +502,10 @@ static inline void PORT_SetDigitalFilterConfig(PORT_Type *base, const port_digit
 }
 
 #endif /* FSL_FEATURE_PORT_HAS_DIGITAL_FILTER */
-/*@}*/
+/*! @} */
 
 /*! @name Interrupt */
-/*@{*/
+/*! @{ */
 
 #if !(defined(FSL_FEATURE_PORT_HAS_NO_INTERRUPT) && FSL_FEATURE_PORT_HAS_NO_INTERRUPT)
 /*!
@@ -556,7 +561,14 @@ static inline void PORT_SetPinDriveStrength(PORT_Type *base, uint32_t pin, uint8
  */
 static inline void PORT_EnablePinDoubleDriveStrength(PORT_Type *base, uint32_t pin, bool enable)
 {
-    base->PCR[pin] = (base->PCR[pin] & ~PORT_PCR_DSE1_MASK) | PORT_PCR_DSE1(enable);
+    if (enable)
+    {
+        base->PCR[pin] |= PORT_PCR_DSE1_MASK;
+    }
+    else
+    {
+        base->PCR[pin] &= ~PORT_PCR_DSE1_MASK;
+    }
 }
 #endif
 
@@ -668,7 +680,7 @@ static inline void PORT_ClearAllHighEFTDetectors(PORT_Type *base)
 }
 #endif /* FSL_FEATURE_PORT_SUPPORT_EFT */
 
-/*@}*/
+/*! @} */
 
 #if defined(__cplusplus)
 }

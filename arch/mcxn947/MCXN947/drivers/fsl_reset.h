@@ -1,6 +1,5 @@
 /*
- * Copyright 2022, NXP
- * All rights reserved.
+ * Copyright 2022, 2024 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -107,8 +106,8 @@ typedef enum _SYSCON_RSTn
     kI3C1_RST_SHIFT_RSTn         = 196608 | 1U,  /**< I3C1 reset control */
     kSINC_RST_SHIFT_RSTn         = 196608 | 2U,  /**< SINC reset control */
     kCOOLFLUX_RST_SHIFT_RSTn     = 196608 | 3U,  /**< CoolFlux reset control */
-    kENC0_RST_SHIFT_RSTn         = 196608 | 4U,  /**< ENC0 reset control */
-    kENC1_RST_SHIFT_RSTn         = 196608 | 5U,  /**< ENC1 reset control */
+    kQDC0_RST_SHIFT_RSTn         = 196608 | 4U,  /**< QDC0 reset control */
+    kQDC1_RST_SHIFT_RSTn         = 196608 | 5U,  /**< QDC1 reset control */
     kPWM0_RST_SHIFT_RSTn         = 196608 | 6U,  /**< PWM0 reset control */
     kPWM1_RST_SHIFT_RSTn         = 196608 | 7U,  /**< PWM1 reset control */
     kAOI0_RST_SHIFT_RSTn         = 196608 | 8U,  /**< AOI0 reset control */
@@ -250,6 +249,23 @@ void RESET_PeripheralReset(reset_ip_name_t peripheral);
 static inline void RESET_ReleasePeripheralReset(reset_ip_name_t peripheral)
 {
     RESET_ClearPeripheralReset(peripheral);
+}
+
+/*!
+ * @brief Set/clear the CPU1 reset signal.
+ * 
+ * @param enable True to set the reset signal, false to clear the reset signal.
+ */
+static inline void CLOCK_SetCpu1Reset(SYSCON_Type *base, bool enable)
+{
+    if (enable)
+    {
+        base->CPUCTRL |= SYSCON_CPUCTRL_CPU1RSTEN_MASK;
+    }
+    else
+    {
+        base->CPUCTRL &= ~SYSCON_CPUCTRL_CPU1RSTEN_MASK;
+    }
 }
 
 #if defined(__cplusplus)

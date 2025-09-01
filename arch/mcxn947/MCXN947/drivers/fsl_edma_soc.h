@@ -19,8 +19,8 @@
  ******************************************************************************/
 /*! @name Driver version */
 /*@{*/
-/*! @brief Driver version 1.0.0. */
-#define FSL_EDMA_SOC_DRIVER_VERSION (MAKE_VERSION(1, 0, 0))
+/*! @brief Driver version 2.0.0. */
+#define FSL_EDMA_SOC_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
 /*@}*/
 
 /*!@brief DMA IP version */

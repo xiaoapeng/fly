@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2023 NXP
- * All rights reserved.
+ * Copyright 2016-2025 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -102,7 +101,7 @@ static uint32_t LPADC_GetInstance(ADC_Type *base)
          * (s_lpadcBases[instance] != base) not covered. The peripheral base
          * address is always valid and checked by assert.
          */
-        if (s_lpadcBases[instance] == base)
+        if (MSDK_REG_SECURE_ADDR(s_lpadcBases[instance]) == MSDK_REG_SECURE_ADDR(base))
         {
             break;
         }
@@ -531,12 +530,12 @@ void LPADC_SetConvCommandConfig(ADC_Type *base, uint32_t commandId, const lpadc_
     tmp32 |= ADC_CMDL_ALTB_CSCALE(config->channelBScaleMode); /* Alternate channel B full/Part scale input voltage. */
 #endif                                                        /* FSL_FEATURE_LPADC_HAS_CMDL_ALTB_CSCALE */
 
-#if !(defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U))
+#if (defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 1U))
 #if defined(FSL_FEATURE_LPADC_HAS_CMDL_DIFF) && FSL_FEATURE_LPADC_HAS_CMDL_DIFF
     assert(((config->sampleChannelMode >= kLPADC_SampleChannelDiffBothSideAB) &&
             (((base->VERID) & ADC_VERID_DIFFEN_MASK) != 0U)) ||
            (config->sampleChannelMode < kLPADC_SampleChannelDiffBothSideAB));
-#endif /* defined(FSL_FEATURE_LPADC_HAS_CMDL_DIFF) && FSL_FEATURE_LPADC_HAS_CMDL_DIFF */
+#endif /* FSL_FEATURE_LPADC_HAS_CMDL_DIFF */
 
 #if defined(FSL_FEATURE_LPADC_HAS_CMDL_CTYPE) && FSL_FEATURE_LPADC_HAS_CMDL_CTYPE
     assert(((config->sampleChannelMode == kLPADC_SampleChannelDiffBothSide) &&
@@ -544,8 +543,8 @@ void LPADC_SetConvCommandConfig(ADC_Type *base, uint32_t commandId, const lpadc_
            ((config->sampleChannelMode == kLPADC_SampleChannelDualSingleEndBothSide) &&
             (((base->VERID) & ADC_VERID_NUM_SEC_MASK) != 0U)) ||
            (config->sampleChannelMode < kLPADC_SampleChannelDualSingleEndBothSide));
-#endif /* defined(FSL_FEATURE_LPADC_HAS_CMDL_CTYPE) && FSL_FEATURE_LPADC_HAS_CMDL_CTYPE */
-#endif /* !(defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U)) */
+#endif /* FSL_FEATURE_LPADC_HAS_CMDL_CTYPE */
+#endif /* FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS */
 
     tmp32 |= ADC_CMDL_CHANNEL_MODE(config->sampleChannelMode);
 
@@ -695,10 +694,17 @@ void LPADC_EnableCalibration(ADC_Type *base, bool enable)
  *   -LPADC_SetConvTriggerConfig(...)
  *
  * param base  LPADC peripheral base address.
+ *
+ * retval kStatus_Success Successfully configured.
+ * retval kStatus_Timeout Timeout occurs while waiting completion.
  */
-void LPADC_DoAutoCalibration(ADC_Type *base)
+status_t LPADC_DoAutoCalibration(ADC_Type *base)
 {
     assert(0u == LPADC_GetConvResultCount(base));
+
+#if LPADC_CONVERSION_COMPLETE_TIMEOUT
+    uint32_t timeout = LPADC_CONVERSION_COMPLETE_TIMEOUT;
+#endif
 
     uint32_t mLpadcCMDL;
     uint32_t mLpadcCMDH;
@@ -727,9 +733,17 @@ void LPADC_DoAutoCalibration(ADC_Type *base)
 
     /* Do calibration. */
     LPADC_DoSoftwareTrigger(base, 1U); /* 1U is trigger0 mask. */
+
     while (!LPADC_GetConvResult(base, &mLpadcResultConfigStruct))
     {
+#if LPADC_CONVERSION_COMPLETE_TIMEOUT
+        if ((--timeout) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
     }
+
     /* The valid bits of data are bits 14:3 in the RESFIFO register. */
     LPADC_SetOffsetValue(base, (uint32_t)(mLpadcResultConfigStruct.convValue) >> 3UL);
     /* Disable the calibration function. */
@@ -739,6 +753,8 @@ void LPADC_DoAutoCalibration(ADC_Type *base)
     base->CMD[0].CMDL = mLpadcCMDL;    /* CMD1L. */
     base->CMD[0].CMDH = mLpadcCMDH;    /* CMD1H. */
     base->TCTRL[0]    = mLpadcTrigger; /* Trigger0. */
+
+    return kStatus_Success;
 }
 #endif                                 /* FSL_FEATURE_LPADC_HAS_OFSTRIM */
 #endif                                 /* FSL_FEATURE_LPADC_HAS_CFG_CALOFS */
@@ -748,13 +764,29 @@ void LPADC_DoAutoCalibration(ADC_Type *base)
  * brief Do offset calibration.
  *
  * param base LPADC peripheral base address.
+ *
+ * retval kStatus_Success Successfully configured.
+ * retval kStatus_Timeout Timeout occurs while waiting completion.
  */
-void LPADC_DoOffsetCalibration(ADC_Type *base)
+status_t LPADC_DoOffsetCalibration(ADC_Type *base)
 {
+#if LPADC_CALIBRATION_READY_TIMEOUT
+    uint32_t timeout = LPADC_CALIBRATION_READY_TIMEOUT;
+#endif
+
     LPADC_EnableOffsetCalibration(base, true);
+
     while (ADC_STAT_CAL_RDY_MASK != (base->STAT & ADC_STAT_CAL_RDY_MASK))
     {
+#if LPADC_CALIBRATION_READY_TIMEOUT
+        if ((--timeout) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
     }
+
+    return kStatus_Success;
 }
 
 #if defined(FSL_FEATURE_LPADC_HAS_CTRL_CAL_REQ) && FSL_FEATURE_LPADC_HAS_CTRL_CAL_REQ
@@ -766,7 +798,11 @@ void LPADC_DoOffsetCalibration(ADC_Type *base)
 void LPADC_DoAutoCalibration(ADC_Type *base)
 {
     LPADC_PrepareAutoCalibration(base);
+#if defined(FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE) && FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE
     LPADC_FinishAutoCalibration(base);
+#else
+    LPADC_FinishAutoCalibration(base);
+#endif /* FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE */
 }
 
 /*!
@@ -779,51 +815,61 @@ void LPADC_PrepareAutoCalibration(ADC_Type *base)
 {
 #if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2))
     assert((0U == LPADC_GetConvResultCount(base, 0)) && (0U == LPADC_GetConvResultCount(base, 1)));
-#else  /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 1)) */
+#else  /* FSL_FEATURE_LPADC_FIFO_COUNT */
     assert(LPADC_GetConvResultCount(base) == 0U);
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2)) */
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
 
     /* Request gain calibration. */
     base->CTRL |= ADC_CTRL_CAL_REQ_MASK;
 }
 
+#if defined(FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE) && FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE
 /*!
  * brief Finish auto calibration start with LPADC_PrepareAutoCalibration.
+ * note This feature is used for LPADC with CTRL[CALOFSMODE].
  *
  * param base  LPADC peripheral base address.
+ *
+ * retval kStatus_Success Successfully configured.
+ * retval kStatus_Timeout Timeout occurs while waiting completion.
  */
-void LPADC_FinishAutoCalibration(ADC_Type *base)
+status_t LPADC_FinishAutoCalibration(ADC_Type *base)
 {
-#if defined(FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE) && FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE
     int32_t GCCa;
     int32_t GCCb;
     float GCRa;
     float GCRb;
-#else
-    uint32_t GCCa;
-    float GCRa;
-#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
-    uint32_t GCCb;
-    float GCRb;
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U)) */
-#endif /* FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE */
+
+#if LPADC_GAIN_CAL_READY_TIMEOUT
+    uint32_t timeoutGainCal = LPADC_GAIN_CAL_READY_TIMEOUT;
+#endif
+
+#if LPADC_CALIBRATION_READY_TIMEOUT
+    uint32_t timeoutCal = LPADC_CALIBRATION_READY_TIMEOUT;
+#endif
 
     while ((ADC_GCC_RDY_MASK != (base->GCC[0] & ADC_GCC_RDY_MASK))
 #if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
            || (ADC_GCC_RDY_MASK != (base->GCC[1] & ADC_GCC_RDY_MASK))
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U)) */
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
     )
     {
+#if LPADC_GAIN_CAL_READY_TIMEOUT
+        if ((--timeoutGainCal) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
     }
 
-#if defined(FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE) && FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE
+    /* Calculate gain offset. */
     GCCa = (int32_t)(base->GCC[0] & ADC_GCC_GAIN_CAL_MASK);
     GCCb = (int32_t)(base->GCC[1] & ADC_GCC_GAIN_CAL_MASK);
     if (0U != ((base->GCC[0]) & 0x8000U))
     {
         GCCa         = GCCa - 0x10000;
         GCRa         = (float)((131072.0) /
-                       (131072.0 - (double)GCCa)); /* Gain_CalA = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[0]))*/
+                       (131072.0 - (double)GCCa)); /* Gain_CalA = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[0])) */
         base->GCR[0] = LPADC_GetGainConvResult(GCRa); /* write A side GCALR. */
     }
 
@@ -831,33 +877,107 @@ void LPADC_FinishAutoCalibration(ADC_Type *base)
     {
         GCCb         = GCCb - 0x10000;
         GCRb         = (float)((131072.0) /
-                       (131072.0 - (double)GCCb)); /* Gain_CalB = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[1]))*/
+                       (131072.0 - (double)GCCb)); /* Gain_CalB = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[1])) */
         base->GCR[1] = LPADC_GetGainConvResult(GCRb); /* write B side GCALR. */
     }
-#else
-    /* Calculate gain offset. */
-    GCCa         = (base->GCC[0] & ADC_GCC_GAIN_CAL_MASK);
-    GCRa         = (float)((131072.0) /
-                   (131072.0 - (double)GCCa)); /* Gain_CalA = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[0]))*/
-    base->GCR[0] = LPADC_GetGainConvResult(GCRa);      /* write A side GCALR. */
 
-#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
-    GCCb         = (base->GCC[1] & ADC_GCC_GAIN_CAL_MASK);
-    GCRb         = (float)((131072.0) /
-                   (131072.0 - (double)GCCb)); /* Gain_CalB = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[1]))*/
-    base->GCR[1] = LPADC_GetGainConvResult(GCRb);      /* write B side GCALR. */
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U)) */
-#endif /* FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE */
     /* Indicate the values are valid. */
     base->GCR[0] |= ADC_GCR_RDY_MASK;
 #if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
     base->GCR[1] |= ADC_GCR_RDY_MASK;
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U)) */
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
 
     while (ADC_STAT_CAL_RDY_MASK != (base->STAT & ADC_STAT_CAL_RDY_MASK))
     {
+#if LPADC_CALIBRATION_READY_TIMEOUT
+        if ((--timeoutCal) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
     }
+
+    return kStatus_Success;
 }
+#else
+/*!
+ * brief Finish auto calibration start with LPADC_PrepareAutoCalibration.
+ * note This feature is used for LPADC without CTRL[CALOFSMODE].
+ *
+ * param base  LPADC peripheral base address.
+ *
+ * retval kStatus_Success Successfully configured.
+ * retval kStatus_Timeout Timeout occurs while waiting completion.
+ */
+status_t LPADC_FinishAutoCalibration(ADC_Type *base)
+{
+#if LPADC_GAIN_CAL_READY_TIMEOUT
+    uint32_t timeoutGainCal = LPADC_GAIN_CAL_READY_TIMEOUT;
+#endif
+
+#if LPADC_CALIBRATION_READY_TIMEOUT
+    uint32_t timeoutCal = LPADC_CALIBRATION_READY_TIMEOUT;
+#endif
+
+#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
+    uint32_t GCCa;
+    uint32_t GCCb;
+    float GCRb;
+#else
+    int32_t GCCa;
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
+    float GCRa;
+
+    while ((ADC_GCC_RDY_MASK != (base->GCC[0] & ADC_GCC_RDY_MASK))
+#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
+           || (ADC_GCC_RDY_MASK != (base->GCC[1] & ADC_GCC_RDY_MASK))
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
+    )
+    {
+#if LPADC_GAIN_CAL_READY_TIMEOUT
+        if ((--timeoutGainCal) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
+    }
+
+    /* Calculate gain offset. */
+    GCCa         = ((base->GCC[0] & ADC_GCC_GAIN_CAL_MASK) >> ADC_GCC_GAIN_CAL_SHIFT);
+#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
+    GCCb         = ((base->GCC[1] & ADC_GCC_GAIN_CAL_MASK) >> ADC_GCC_GAIN_CAL_SHIFT);
+    GCRb         = (float)((131072.0) /
+                   (131072.0 - (double)GCCb)); /* Gain_CalB = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[1])) */
+    base->GCR[1] = LPADC_GetGainConvResult(GCRb);      /* write B side GCALR. */
+#else
+    if ((GCCa & (((ADC_GCC_GAIN_CAL_MASK >> ADC_GCC_GAIN_CAL_SHIFT) + 1U) >> 1U)) != 0U)
+    {
+        GCCa |= (~(ADC_GCC_GAIN_CAL_MASK >> ADC_GCC_GAIN_CAL_SHIFT));
+    }
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
+    GCRa         = (float)((131072.0) /
+                   (131072.0 - (double)GCCa)); /* Gain_CalA = (131072.0 / (131072-(ADC_GCC_GAIN_CAL(ADC->GCC[0])) */
+    base->GCR[0] = LPADC_GetGainConvResult(GCRa);      /* write A side GCALR. */
+
+    /* Indicate the values are valid. */
+    base->GCR[0] |= ADC_GCR_RDY_MASK;
+#if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
+    base->GCR[1] |= ADC_GCR_RDY_MASK;
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
+
+    while (ADC_STAT_CAL_RDY_MASK != (base->STAT & ADC_STAT_CAL_RDY_MASK))
+    {
+#if LPADC_CALIBRATION_READY_TIMEOUT
+        if ((--timeoutCal) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
+    }
+
+    return kStatus_Success;
+}
+#endif /* FSL_FEATURE_LPADC_HAS_CTRL_CALOFSMODE */
 #endif /* FSL_FEATURE_LPADC_HAS_CTRL_CAL_REQ */
 
 /*!
@@ -890,17 +1010,17 @@ void LPADC_GetCalibrationValue(ADC_Type *base, lpadc_calibration_value_t *ptrCal
 #if defined(ADC_CAL_GAR0_CAL_GAR_VAL_MASK)
         ptrCalibrationValue->generalCalibrationValueA[i] =
             (uint16_t)((*(((volatile uint32_t *)(&(base->CAL_GAR0))) + i)) & 0xFFFFU);
-#if !(defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U))
+#if (defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 1U))
         ptrCalibrationValue->generalCalibrationValueB[i] =
             (uint16_t)((*(((volatile uint32_t *)(&(base->CAL_GBR0))) + i)) & 0xFFFFU);
-#endif /* (defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U)) */
+#endif /* FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS */
 #else
         ptrCalibrationValue->generalCalibrationValueA[i] =
             (uint16_t)((*(((volatile uint32_t *)(&(base->CAL_GAR[0]))) + i)) & 0xFFFFU);
-#if !(defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U))
+#if (defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 1U))
         ptrCalibrationValue->generalCalibrationValueB[i] =
             (uint16_t)((*(((volatile uint32_t *)(&(base->CAL_GBR[0]))) + i)) & 0xFFFFU);
-#endif /* (defined(FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS) && (FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS == 0U)) */
+#endif /* FSL_FEATURE_LPADC_HAS_B_SIDE_CHANNELS */
 
 #endif /* defined(ADC_CAL_GAR0_CAL_GAR_VAL_MASK) */
     }
@@ -909,7 +1029,7 @@ void LPADC_GetCalibrationValue(ADC_Type *base, lpadc_calibration_value_t *ptrCal
     ptrCalibrationValue->gainCalibrationResultA = (uint16_t)(base->GCR[0] & ADC_GCR_GCALR_MASK);
 #if (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U))
     ptrCalibrationValue->gainCalibrationResultB = (uint16_t)(base->GCR[1] & ADC_GCR_GCALR_MASK);
-#endif /* (defined(FSL_FEATURE_LPADC_FIFO_COUNT) && (FSL_FEATURE_LPADC_FIFO_COUNT == 2U)) */
+#endif /* FSL_FEATURE_LPADC_FIFO_COUNT */
 
     if (adcEnabled)
     {
@@ -924,10 +1044,17 @@ void LPADC_GetCalibrationValue(ADC_Type *base, lpadc_calibration_value_t *ptrCal
  *
  * param base LPADC peripheral base address.
  * param ptrCalibrationValue Pointer to lpadc_calibration_value_t structure which contains ADC's calibration value.
+ * 
+ * retval kStatus_Success Successfully configured.
+ * retval kStatus_Timeout Timeout occurs while waiting completion.
  */
-void LPADC_SetCalibrationValue(ADC_Type *base, const lpadc_calibration_value_t *ptrCalibrationValue)
+status_t LPADC_SetCalibrationValue(ADC_Type *base, const lpadc_calibration_value_t *ptrCalibrationValue)
 {
     assert(ptrCalibrationValue != NULL);
+
+#if LPADC_CALIBRATION_READY_TIMEOUT
+    uint32_t timeout = LPADC_CALIBRATION_READY_TIMEOUT;
+#endif
 
     bool adcEnabled = false;
 
@@ -966,12 +1093,20 @@ void LPADC_SetCalibrationValue(ADC_Type *base, const lpadc_calibration_value_t *
      */
     while (ADC_STAT_CAL_RDY_MASK != (base->STAT & ADC_STAT_CAL_RDY_MASK))
     {
+#if LPADC_CALIBRATION_READY_TIMEOUT
+        if ((--timeout) == 0U)
+        {
+            return kStatus_Timeout;
+        }
+#endif
     }
 
     if (adcEnabled)
     {
         LPADC_Enable(base, true);
     }
+
+    return kStatus_Success;
 }
 
 #endif /* FSL_FEATURE_LPADC_HAS_CTRL_CALOFS */

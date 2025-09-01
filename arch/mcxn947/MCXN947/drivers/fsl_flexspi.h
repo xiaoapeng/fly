@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2023 NXP
+ * Copyright 2016-2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -23,10 +23,10 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief FLEXSPI driver version. */
-#define FSL_FLEXSPI_DRIVER_VERSION (MAKE_VERSION(2, 6, 0))
-/*@}*/
+#define FSL_FLEXSPI_DRIVER_VERSION (MAKE_VERSION(2, 7, 0))
+/*! @} */
 
 #define FSL_FEATURE_FLEXSPI_AHB_BUFFER_COUNT FSL_FEATURE_FLEXSPI_AHB_BUFFER_COUNTn(0)
 
@@ -344,6 +344,15 @@ struct _flexspi_handle
     void *userData;                                 /*!< FLEXSPI callback function parameter.*/
 };
 
+/*! @brief Address mapping configuration structure. */
+typedef struct _flexspi_addr_map_config
+{
+    uint32_t addrStart;  /*!< Remapping start address. */
+    uint32_t addrEnd;    /*!< Remapping end address. */
+    uint32_t addrOffset; /*!< Address offset. */
+    bool remapEnable;    /*!< Enable address remapping. */
+} flexspi_addr_map_config_t;
+
 /*******************************************************************************
  * API
  ******************************************************************************/
@@ -428,13 +437,7 @@ void FLEXSPI_SetFlashConfig(FLEXSPI_Type *base, flexspi_device_config_t *config,
  *
  * @param base FLEXSPI peripheral base address.
  */
-static inline void FLEXSPI_SoftwareReset(FLEXSPI_Type *base)
-{
-    base->MCR0 |= FLEXSPI_MCR0_SWRESET_MASK;
-    while (0U != (base->MCR0 & FLEXSPI_MCR0_SWRESET_MASK))
-    {
-    }
-}
+void FLEXSPI_SoftwareReset(FLEXSPI_Type *base);
 
 /*!
  * @brief Enables or disables the FLEXSPI module.
@@ -454,7 +457,40 @@ static inline void FLEXSPI_Enable(FLEXSPI_Type *base, bool enable)
     }
 }
 
-/* @} */
+#if (defined(FSL_FEATURE_FLEXSPI_HAS_ADDR_REMAP)) && (FSL_FEATURE_FLEXSPI_HAS_ADDR_REMAP)
+/*!
+ * @brief Configure FLEXSPI address mapping
+ *
+ * @param base FLEXSPI peripheral base address
+ * @param config Pointer to address mapping configuration structure
+ */
+void FLEXSPI_SetAddressMapping(FLEXSPI_Type *base, const flexspi_addr_map_config_t *config);
+
+/*!
+ * @brief Enable/Disables FLEXSPI address remapping
+ *
+ * This function controls the address remapping feature which allows
+ * remapping of AHB addresses to different flash memory regions.
+ * When remapping is enabled, accesses to the configured address range
+ * will be redirected to the specified flash device.
+ *
+ * @param base  FLEXSPI peripheral base address
+ * @param enable  True to enable remapping, false to disable
+ */
+static inline void FLEXSPI_EnableRemap(FLEXSPI_Type *base, bool enable)
+{
+    if (enable)
+    {
+        base->HADDRSTART |= FLEXSPI_HADDRSTART_REMAPEN_MASK;
+    }
+    else
+    {
+        base->HADDRSTART &= ~FLEXSPI_HADDRSTART_REMAPEN_MASK;
+    }
+}
+#endif
+
+/*! @} */
 
 /*!
  * @name Interrupts
@@ -482,10 +518,10 @@ static inline void FLEXSPI_DisableInterrupts(FLEXSPI_Type *base, uint32_t mask)
     base->INTEN &= ~mask;
 }
 
-/* @} */
+/*! @} */
 
 /*! @name DMA control */
-/*@{*/
+/*! @{ */
 
 /*!
  * @brief Enables or disables FLEXSPI IP Tx FIFO DMA requests.
@@ -545,10 +581,10 @@ static inline uint32_t FLEXSPI_GetRxFifoAddress(FLEXSPI_Type *base)
     return (uint32_t)&base->RFDR[0];
 }
 
-/*@}*/
+/*! @} */
 
 /*! @name FIFO control */
-/*@{*/
+/*! @{ */
 
 /*! @brief Clears the FLEXSPI IP FIFO logic.
  *
@@ -589,7 +625,7 @@ static inline void FLEXSPI_GetFifoCounts(FLEXSPI_Type *base, size_t *txCount, si
     }
 }
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Status
@@ -687,7 +723,7 @@ static inline bool FLEXSPI_GetBusIdleStatus(FLEXSPI_Type *base)
 {
     return (0U != (base->STS0 & FLEXSPI_STS0_ARBIDLE_MASK)) && (0U != (base->STS0 & FLEXSPI_STS0_SEQIDLE_MASK));
 }
-/*@}*/
+/*! @} */
 
 /*!
  * @name Bus Operations
@@ -742,10 +778,10 @@ static inline void FLEXSPI_EnableAHBParallelMode(FLEXSPI_Type *base, bool enable
 #if (defined(FSL_FEATURE_FLEXSPI_HAS_AHBCR_AFLASHBASE_BIT) && FSL_FEATURE_FLEXSPI_HAS_AHBCR_AFLASHBASE_BIT)
 /*!
  * @brief Set AHB Memory-Mapped Flash base address.
- * 
+ *
  * @note The length of base address may be different for differnt instance, please refer to the reference manual.
  * @note This function should be called when FLEXSPI is in stop mode.
- * 
+ *
  * @param base FLEXSPI peripheral base address.
  * @param address AHB Memory-Mapped Flash base address.
  */
@@ -897,6 +933,6 @@ void FLEXSPI_TransferHandleIRQ(FLEXSPI_Type *base, flexspi_handle_t *handle);
 #if defined(__cplusplus)
 }
 #endif /*_cplusplus. */
-/*@}*/
+/*! @} */
 
 #endif /* FSL_FLEXSPI_H_ */

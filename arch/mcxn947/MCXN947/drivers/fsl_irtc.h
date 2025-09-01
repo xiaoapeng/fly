@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2019, 2022-2023 NXP
- * All rights reserved.
+ * Copyright 2016-2019, 2022-2023, 2024 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -20,9 +19,15 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
-#define FSL_IRTC_DRIVER_VERSION (MAKE_VERSION(2, 2, 4)) /*!< Version. */
-/*@}*/
+/*! @{ */
+#define FSL_IRTC_DRIVER_VERSION (MAKE_VERSION(2, 3, 2))
+/*! @} */
+
+#if !(defined(FSL_FEATURE_RTC_IS_SLAVE) && (FSL_FEATURE_RTC_IS_SLAVE != 0U))
+#define IRTC_STATUS_W1C_BITS ((uint16_t)(RTC_STATUS_BUS_ERR_MASK) | (uint16_t)(RTC_STATUS_CMP_DONE_MASK))
+#else
+#define IRTC_STATUS_W1C_BITS ((uint16_t)(RTC_STATUS_BUS_ERR_MASK))
+#endif
 
 #if defined(FSL_FEATURE_RTC_HAS_CLOCK_SELECT) && FSL_FEATURE_RTC_HAS_CLOCK_SELECT
 /*! @brief IRTC clock select. */
@@ -114,9 +119,11 @@ typedef enum _irtc_status_flags
 #if !defined(FSL_FEATURE_RTC_HAS_NO_RST_SRC_FLAG) || (!FSL_FEATURE_RTC_HAS_NO_RST_SRC_FLAG)
     kIRTC_ResetSrcFlag = (RTC_STATUS_RST_SRC_MASK << 16U), /*!< Reset source flag */
 #endif
+#if !(defined(FSL_FEATURE_RTC_IS_SLAVE) && (FSL_FEATURE_RTC_IS_SLAVE != 0U))
     kIRTC_CmpIntFlag  = (RTC_STATUS_CMP_INT_MASK << 16U),  /*!< Compensation interval status flag */
-    kIRTC_BusErrFlag  = (RTC_STATUS_BUS_ERR_MASK << 16U),  /*!< Bus error flag */
     kIRTC_CmpDoneFlag = (RTC_STATUS_CMP_DONE_MASK << 16U), /*!< Compensation done flag */
+#endif
+    kIRTC_BusErrFlag  = (RTC_STATUS_BUS_ERR_MASK << 16U),  /*!< Bus error flag */
 #if defined(FSL_FEATURE_RTC_HAS_SUBSYSTEM) && FSL_FEATURE_RTC_HAS_SUBSYSTEM
     kIRTC_WakeTimerFlag = (RTC_WAKE_TIMER_CTRL_WAKE_FLAG_MASK << 28U) /*!< Wake timer status flag */
 #endif
@@ -243,7 +250,9 @@ extern "C" {
  * @param base   IRTC peripheral base address
  * @param config Pointer to user's IRTC config structure.
  *
+ * @return kStatus_Success If the driver is initialized successfully.
  * @return kStatus_Fail if we cannot disable register write protection
+ * @return kStatus_InvalidArgument If the input parameters are wrong.
  */
 status_t IRTC_Init(RTC_Type *base, const irtc_config_t *config);
 
@@ -251,13 +260,10 @@ status_t IRTC_Init(RTC_Type *base, const irtc_config_t *config);
  * @brief Gate the IRTC clock
  *
  * @param base IRTC peripheral base address
+ * @return kStatus_Success If the driver is initialized successfully.
+ * @return kStatus_InvalidArgument If the input parameters are wrong.
  */
-static inline void IRTC_Deinit(RTC_Type *base)
-{
-#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
-    CLOCK_DisableClock(kCLOCK_Rtc0);
-#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
-}
+status_t IRTC_Deinit(RTC_Type *base);
 
 /*!
  * @brief Fill in the IRTC config struct with the default settings
@@ -279,6 +285,7 @@ void IRTC_GetDefaultConfig(irtc_config_t *config);
  * @{
  */
 
+#if !(defined(FSL_FEATURE_RTC_IS_SLAVE) && (FSL_FEATURE_RTC_IS_SLAVE != 0U))
 /*!
  * @brief Sets the IRTC date and time according to the given time structure.
  *
@@ -291,6 +298,7 @@ void IRTC_GetDefaultConfig(irtc_config_t *config);
  *         kStatus_InvalidArgument: failure. An error occurs because the datetime format is incorrect.
  */
 status_t IRTC_SetDatetime(RTC_Type *base, const irtc_datetime_t *datetime);
+#endif /* FSL_FEATURE_RTC_IS_SLAVE  */
 
 /*!
  * @brief Gets the IRTC time and stores it in the given time structure.
@@ -437,7 +445,7 @@ static inline uint32_t IRTC_GetStatusFlags(RTC_Type *base)
 static inline void IRTC_ClearStatusFlags(RTC_Type *base, uint32_t mask)
 {
     base->ISR    = (uint16_t)mask;
-    base->STATUS = (base->STATUS & ~((uint16_t)RTC_STATUS_BUS_ERR_MASK | (uint16_t)RTC_STATUS_CMP_DONE_MASK)) |
+    base->STATUS = (base->STATUS & ~IRTC_STATUS_W1C_BITS) |
                    ((uint16_t)(mask >> 16U));
 #if !defined(FSL_FEATURE_RTC_HAS_NO_TAMPER_FEATURE) || (!FSL_FEATURE_RTC_HAS_NO_TAMPER_FEATURE)
     /* TAMPER flag need clear TAMPER_SCR[TMPR_STS] filed */
@@ -541,7 +549,7 @@ static inline void IRTC_Enable32kClkDuringRegisterWrite(RTC_Type *base, bool ena
  * RTC subsystem needs RTC to output 1HZ clock for sub-second counter.
  *
  * @param base IRTC peripheral base address
- * @param cloOut select clock to use for output,
+ * @param clkOut select clock to use for output,
  */
 void IRTC_ConfigClockOut(RTC_Type *base, irtc_clockout_sel_t clkOut);
 
@@ -632,6 +640,7 @@ static inline void IRTC_SetTamperConfigurationOver(RTC_Type *base)
  * @{
  */
 
+#if !(defined(FSL_FEATURE_RTC_IS_SLAVE) && (FSL_FEATURE_RTC_IS_SLAVE != 0U))
 /*!
  * @brief Sets the IRTC daylight savings start and stop date and time.
  *
@@ -641,6 +650,7 @@ static inline void IRTC_SetTamperConfigurationOver(RTC_Type *base)
  * @param datetime Pointer to a structure where the date and time details are stored.
  */
 void IRTC_SetDaylightTime(RTC_Type *base, const irtc_daylight_time_t *datetime);
+#endif /* FSL_FEATURE_RTC_IS_SLAVE  */
 
 /*!
  * @brief Gets the IRTC daylight savings time and stores it in the given time structure.
@@ -652,6 +662,7 @@ void IRTC_GetDaylightTime(RTC_Type *base, irtc_daylight_time_t *datetime);
 
 /*! @}*/
 
+#if !(defined(FSL_FEATURE_RTC_IS_SLAVE) && (FSL_FEATURE_RTC_IS_SLAVE != 0U))
 /*!
  * @name Time Compensation Interface
  * @{
@@ -680,6 +691,7 @@ void IRTC_SetCoarseCompensation(RTC_Type *base, uint8_t compensationValue, uint8
 void IRTC_SetFineCompensation(RTC_Type *base, uint8_t integralValue, uint8_t fractionValue, bool accumulateFractional);
 
 /*! @}*/
+#endif /* FSL_FEATURE_RTC_IS_SLAVE  */
 
 #if !defined(FSL_FEATURE_RTC_HAS_NO_TAMPER_FEATURE) || (!FSL_FEATURE_RTC_HAS_NO_TAMPER_FEATURE)
 
@@ -756,6 +768,7 @@ static inline void IRTC_ClearTamperQueueFullStatus(RTC_Type *base)
  * @{
  */
 
+#if !(defined(FSL_FEATURE_RTC_HAS_SUBSECOND) && (FSL_FEATURE_RTC_HAS_SUBSECOND == 0))
 /*!
  * @brief Enable the RTC wake-up timer.
  *
@@ -799,6 +812,8 @@ static inline uint32_t IRTC_GetSubsecondCount(RTC_Type *base)
 
     return b;
 }
+#endif /* FSL_FEATURE_RTC_HAS_SUBSECOND */
+
 /*!
  * @brief Set countdown value to the RTC wake timer counter register.
  *

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2023 NXP
+ * Copyright 2016-2023, 2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -22,10 +22,10 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief FlexIO MCULCD driver version. */
-#define FSL_FLEXIO_MCULCD_DRIVER_VERSION (MAKE_VERSION(2, 1, 0))
-/*@}*/
+#define FSL_FLEXIO_MCULCD_DRIVER_VERSION (MAKE_VERSION(2, 3, 0))
+/*! @} */
 
 #ifndef FLEXIO_MCULCD_WAIT_COMPLETE_TIME
 /*!
@@ -50,6 +50,19 @@
 
 #if (16UL != FLEXIO_MCULCD_DATA_BUS_WIDTH) && (8UL != FLEXIO_MCULCD_DATA_BUS_WIDTH)
 #error Only support data bus 8-bit or 16-bit
+#endif
+
+/*!
+ * @brief Whether to use legacy GPIO functions to control the CS/RS/RDWR pin signal.
+ *
+ * If using the legacy pin functions, there is no user defined argument passed to the function.
+ */
+#ifndef FLEXIO_MCULCD_LEGACY_GPIO_FUNC
+    #ifdef CONFIG_FLEXIO_MCULCD_LEGACY_GPIO_FUNC
+        #define FLEXIO_MCULCD_LEGACY_GPIO_FUNC CONFIG_FLEXIO_MCULCD_LEGACY_GPIO_FUNC
+    #else
+        #define FLEXIO_MCULCD_LEGACY_GPIO_FUNC 1
+    #endif
 #endif
 
 /*! @brief FlexIO LCD transfer status */
@@ -98,7 +111,11 @@ enum _flexio_mculcd_dma_enable
 };
 
 /*! @brief Function to set or clear the CS and RS pin. */
+#if FLEXIO_MCULCD_LEGACY_GPIO_FUNC
 typedef void (*flexio_mculcd_pin_func_t)(bool set);
+#else
+typedef void (*flexio_mculcd_pin_func_t)(bool set, void *userData);
+#endif
 
 /*! @brief Define FlexIO MCULCD access structure typedef. */
 typedef struct _flexio_mculcd_type
@@ -118,13 +135,18 @@ typedef struct _flexio_mculcd_type
     flexio_mculcd_pin_func_t setCSPin;   /*!< Function to set or clear the CS pin. */
     flexio_mculcd_pin_func_t setRSPin;   /*!< Function to set or clear the RS pin. */
     flexio_mculcd_pin_func_t setRDWRPin; /*!< Function to set or clear the RD/WR pin, only used in 6800 mode. */
+#if !FLEXIO_MCULCD_LEGACY_GPIO_FUNC
+    void *userData;                      /*!< Function parameter.*/
+#endif
 } FLEXIO_MCULCD_Type;
 
 /*! @brief Define FlexIO MCULCD configuration structure. */
 typedef struct _flexio_mculcd_config
 {
     bool enable;           /*!< Enable/disable FlexIO MCULCD after configuration. */
+#if !(defined(FSL_FEATURE_FLEXIO_HAS_DOZE_MODE_SUPPORT) && (FSL_FEATURE_FLEXIO_HAS_DOZE_MODE_SUPPORT == 0))
     bool enableInDoze;     /*!< Enable/disable FlexIO operation in doze mode. */
+#endif
     bool enableInDebug;    /*!< Enable/disable FlexIO operation in debug mode. */
     bool enableFastAccess; /*!< Enable/disable fast access to FlexIO registers,
                            fast access requires the FlexIO clock to be at least
@@ -230,7 +252,7 @@ void FLEXIO_MCULCD_Deinit(FLEXIO_MCULCD_Type *base);
  */
 void FLEXIO_MCULCD_GetDefaultConfig(flexio_mculcd_config_t *config);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Status
@@ -258,7 +280,7 @@ uint32_t FLEXIO_MCULCD_GetStatusFlags(FLEXIO_MCULCD_Type *base);
  */
 void FLEXIO_MCULCD_ClearStatusFlags(FLEXIO_MCULCD_Type *base, uint32_t mask);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Interrupts
@@ -287,7 +309,7 @@ void FLEXIO_MCULCD_EnableInterrupts(FLEXIO_MCULCD_Type *base, uint32_t mask);
  */
 void FLEXIO_MCULCD_DisableInterrupts(FLEXIO_MCULCD_Type *base, uint32_t mask);
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name DMA Control
@@ -344,7 +366,7 @@ static inline uint32_t FLEXIO_MCULCD_GetRxDataRegisterAddress(FLEXIO_MCULCD_Type
     return (uint32_t) & (base->flexioBase->SHIFTBUF[base->rxShifterStartIndex]);
 }
 
-/*@}*/
+/*! @} */
 
 /*!
  * @name Bus Operations
@@ -523,7 +545,11 @@ static inline void FLEXIO_MCULCD_WriteData(FLEXIO_MCULCD_Type *base, uint32_t da
  */
 static inline void FLEXIO_MCULCD_StartTransfer(FLEXIO_MCULCD_Type *base)
 {
+#if FLEXIO_MCULCD_LEGACY_GPIO_FUNC
     base->setCSPin(false);
+#else
+    base->setCSPin(false, base->userData);
+#endif
 }
 
 /*!
@@ -533,7 +559,11 @@ static inline void FLEXIO_MCULCD_StartTransfer(FLEXIO_MCULCD_Type *base)
  */
 static inline void FLEXIO_MCULCD_StopTransfer(FLEXIO_MCULCD_Type *base)
 {
+#if FLEXIO_MCULCD_LEGACY_GPIO_FUNC
     base->setCSPin(true);
+#else
+    base->setCSPin(true, base->userData);
+#endif
 }
 
 /*!
@@ -603,7 +633,7 @@ void FLEXIO_MCULCD_WriteSameValueBlocking(FLEXIO_MCULCD_Type *base, uint32_t sam
  * @param xfer pointer to flexio_mculcd_transfer_t structure.
  */
 void FLEXIO_MCULCD_TransferBlocking(FLEXIO_MCULCD_Type *base, flexio_mculcd_transfer_t *xfer);
-/*@}*/
+/*! @} */
 
 /*!
  * @name Transactional
@@ -676,11 +706,11 @@ status_t FLEXIO_MCULCD_TransferGetCount(FLEXIO_MCULCD_Type *base, flexio_mculcd_
  */
 void FLEXIO_MCULCD_TransferHandleIRQ(void *base, void *handle);
 
-/*@}*/
+/*! @} */
 
 #if defined(__cplusplus)
 }
 #endif /*_cplusplus*/
-/*@}*/
+/*! @} */
 
 #endif /*FSL_FLEXIO_MCULCD_H_*/

@@ -6,6 +6,7 @@ target_compile_definitions(arch-mcxn947-core0 PUBLIC -D__FPU_PRESENT  -D__STARTU
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/CMSIS/Core/Include/")
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/")
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/")
+target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/periph/")
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/romapi/nboot/")
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/romapi/mem_interface/")
 target_include_directories(arch-mcxn947-core0 PUBLIC "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/romapi/flash/")
@@ -89,7 +90,6 @@ target_sources(arch-mcxn947-core0 PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_wwdt.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_lpuart_edma.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_opamp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_enc.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_flexio_mculcd.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_plu.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_smartcard_emvsim.c"
@@ -97,11 +97,9 @@ target_sources(arch-mcxn947-core0 PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_common_arm.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_sai.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_vbat.c"
-    "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_power.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_pdm.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_utick.c"
     #"${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_lpuart_freertos.c"
-    "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_cache_lpcac.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_flexspi_edma.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_edma_soc.c"
     "${CMAKE_CURRENT_LIST_DIR}/MCXN947/drivers/fsl_ewm.c"

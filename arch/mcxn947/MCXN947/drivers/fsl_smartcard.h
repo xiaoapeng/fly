@@ -21,11 +21,11 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief Smart card driver version 2.3.0.
  */
 #define FSL_SMARTCARD_DRIVER_VERSION (MAKE_VERSION(2, 3, 0))
-/*@}*/
+/*! @} */
 
 /*! @brief Smart card global define which specify number of clock cycles until initial 'TS' character has to be received
  */

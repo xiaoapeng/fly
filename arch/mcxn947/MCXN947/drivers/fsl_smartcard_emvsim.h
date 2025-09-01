@@ -171,7 +171,7 @@ status_t SMARTCARD_EMVSIM_Control(EMVSIM_Type *base,
  * @param context A pointer to a smart card driver context structure.
  */
 void SMARTCARD_EMVSIM_IRQHandler(EMVSIM_Type *base, smartcard_context_t *context);
-/*@}*/
+/*! @} */
 
 #if defined(__cplusplus)
 }

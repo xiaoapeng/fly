@@ -19,9 +19,9 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 #define FSL_PLU_DRIVER_VERSION (MAKE_VERSION(2, 2, 1)) /*!< Version 2.2.1 */
-                                                       /*@}*/
+                                                       /*! @} */
 
 /*! @brief Index of LUT */
 typedef enum _plu_lut_index

@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2019, 2023 NXP
- * All rights reserved.
- *
+ * Copyright 2016-2019, 2023-2025 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -72,7 +70,7 @@ static uint32_t LPCMP_GetInstance(LPCMP_Type *base)
          * (s_lpcmpBases[instance] != base) not covered. The peripheral base
          * address is always valid and checked by assert.
          */
-        if (s_lpcmpBases[instance] == base)
+        if (MSDK_REG_SECURE_ADDR(s_lpcmpBases[instance]) == MSDK_REG_SECURE_ADDR(base))
         {
             break;
         }
@@ -117,17 +115,33 @@ void LPCMP_Init(LPCMP_Type *base, const lpcmp_config_t *config)
     /* Configure. */
     LPCMP_Enable(base, false);
 
-#if !(defined(FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN)
+#if (defined(FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN)
     /* CCR0 register. */
-    if (config->enableStopMode)
+#if defined(FSL_FEATURE_LPCMP_INSTANCE_SUPPORT_CCR0_CMP_STOP_ENn)
+    if (1U == FSL_FEATURE_LPCMP_INSTANCE_SUPPORT_CCR0_CMP_STOP_ENn(base))
+#endif /* FSL_FEATURE_LPCMP_INSTANCE_SUPPORT_CCR0_CMP_STOP_ENn */
     {
-        base->CCR0 |= LPCMP_CCR0_CMP_STOP_EN_MASK;
+        if (config->enableStopMode)
+        {
+            base->CCR0 |= LPCMP_CCR0_CMP_STOP_EN_MASK;
+        }
+        else
+        {
+            base->CCR0 &= ~LPCMP_CCR0_CMP_STOP_EN_MASK;
+        }
+    }
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN */
+
+#if (defined(FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN) && FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN)
+    if (config->enableCmpToDacLink)
+    {
+        base->CCR0 |= LPCMP_CCR0_LINKEN_MASK;
     }
     else
     {
-        base->CCR0 &= ~LPCMP_CCR0_CMP_STOP_EN_MASK;
+        base->CCR0 &= ~LPCMP_CCR0_LINKEN_MASK;
     }
-#endif /* !(defined(FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) */
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN */
 
     /* CCR1 register. */
     tmp32 = (base->CCR1 & (~(LPCMP_CCR1_COUT_PEN_MASK | LPCMP_CCR1_COUT_SEL_MASK | LPCMP_CCR1_COUT_INV_MASK
@@ -153,9 +167,27 @@ void LPCMP_Init(LPCMP_Type *base, const lpcmp_config_t *config)
 #endif /* FSL_FEATURE_LPCMP_HAS_CCR1_FUNC_CLK_SEL */
     base->CCR1 = tmp32;
     /* CCR2 register. */
-    tmp32 = base->CCR2 & ~(LPCMP_CCR2_HYSTCTR_MASK | LPCMP_CCR2_CMP_NPMD_MASK | LPCMP_CCR2_CMP_HPMD_MASK);
+    tmp32 = base->CCR2 & ~(LPCMP_CCR2_HYSTCTR_MASK
+#if !(defined(FSL_FEATURE_LPCMP_HAS_CCR2_CMP_NPMD) && (FSL_FEATURE_LPCMP_HAS_CCR2_CMP_NPMD==0U))
+                         | LPCMP_CCR2_CMP_NPMD_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR2_CMP_NPMD */
+                         | LPCMP_CCR2_CMP_HPMD_MASK
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL
+                         | LPCMP_CCR2_INPSEL_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL */
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL
+                         | LPCMP_CCR2_INMSEL_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL */
+                           );
     tmp32 |= LPCMP_CCR2_HYSTCTR(config->hysteresisMode);
     tmp32 |= ((uint32_t)(config->powerMode) << LPCMP_CCR2_CMP_HPMD_SHIFT);
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL
+    tmp32 |= LPCMP_CCR2_INPSEL(config->plusInputSrc);
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL */
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL
+    tmp32 |= LPCMP_CCR2_INMSEL(config->minusInputSrc);
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL */
+
     base->CCR2 = tmp32;
 
     LPCMP_Enable(base, true); /* Enable the LPCMP module. */
@@ -193,11 +225,14 @@ void LPCMP_Deinit(LPCMP_Type *base)
  * code
  *   config->enableStopMode      = false;
  *   config->enableOutputPin     = false;
+ *   config->enableCmpToDacLink  = false;
  *   config->useUnfilteredOutput = false;
  *   config->enableInvertOutput  = false;
  *   config->hysteresisMode      = kLPCMP_HysteresisLevel0;
  *   config->powerMode           = kLPCMP_LowSpeedPowerMode;
  *   config->functionalSourceClock = kLPCMP_FunctionalClockSource0;
+ *   config->plusInputSrc          = kLPCMP_PlusInputSrcMux;
+ *   config->minusInputSrc         = kLPCMP_MinusInputSrcMux;
  * endcode
  * param config Pointer to "lpcmp_config_t" structure.
  */
@@ -205,10 +240,13 @@ void LPCMP_GetDefaultConfig(lpcmp_config_t *config)
 {
     /* Initializes the configure structure to zero. */
     (void)memset(config, 0, sizeof(*config));
-#if !(defined(FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN)
+#if (defined(FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN)
     config->enableStopMode = false;
-#endif /* !(defined(FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) && FSL_FEATURE_LPCMP_HAS_NO_CCR0_CMP_STOP_EN) */
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR0_CMP_STOP_EN */
     config->enableOutputPin     = false;
+#if (defined(FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN) && FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN)
+    config->enableCmpToDacLink = false;
+#endif /* FSL_FEATURE_LPCMP_HAS_CCR0_LINKEN */
     config->useUnfilteredOutput = false;
     config->enableInvertOutput  = false;
     config->hysteresisMode      = kLPCMP_HysteresisLevel0;
@@ -216,6 +254,12 @@ void LPCMP_GetDefaultConfig(lpcmp_config_t *config)
 #if defined(FSL_FEATURE_LPCMP_HAS_CCR1_FUNC_CLK_SEL) && FSL_FEATURE_LPCMP_HAS_CCR1_FUNC_CLK_SEL
     config->functionalSourceClock = kLPCMP_FunctionalClockSource0;
 #endif /* FSL_FEATURE_LPCMP_HAS_CCR1_FUNC_CLK_SEL */
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL
+    config->plusInputSrc = kLPCMP_PlusInputSrcMux;
+#endif  /* FSL_FEATURE_LPCMP_HAS_CCR2_INPSEL */
+#if defined(FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL) && FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL
+    config->minusInputSrc = kLPCMP_MinusInputSrcMux;
+#endif  /* FSL_FEATURE_LPCMP_HAS_CCR2_INMSEL */
 }
 
 /*!
@@ -272,10 +316,12 @@ void LPCMP_SetDACConfig(LPCMP_Type *base, const lpcmp_dac_config_t *config)
     else
     {
         tmp32 = LPCMP_DCR_VRSEL(config->referenceVoltageSource) | LPCMP_DCR_DAC_DATA(config->DACValue);
+#if !(defined(FSL_FEATURE_LPCMP_HAS_DCR_DAC_HPMD) && (FSL_FEATURE_LPCMP_HAS_DCR_DAC_HPMD == 0U))
         if (config->enableLowPowerMode)
         {
             tmp32 |= LPCMP_DCR_DAC_HPMD_MASK;
         }
+#endif /* FSL_FEATURE_LPCMP_HAS_DCR_DAC_HPMD */
         tmp32 |= LPCMP_DCR_DAC_EN_MASK;
     }
     base->DCR = tmp32;
@@ -327,27 +373,49 @@ void LPCMP_SetRoundRobinConfig(LPCMP_Type *base, const lpcmp_roundrobin_config_t
     uint32_t tmp32 = 0UL;
 
     /* LPCMPx_RRCR0 register, Configuration options for the round-robin operation. */
-    tmp32 = (base->RRCR0 &
-             (~(LPCMP_RRCR0_RR_TRG_SEL_MASK | LPCMP_RRCR0_RR_NSAM_MASK | LPCMP_RRCR0_RR_CLK_SEL_MASK |
-                LPCMP_RRCR0_RR_INITMOD_MASK | LPCMP_RRCR0_RR_SAMPLE_CNT_MASK | LPCMP_RRCR0_RR_SAMPLE_THRESHOLD_MASK)));
+    tmp32 = (base->RRCR0 & (~(LPCMP_RRCR0_RR_NSAM_MASK | LPCMP_RRCR0_RR_INITMOD_MASK
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL == 0U))
+                | LPCMP_RRCR0_RR_TRG_SEL_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL == 0U))
+                | LPCMP_RRCR0_RR_CLK_SEL_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT == 0U))
+                | LPCMP_RRCR0_RR_SAMPLE_CNT_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD == 0U))
+                | LPCMP_RRCR0_RR_SAMPLE_THRESHOLD_MASK
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD */
+            )));
 
-    tmp32 |=
-        (LPCMP_RRCR0_RR_TRG_SEL(config->roundrobinTriggerSource) | LPCMP_RRCR0_RR_NSAM(config->sampleClockNumbers) |
-         LPCMP_RRCR0_RR_CLK_SEL(config->roundrobinClockSource) | LPCMP_RRCR0_RR_INITMOD(config->initDelayModules) |
-         LPCMP_RRCR0_RR_SAMPLE_CNT(config->channelSampleNumbers) |
-         LPCMP_RRCR0_RR_SAMPLE_THRESHOLD(config->sampleTimeThreshhold));
+    tmp32 |= (LPCMP_RRCR0_RR_NSAM(config->sampleClockNumbers) | LPCMP_RRCR0_RR_INITMOD(config->initDelayModules)
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL == 0U))
+                | LPCMP_RRCR0_RR_TRG_SEL(config->roundrobinTriggerSource)
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_TRG_SEL */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL == 0U))
+                | LPCMP_RRCR0_RR_CLK_SEL(config->roundrobinClockSource)
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_CLK_SEL */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT == 0U))
+                | LPCMP_RRCR0_RR_SAMPLE_CNT(config->channelSampleNumbers)
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_CNT */
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD) && (FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD == 0U))
+                | LPCMP_RRCR0_RR_SAMPLE_THRESHOLD(config->sampleTimeThreshhold)
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR0_RR_SAMPLE_THRESHOLD */
+            );
 
     base->RRCR0 = tmp32;
 
     /* LPCMPx_RRCR1 register, Configure the fix port, fix channel and checker channel. */
-    tmp32 =
-        (base->RRCR1 & (~(LPCMP_RRCR1_FIXP_MASK | LPCMP_RRCR1_FIXCH_MASK | (0xFFUL << LPCMP_RRCR1_RR_CH0EN_SHIFT))));
+    tmp32 = (base->RRCR1 & (~(LPCMP_RRCR1_FIXP_MASK | LPCMP_RRCR1_FIXCH_MASK |
+                             (0xFFUL << LPCMP_RRCR1_RR_CH0EN_SHIFT))));
     tmp32 |= (LPCMP_RRCR1_FIXP(config->fixedMuxPort) | LPCMP_RRCR1_FIXCH(config->fixedChannel) |
               ((uint32_t)(config->checkerChannelMask) << LPCMP_RRCR1_RR_CH0EN_SHIFT));
 
     base->RRCR1 = tmp32;
 }
 
+
+#if !(defined(FSL_FEATURE_LPCMP_HAS_RRCR2) && (FSL_FEATURE_LPCMP_HAS_RRCR2 == 0U))
 /*!
  * brief Configure the roundrobin internal timer reload value.
  *
@@ -363,5 +431,6 @@ void LPCMP_SetRoundRobinInternalTimer(LPCMP_Type *base, uint32_t value)
 
     base->RRCR2 = tmp32;
 }
+#endif /* FSL_FEATURE_LPCMP_HAS_RRCR2 */
 
 #endif /* FSL_FEATURE_LPCMP_HAS_ROUNDROBIN_MODE */

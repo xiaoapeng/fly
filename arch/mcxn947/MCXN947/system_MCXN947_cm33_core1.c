@@ -1,7 +1,9 @@
 /*
 ** ###################################################################
 **     Processors:          MCXN947VDF_cm33_core1
+**                          MCXN947VKL_cm33_core1
 **                          MCXN947VNL_cm33_core1
+**                          MCXN947VPB_cm33_core1
 **
 **     Compilers:           GNU C Compiler
 **                          IAR ANSI C/C++ Compiler for ARM
@@ -9,8 +11,8 @@
 **                          MCUXpresso Compiler
 **
 **     Reference manual:    MCXNx4x Reference Manual
-**     Version:             rev. 2.0, 2023-02-01
-**     Build:               b231219
+**     Version:             rev. 3.0, 2024-10-29
+**     Build:               b250521
 **
 **     Abstract:
 **         Provides a system configuration function and a global variable that
@@ -18,7 +20,7 @@
 **         the oscillator (PLL) that is part of the microcontroller device.
 **
 **     Copyright 2016 Freescale Semiconductor, Inc.
-**     Copyright 2016-2023 NXP
+**     Copyright 2016-2025 NXP
 **     SPDX-License-Identifier: BSD-3-Clause
 **
 **     http:                 www.nxp.com
@@ -29,14 +31,17 @@
 **         Initial version
 **     - rev. 2.0 (2023-02-01)
 **         Initial version based on Rev. 2 Draft B
+**     - rev. 3.0 (2024-10-29)
+**         Change the device header file from single flat file to multiple files based on peripherals,
+**         each peripheral with dedicated header file located in periphN folder.
 **
 ** ###################################################################
 */
 
 /*!
  * @file MCXN947_cm33_core1
- * @version 2.0
- * @date 2023-02-01
+ * @version 3.0
+ * @date 2024-10-29
  * @brief Device specific configuration file for MCXN947_cm33_core1
  *        (implementation file)
  *
@@ -48,9 +53,9 @@
 #include <stdint.h>
 #include "fsl_device_registers.h"
 
-
-
-
+#if __has_include("fsl_clock.h")
+#include "fsl_clock.h"
+#endif
 
 
 /* ----------------------------------------------------------------------------
@@ -77,6 +82,7 @@ __attribute__ ((weak)) void SystemInit (void) {
 
   SYSCON->NVM_CTRL &= ~SYSCON_NVM_CTRL_DIS_MBECC_ERR_DATA_MASK; /* enables bus error on multi-bit ECC error for data */
 
+#if !defined(__ZEPHYR__)
 #if defined(__MCUXPRESSO)
     extern void(*const g_pfnVectors[]) (void);
     SCB->VTOR = (uint32_t) &g_pfnVectors;
@@ -84,12 +90,14 @@ __attribute__ ((weak)) void SystemInit (void) {
     extern void *__Vectors;
     SCB->VTOR = (uint32_t) &__Vectors;
 #endif
+#endif
+
     /* enable the flash cache LPCAC */
     SYSCON->LPCAC_CTRL &= ~SYSCON_LPCAC_CTRL_DIS_LPCAC_MASK;
 
     /* Disable aGDET trigger the CHIP_RESET */
-    ITRC0->OUT_SEL[4][0] = (ITRC0->OUT_SEL[4][0] & ~ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN9_SELn_MASK) | (ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN9_SELn(0x2));
-    ITRC0->OUT_SEL[4][1] = (ITRC0->OUT_SEL[4][1] & ~ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN9_SELn_MASK) | (ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN9_SELn(0x2));
+    ITRC0->OUT_SEL[4][0] = (ITRC0->OUT_SEL[4][0] & ~ITRC_OUT_SEL_IN9_SELn_MASK) | (ITRC_OUT_SEL_IN9_SELn(0x2));
+    ITRC0->OUT_SEL[4][1] = (ITRC0->OUT_SEL[4][1] & ~ITRC_OUT_SEL_IN9_SELn_MASK) | (ITRC_OUT_SEL_IN9_SELn(0x2));
     /* Disable aGDET interrupt and reset */
     SPC0->ACTIVE_CFG |= SPC_ACTIVE_CFG_GLITCH_DETECT_DISABLE_MASK;
     SPC0->GLITCH_DETECT_SC &= ~SPC_GLITCH_DETECT_SC_LOCK_MASK;
@@ -97,10 +105,13 @@ __attribute__ ((weak)) void SystemInit (void) {
     SPC0->GLITCH_DETECT_SC |= SPC_GLITCH_DETECT_SC_LOCK_MASK;
 
     /* Disable dGDET trigger the CHIP_RESET */
-    ITRC0->OUT_SEL[4][0] = (ITRC0->OUT_SEL[4][0] & ~ ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN0_SELn_MASK) | (ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN0_SELn(0x2));
-    ITRC0->OUT_SEL[4][1] = (ITRC0->OUT_SEL[4][1] & ~ ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN0_SELn_MASK) | (ITRC_OUTX_SEL_OUTX_SELY_OUT_SEL_IN0_SELn(0x2));
+    ITRC0->OUT_SEL[4][0] = (ITRC0->OUT_SEL[4][0] & ~ ITRC_OUT_SEL_IN0_SELn_MASK) | (ITRC_OUT_SEL_IN0_SELn(0x2));
+    ITRC0->OUT_SEL[4][1] = (ITRC0->OUT_SEL[4][1] & ~ ITRC_OUT_SEL_IN0_SELn_MASK) | (ITRC_OUT_SEL_IN0_SELn(0x2));
     GDET0->GDET_ENABLE1 = 0;
     GDET1->GDET_ENABLE1 = 0;
+
+    /* Route the PMC bandgap buffer signal to the ADC */
+    SPC0->CORELDO_CFG |= (1U << 24U);
 
   SystemInitHook();
 }
@@ -110,9 +121,10 @@ __attribute__ ((weak)) void SystemInit (void) {
    ---------------------------------------------------------------------------- */
 
 void SystemCoreClockUpdate (void) {
-
-
-
+#if __has_include("fsl_clock.h")
+    /* Get frequency of Core System */
+    SystemCoreClock = CLOCK_GetCoreSysClkFreq();
+#endif
 }
 
 /* ----------------------------------------------------------------------------

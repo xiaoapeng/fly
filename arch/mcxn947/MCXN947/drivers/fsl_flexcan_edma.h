@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2023 NXP
- * All rights reserved.
+ * Copyright 2016-2025 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -21,10 +20,10 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
+/*! @{ */
 /*! @brief FlexCAN EDMA driver version. */
-#define FSL_FLEXCAN_EDMA_DRIVER_VERSION (MAKE_VERSION(2, 11, 3))
-/*@}*/
+#define FSL_FLEXCAN_EDMA_DRIVER_VERSION (MAKE_VERSION(2, 12, 0))
+/*! @} */
 
 /* Forward declaration of the handle typedef. */
 typedef struct _flexcan_edma_handle flexcan_edma_handle_t;
@@ -177,7 +176,7 @@ static inline status_t FLEXCAN_TransferGetReceiveEnhancedFifoCountEMDA(CAN_Type 
 }
 #endif
 
-/*@}*/
+/*! @} */
 
 #if defined(__cplusplus)
 }

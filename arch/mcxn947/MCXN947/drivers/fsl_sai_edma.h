@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2021 NXP
+ * Copyright 2016-2021, 2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -22,9 +22,19 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
-#define FSL_SAI_EDMA_DRIVER_VERSION (MAKE_VERSION(2, 7, 0)) /*!< Version 2.7.0 */
-/*@}*/
+/*! @{ */
+#define FSL_SAI_EDMA_DRIVER_VERSION (MAKE_VERSION(2, 7, 3)) /*!< Version 2.7.3 */
+/*! @} */
+
+/*! @brief the SAI enable position When calling SAI_TransferReceiveEDMA */
+#ifndef MCUX_SDK_SAI_EDMA_RX_ENABLE_INTERNAL
+#define MCUX_SDK_SAI_EDMA_RX_ENABLE_INTERNAL 1U
+#endif
+
+/*! @brief the SAI enable position When calling SAI_TransferSendEDMA */
+#ifndef MCUX_SDK_SAI_EDMA_TX_ENABLE_INTERNAL
+#define MCUX_SDK_SAI_EDMA_TX_ENABLE_INTERNAL 1U
+#endif
 
 typedef struct sai_edma_handle sai_edma_handle_t;
 
@@ -89,7 +99,6 @@ extern "C" {
  *
  * @param base SAI base pointer.
  * @param handle SAI eDMA handle pointer.
- * @param base SAI peripheral base address.
  * @param callback Pointer to user callback function.
  * @param userData User parameter passed to the callback function.
  * @param txDmaHandle eDMA handle pointer, this handle shall be static allocated by users.
@@ -108,7 +117,6 @@ void SAI_TransferTxCreateHandleEDMA(I2S_Type *base,
  *
  * @param base SAI base pointer.
  * @param handle SAI eDMA handle pointer.
- * @param base SAI peripheral base address.
  * @param callback Pointer to user callback function.
  * @param userData User parameter passed to the callback function.
  * @param rxDmaHandle eDMA handle pointer, this handle shall be static allocated by users.

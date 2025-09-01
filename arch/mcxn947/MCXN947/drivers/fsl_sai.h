@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2022 NXP
+ * Copyright 2016-2022, 2025 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -21,9 +21,9 @@
  ******************************************************************************/
 
 /*! @name Driver version */
-/*@{*/
-#define FSL_SAI_DRIVER_VERSION (MAKE_VERSION(2, 4, 2)) /*!< Version 2.4.2 */
-/*@}*/
+/*! @{ */
+#define FSL_SAI_DRIVER_VERSION (MAKE_VERSION(2, 4, 7)) /*!< Version 2.4.7 */
+/*! @} */
 
 /*! @brief _sai_status_t, SAI return status.*/
 enum
@@ -245,10 +245,12 @@ typedef enum _sai_data_pin_state
 /*! @brief sai fifo combine mode definition */
 typedef enum _sai_fifo_combine
 {
-    kSAI_FifoCombineDisabled = 0U,          /*!< sai fifo combine mode disabled */
-    kSAI_FifoCombineModeEnabledOnRead,      /*!< sai fifo combine mode enabled on FIFO reads */
-    kSAI_FifoCombineModeEnabledOnWrite,     /*!< sai fifo combine mode enabled on FIFO write */
-    kSAI_FifoCombineModeEnabledOnReadWrite, /*!< sai fifo combined mode enabled on FIFO read/writes */
+    kSAI_FifoCombineDisabled               = 0U, /*!< sai TX/RX fifo combine mode disabled */
+    kSAI_FifoCombineModeEnabledOnRead      = 1U, /*!< sai TX fifo combine mode enabled on FIFO reads */
+    kSAI_FifoCombineModeEnabledOnWrite     = 2U, /*!< sai TX fifo combine mode enabled on FIFO write */
+    kSAI_RxFifoCombineModeEnabledOnWrite   = 1U, /*!< sai RX fifo combine mode enabled on FIFO write */
+    kSAI_RXFifoCombineModeEnabledOnRead    = 2U, /*!< sai RX fifo combine mode enabled on FIFO reads */
+    kSAI_FifoCombineModeEnabledOnReadWrite = 3U, /*!< sai TX/RX fifo combined mode enabled on FIFO read/writes */
 } sai_fifo_combine_t;
 #endif
 
@@ -350,7 +352,9 @@ typedef struct _sai_fifo
 /*! @brief sai bit clock configurations */
 typedef struct _sai_bit_clock
 {
+#if defined(FSL_FEATURE_SAI_HAS_BIT_CLOCK_SWAP) && FSL_FEATURE_SAI_HAS_BIT_CLOCK_SWAP
     bool bclkSrcSwap;    /*!< bit clock source swap */
+#endif
     bool bclkInputDelay; /*!< bit clock actually used by the transmitter is delayed by the pad output delay,
                            this has effect of decreasing the data input setup time, but increasing the data output valid
                            time .*/
@@ -868,7 +872,7 @@ static inline void SAI_RxClearStatusFlags(I2S_Type *base, uint32_t mask)
  * This function will also clear all the error flags such as FIFO error, sync error etc.
  *
  * @param base SAI base pointer
- * @param tresetType Reset type, FIFO reset or software reset
+ * @param resetType Reset type, FIFO reset or software reset
  */
 void SAI_TxSoftwareReset(I2S_Type *base, sai_reset_type_t resetType);
 
@@ -1425,6 +1429,22 @@ void SAI_TransferTxHandleIRQ(I2S_Type *base, sai_handle_t *handle);
  * @param handle Pointer to the sai_handle_t structure.
  */
 void SAI_TransferRxHandleIRQ(I2S_Type *base, sai_handle_t *handle);
+
+/*! @} */
+
+/*!
+ * @name Common IRQ Handler
+ * @{
+ */
+
+/*!
+ * @brief SAI driver IRQ handler common entry.
+ *
+ * This function provides the common IRQ request entry for SAI.
+ *
+ * @param instance SAI instance.
+ */
+void SAI_DriverIRQHandler(uint32_t instance);
 
 /*! @} */
 

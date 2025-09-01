@@ -4,8 +4,8 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef _FSL_MEM_INTERFACE_H_
-#define _FSL_MEM_INTERFACE_H_
+#ifndef FSL_MEM_INTERFACE_H_
+#define FSL_MEM_INTERFACE_H_
 
 #include "fsl_sbloader.h"
 #include "fsl_common.h"
@@ -17,6 +17,12 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+
+/*! @name Driver version */
+/*@{*/
+/*! @brief ROMAPI_MEM_INTERFACE driver version 2.0.0. */
+#define FSL_ROMAPI_MEM_INTERFACE_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
+/*@}*/
 
 /*! @brief Bit mask for device ID. */
 #define DEVICE_ID_MASK (0xffU)
@@ -376,4 +382,4 @@ status_t MEM_EraseAll(api_core_context_t *coreCtx, uint32_t memoryId);
  * @}
  */
 
-#endif /* _FSL_MEM_INTERFACE_H_ */
+#endif /* FSL_MEM_INTERFACE_H_ */
