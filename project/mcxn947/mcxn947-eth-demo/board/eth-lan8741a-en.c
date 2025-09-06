@@ -325,13 +325,16 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             rx_frame.totLen != rx_frame.rxBuffArray[0].length ||
             (protocol = eth_hdr_ptype_get((struct eth_hdr *)rx_frame.rxBuffArray[0].buffer)) != s_lan8741a_en_trait->mac_ptype
         ){
-            for(int i = 0; i < BOARD_ETH_ENET_RXBD_NUM; i++){
-                if(rx_frame.rxBuffArray[i].buffer)
-                    ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[i].buffer);
-            }
             // eh_warnfl("rx frame len = %d", rx_frame.totLen);
             // eh_warnfl("rx_frame.rxBuffArray[0].length = %d", rx_frame.rxBuffArray[0].length);
             // eh_warnfl("protocol = %04x", protocol);
+            for(int i = 0;rx_frame.totLen && i < BOARD_ETH_ENET_RXBD_NUM; i++){
+                if(rx_frame.rxBuffArray[i].buffer)
+                {
+                    ethernetif_rx_free(NULL, rx_frame.rxBuffArray[i].buffer, NULL, 0);
+                }
+                rx_frame.totLen -= rx_frame.rxBuffArray[i].length;
+            }
             continue;
         }
 
