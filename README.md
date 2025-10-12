@@ -38,10 +38,21 @@ cd fly
     sudo apt install python3
     ```
 
-- 安装kconfiglib
+- 虚拟环境中安装kconfiglib
 
     ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
     pip3 install kconfiglib
+    ```
+#### mac os 安装kconfiglib (虚拟环境)
+
+- 虚拟环境中安装kconfiglib
+
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install kconfiglib
     ```
 
 ### 3.安装cmake
@@ -56,6 +67,13 @@ cd fly
 
     ```bash
     sudo apt install cmake
+    ```
+#### mac os 安装cmake
+
+- 使用命令 brew install cmake
+
+    ```bash
+    brew install cmake
     ```
 
 ### 4. 根据项目需要下载交叉编译器
