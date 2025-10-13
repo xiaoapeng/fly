@@ -90,6 +90,12 @@ static const uint16_t enet_reg_tab[] = {
 0x1050, 0x1054};
 
 
+/* initialize ENET peripheral with generally concerned parameters, call it by enet_init() */
+static void enet_default_init(void);
+
+/* insert a delay time */
+static void enet_delay(uint32_t ncount);
+
 /*!
     \brief      deinitialize the ENET, and reset structure parameters for ENET initialization
     \param[in]  none
