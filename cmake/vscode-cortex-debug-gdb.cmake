@@ -73,7 +73,7 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
             --objdump-path "${CMAKE_OBJDUMP}" ${RTT_EN_FLAGS}  ${CUSTOM_FUNC_OTHER_EXT_CONFIG_OPTION} ${CUSTOM_FUNC_OTHER_EXT_CONFIG}
             --elf-path ${ELF_PATH_LIST} --openocd-config-file-list ${CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST} 
         DEPENDS ${CUSTOM_FUNC_DEPENDS}
-        COMMENT "${CUSTOM_FUNC_ELF_NAME}:Make vscode jlink gnu gdb"
+        COMMENT "Make vscode jlink launch.json"
     )
 
     # 添加自定义目标来生成 img 文件
