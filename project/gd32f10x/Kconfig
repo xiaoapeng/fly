@@ -14,11 +14,20 @@ config PROJECT_GD32F103_DEMO
     bool "GD32F103 demo project"
     help
         Select this option to enable Module GD32F103 DEMO.
-    
+
+
+config PROJECT_GD32F105_DEMO
+    bool "GD32F105 demo project"
+    help
+        Select this option to enable Module GD32F105 DEMO.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
+
 endchoice
 
 
 config PROJECT
     string
     default "gd32f10x/gd32f103-demo" if PROJECT_GD32F103_DEMO
+    default "gd32f10x/gd32f105-demo" if PROJECT_GD32F105_DEMO
 
