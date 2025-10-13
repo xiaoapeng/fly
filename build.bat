@@ -10,6 +10,12 @@ set "python_script_path=%script_dir%tool\python\build.py"
 :: Clear any existing paths
 set "allPythonPaths="
 
+:: Check for virtual environment
+set "venv_python=%script_dir%.venv\Scripts\python.exe"
+if exist "%venv_python%" (
+    set "allPythonPaths=!allPythonPaths! %venv_python%"
+)
+
 :: Collect all 'python' and 'python3' paths
 for /f "delims=" %%a in ('where python') do (
     set "allPythonPaths=!allPythonPaths! %%a"
@@ -45,7 +51,7 @@ if not defined python3Paths (
     echo No Python 3 version found.
     exit /b 1
 )
-:: echo !python3Paths!
+::echo !python3Paths!
 call "%python3Paths%" %python_script_path% %script_dir% %*
 
 endlocal

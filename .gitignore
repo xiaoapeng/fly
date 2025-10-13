@@ -9,3 +9,4 @@ tool/python/__pycache__/
 auto-generate/
 *.evn.json
 .clangd
+.venv/
