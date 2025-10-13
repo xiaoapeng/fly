@@ -8,8 +8,8 @@
  * 
  */
 
+
 #include <stdio.h>
-#include <stdarg.h>
 #include "SEGGER_RTT.h"
 #include <eh.h>
 #include <eh_co.h>
@@ -22,10 +22,6 @@
 #include "eh_platform.h"
 #include <eh_timer.h>
 #include <eh_sleep.h>
-#include "eh_types.h"
-#include "system_MCXN947_cm33_core0.h"
-
-#include "fsl_lpuart.h"
 
 #include "button.h"
 #include "led.h"
@@ -118,14 +114,21 @@ static void timer_slot_function(eh_event_t *e, void *slot_param){
     (void)e;
     eh_clock_t idle_now = eh_task_idle_time();
     eh_clock_t idle_diff = idle_now  - s_last_idle_time;
+    struct eh_mem_heap_info heap_info;
+    double cpu_usage, mem_usage;
     s_last_idle_time = idle_now;
 
-    double cpu_usage = (double)idle_diff / (double)s_timer_clock_interval;
-    cpu_usage = 1.0 - cpu_usage;
     // static uint8_t sta = 0;
     // led_test_out_set_val(sta);
     // sta = !sta;
-    eh_infofl("run!!! idle_now:%lld cpu_usage: %.2f%%", idle_now, cpu_usage * 100);
+
+    cpu_usage = (double)idle_diff / (double)s_timer_clock_interval;
+    cpu_usage = 1.0 - cpu_usage;
+    eh_mem_get_heap_info(&heap_info);
+    mem_usage = (double)(heap_info.total_size - heap_info.free_size)/(double)heap_info.total_size;
+    eh_infofl("run!!! cpu_usage: %.2f%% mem_usage:%.2f%% mem_free: %d mem_total: %d", 
+        cpu_usage * 100.0, 
+        mem_usage * 100.0, heap_info.free_size, heap_info.total_size );
 }
 
 

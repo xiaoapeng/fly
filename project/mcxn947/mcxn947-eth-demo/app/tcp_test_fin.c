@@ -1,5 +1,5 @@
 /**
- * @file tcp_test_send.c
+ * @file tcp_test_fin.c
  * @brief 
  * @author simon.xiaoapeng (simon.xiaoapeng@gmail.com)
  * @date 2025-05-23
@@ -18,7 +18,7 @@
 #include <eh_signal.h>
 #include <stdint.h>
 
-#include <eh_ringbuf.h>
+#include "eh_ringbuf.h"
 #include "global_signal.h"
 
 static tcp_server_pcb_t tcp_server = NULL;
@@ -43,28 +43,7 @@ static void tcp_test_recv_callback(tcp_pcb_t pcb, enum tcp_event state){
     eh_ringbuf_clear(rx_ringbuf);
 }
 
-static void tcp_test_send_callback(tcp_pcb_t pcb){
-    int data = (int)(intptr_t)ehip_tcp_client_get_userdata(pcb);
-    eh_ringbuf_t *tx_ringbuf = ehip_tcp_client_get_send_ringbuf(pcb);
-    int data_end;
-
-#define TEST_MAX_SIZE (1024*1024)
-
-    data_end = data + eh_ringbuf_free_size(tx_ringbuf)/4;
-    data_end = data_end > TEST_MAX_SIZE ? TEST_MAX_SIZE : data_end;
-    for(; data < data_end; data++){
-        eh_ringbuf_write(tx_ringbuf, (uint8_t*)&data, sizeof(data));
-    }
-
-    ehip_tcp_client_request_send(pcb);
-    ehip_tcp_client_set_userdata(pcb, (void*)(intptr_t)data);
-
-    if(data >= TEST_MAX_SIZE){
-        ehip_tcp_client_disconnect(pcb);
-    }
-}
-
-static void tcp_test_send_connect_change_callback(tcp_pcb_t pcb, enum tcp_event state){
+static void tcp_test_fin_connect_change_callback(tcp_pcb_t pcb, enum tcp_event state){
     (void) pcb;
     switch (state) {
         case TCP_CONNECT_TIMEOUT:
@@ -73,7 +52,7 @@ static void tcp_test_send_connect_change_callback(tcp_pcb_t pcb, enum tcp_event 
         case TCP_RECV_RST:
         case TCP_SEND_TIMEOUT:
         case TCP_DISCONNECTED:
-            eh_debugfl("tcp_test_send_connect_change_callback state = %s", 
+            eh_debugfl("tcp_test_fin_connect_change_callback state = %s", 
                 state == TCP_CONNECT_TIMEOUT ? "TCP_CONNECT_TIMEOUT" :
                 state == TCP_CONNECTED ? "TCP_CONNECTED" :
                 state == TCP_DISCONNECTED ? "TCP_DISCONNECTED" :
@@ -86,13 +65,13 @@ static void tcp_test_send_connect_change_callback(tcp_pcb_t pcb, enum tcp_event 
             ehip_tcp_client_delete(pcb);
             break;
         case TCP_CONNECTED:
-            tcp_test_send_callback(pcb);
+            /* 连接上立马请求断开连接 */
+            ehip_tcp_client_disconnect(pcb);
             break;
         case TCP_RECV_DATA:
             tcp_test_recv_callback(pcb, state);
             break;
         case TCP_RECV_ACK:
-            tcp_test_send_callback(pcb);
             break;
     }
 }
@@ -100,13 +79,13 @@ static void tcp_test_send_connect_change_callback(tcp_pcb_t pcb, enum tcp_event 
 
 static void tcp_new_connect(tcp_pcb_t new_client){
     eh_debugfl("tcp_new_connect");
-    ehip_tcp_set_events_callback(new_client, tcp_test_send_connect_change_callback);
+    ehip_tcp_set_events_callback(new_client, tcp_test_fin_connect_change_callback);
     ehip_tcp_client_set_userdata(new_client, (void*)0);
 }
 
-static int __init tcp_test_send_init(void){
+static int __init tcp_test_fin_init(void){
 
-    tcp_server = ehip_tcp_server_any_new(eh_hton16(9999), 1024*5 , 1024*5);
+    tcp_server = ehip_tcp_server_any_new(eh_hton16(8889), 512, 512);
     ehip_tcp_server_set_new_connect_callback(tcp_server, tcp_new_connect);
 
     eh_signal_slot_connect(&sig_eth0_ip_add, &slot_ip_setting_ok);
@@ -114,10 +93,9 @@ static int __init tcp_test_send_init(void){
     return 0;
 }
 
-static void __exit tcp_test_send_exit(void){
+static void __exit tcp_test_fin_exit(void){
     eh_signal_slot_disconnect(&slot_ip_setting_ok);
-    ehip_tcp_server_delete(tcp_server);
 }
 
 
-eh_module_level9_export(tcp_test_send_init, tcp_test_send_exit);
+eh_module_level9_export(tcp_test_fin_init, tcp_test_fin_exit);

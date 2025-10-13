@@ -109,7 +109,7 @@ static void tcp_new_connect(tcp_pcb_t new_client){
 
 static int __init tcp_test_echo_init(void){
 
-    tcp_server = ehip_tcp_server_any_new(eh_hton16(8888), 1448*10 , 1448*3);
+    tcp_server = ehip_tcp_server_any_new(eh_hton16(8888), 1448*2 , 1448*2);
     ehip_tcp_server_set_new_connect_callback(tcp_server, tcp_new_connect);
 
     eh_signal_slot_connect(&sig_eth0_ip_add, &slot_ip_setting_ok);
