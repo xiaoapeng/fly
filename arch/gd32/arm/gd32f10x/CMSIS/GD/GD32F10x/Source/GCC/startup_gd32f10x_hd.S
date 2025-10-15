@@ -26,7 +26,10 @@
 
 Reset_Handler:
   /* Mask interrupts */
-  cpsid   i               
+  cpsid   i
+  ldr     r0, =g_pfnVectors
+  ldr     r1, [r0]
+  msr     msp, r1
   /* copy the data segment into ram */  
   movs r1, #0
   b DataInit
