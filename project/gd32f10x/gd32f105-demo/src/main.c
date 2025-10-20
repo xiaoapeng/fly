@@ -48,14 +48,15 @@ int main(void){
     /* 初始化一个定时器信号，并连接信号与槽 */
     s_timer_clock_interval = eh_msec_to_clock(1000*5);
     eh_timer_advanced_init(eh_signal_to_custom_event(&timer_signal), (eh_sclock_t)s_timer_clock_interval, EH_TIMER_ATTR_AUTO_CIRCULATION);
-    eh_signal_register(&timer_signal);
+
     eh_signal_slot_connect(&timer_signal, &timer_slot);
     eh_timer_start(eh_signal_to_custom_event(&timer_signal));
 
-    while(1){
-        __await eh_usleep(1000*1000*1000);
-    }
-    
+    eh_signal_dispatch_loop();
+
+    eh_timer_stop(eh_signal_to_custom_event(&timer_signal));
+    eh_signal_slot_disconnect(&timer_signal, &timer_slot);
+
     eh_global_exit();
     eh_debugfl("exit!!");
 error:
