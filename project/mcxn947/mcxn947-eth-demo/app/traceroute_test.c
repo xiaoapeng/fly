@@ -112,24 +112,22 @@ static int __init  traceroute_init(void){
         (eh_sclock_t)eh_msec_to_clock(100),
         EH_TIMER_ATTR_AUTO_CIRCULATION);
 
-    ret = eh_signal_register(&ping_response_sender_timer_signal);
-    if(ret < 0) goto eh_signal_register_error;
     ret = eh_timer_start(eh_signal_to_custom_event(&ping_response_sender_timer_signal));
     if(ret < 0) goto eh_timer_start_error;
-    eh_signal_slot_connect(&ping_response_sender_timer_signal, &slot_ping_sender_timer_test0);
+    ret = eh_signal_slot_connect(&ping_response_sender_timer_signal, &slot_ping_sender_timer_test0);
+    if(ret < 0) goto eh_signal_slot_connect_sender_timer_signal_err;
     memset(route_adder, 0, sizeof(route_adder));
     return 0;
+eh_signal_slot_connect_sender_timer_signal_err:
+    eh_timer_stop(eh_signal_to_custom_event(&ping_response_sender_timer_signal));
 eh_timer_start_error:
-    eh_signal_unregister(&ping_response_sender_timer_signal);
-eh_signal_register_error:
     ehip_ping_delete(traceroute_pcb_test0);
     return ret;
 }
 
 static void __exit traceroute_exit(void){
-    eh_signal_slot_disconnect(&slot_ping_sender_timer_test0);
+    eh_signal_slot_disconnect(&ping_response_sender_timer_signal, &slot_ping_sender_timer_test0);
     eh_timer_stop(eh_signal_to_custom_event(&ping_response_sender_timer_signal));
-    eh_signal_unregister(&ping_response_sender_timer_signal);
     ehip_ping_delete(traceroute_pcb_test0);
 }
 

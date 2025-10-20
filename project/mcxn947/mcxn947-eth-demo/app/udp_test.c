@@ -105,8 +105,6 @@ static int __init udp_test_init(void)
         eh_signal_to_custom_event(&udp_sender_timer_signal), 
         (eh_sclock_t)eh_msec_to_clock(1000*1), 
         EH_TIMER_ATTR_AUTO_CIRCULATION);
-    ret = eh_signal_register(&udp_sender_timer_signal);
-    if(ret < 0) goto eh_signal_register_error;
     ret = eh_timer_start(eh_signal_to_custom_event(&udp_sender_timer_signal));
     if(ret < 0) goto eh_timer_start_error;
     eh_signal_slot_connect(&udp_sender_timer_signal, &slot_udp_sender_timer);
@@ -114,8 +112,6 @@ static int __init udp_test_init(void)
     ehip_udp_sender_init(udp_pcb, &udp_sender, ipv4_make_addr(192,168,12,88), eh_hton16(9000));
     return 0;   
 eh_timer_start_error:
-    eh_signal_unregister(&udp_sender_timer_signal);
-eh_signal_register_error:
     ehip_udp_delete(udp_pcb);
     return ret;
 }
@@ -123,9 +119,8 @@ eh_signal_register_error:
 static void __exit udp_test_exit(void)
 {
     ehip_udp_sender_deinit(&udp_sender);
-    eh_signal_slot_disconnect(&slot_udp_sender_timer);
+    eh_signal_slot_disconnect(&udp_sender_timer_signal, &slot_udp_sender_timer);
     eh_timer_stop(eh_signal_to_custom_event(&udp_sender_timer_signal));
-    eh_signal_unregister(&udp_sender_timer_signal);
     ehip_udp_delete(udp_pcb);
 
 }

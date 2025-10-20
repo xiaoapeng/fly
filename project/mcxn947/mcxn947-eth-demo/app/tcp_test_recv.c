@@ -128,7 +128,7 @@ static int __init tcp_test_init(void){
 }
 
 static void __exit tcp_test_exit(void){
-    eh_signal_slot_disconnect(&slot_ip_setting_ok);
+    eh_signal_slot_disconnect(&sig_eth0_ip_add, &slot_ip_setting_ok);
 }
 
 

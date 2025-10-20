@@ -495,7 +495,6 @@ static int eth_lan8741aen_up(ehip_netdev_t *netdev){
     eth_phy_init();
     
     eh_event_flags_init(eh_signal_to_custom_event(&signal_eth_event_flags));
-    eh_signal_register(&signal_eth_event_flags);
     
     eh_signal_slot_connect(&signal_eth_event_flags, &slot_eth_event);
 
@@ -506,8 +505,7 @@ static int eth_lan8741aen_up(ehip_netdev_t *netdev){
 
 static void eth_lan8741aen_down(ehip_netdev_t *netdev){
     (void) netdev;
-    eh_signal_slot_disconnect(&slot_eth_event);
-    eh_signal_unregister(&signal_eth_event_flags);
+    eh_signal_slot_disconnect(&signal_eth_event_flags, &slot_eth_event);
     eh_event_flags_clean(eh_signal_to_custom_event(&signal_eth_event_flags));
     ENET_RxBufferFreeAll(ENET0, &s_enet_handle);
     ENET_Deinit(ENET0);

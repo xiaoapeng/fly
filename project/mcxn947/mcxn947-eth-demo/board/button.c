@@ -36,7 +36,6 @@ static int __init board_button_init(void)
 {
 
     //event_button_sw3
-    eh_signal_register(&button_sw3_signal);
 
     /* Enables the clock for GPIO0: Enables clock */
     CLOCK_EnableClock(kCLOCK_Gpio0);
@@ -75,7 +74,6 @@ static int __init board_button_init(void)
 }
 
 static void __exit board_button_exit(void){
-    eh_signal_unregister(&button_sw3_signal);
 }
 
 eh_module_level0_export(board_button_init, board_button_exit);

@@ -76,28 +76,21 @@ static int __init ping_test_init(void)
         (eh_sclock_t)eh_msec_to_clock(1000*1), 
         EH_TIMER_ATTR_AUTO_CIRCULATION);
     
-    ret = eh_signal_register(&ping_sender_timer_signal);
-    if(ret < 0) goto eh_signal_register_error;
     ret = eh_timer_start(eh_signal_to_custom_event(&ping_sender_timer_signal));
     if(ret < 0) goto eh_timer_start_error;
     eh_signal_slot_connect(&ping_sender_timer_signal, &slot_ping_sender_timer_test0);
 
     return 0;
 eh_timer_start_error:
-    eh_signal_unregister(&ping_sender_timer_signal);
-eh_signal_register_error:
     ehip_ping_delete(ping_pcb_test0);
     return ret;
 }
 
 static void __exit ping_test_exit(void)
 {
-    eh_signal_slot_disconnect(&slot_ping_sender_timer_test0);
+    eh_signal_slot_disconnect(&ping_sender_timer_signal, &slot_ping_sender_timer_test0);
     eh_timer_stop(eh_signal_to_custom_event(&ping_sender_timer_signal));
-    eh_signal_unregister(&ping_sender_timer_signal);
     ehip_ping_delete(ping_pcb_test0);
-
-
 }
 
 eh_module_level9_export(ping_test_init, ping_test_exit);

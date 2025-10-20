@@ -143,23 +143,15 @@ int task_main(void)
     s_timer_clock_interval = eh_msec_to_clock(1000*5);
     eh_timer_advanced_init(eh_signal_to_custom_event(&timer_signal), (eh_sclock_t)s_timer_clock_interval, EH_TIMER_ATTR_AUTO_CIRCULATION);
     
-    eh_signal_register(&timer_signal);
     eh_signal_slot_connect(&timer_signal, &timer_slot);
     eh_signal_slot_connect(&button_sw3_signal, &sw3_slot);
 
     eh_timer_start(eh_signal_to_custom_event(&timer_signal));
 
-    
-    while(1){
-        __await eh_usleep(1000*1000*1000);
-        // eh_infofl("hello world!!");
-    }
-    
-    // __await eh_usleep(1000*1000*10);
+    eh_signal_dispatch_loop();
 
     eh_timer_stop(eh_signal_to_custom_event(&timer_signal));
-    eh_signal_slot_disconnect(&sw3_slot);
-    eh_signal_slot_disconnect(&timer_slot);
-    eh_signal_unregister(&timer_signal);
+    eh_signal_slot_disconnect(&button_sw3_signal, &sw3_slot);
+    eh_signal_slot_disconnect(&timer_signal, &timer_slot);
     return 0;
 }

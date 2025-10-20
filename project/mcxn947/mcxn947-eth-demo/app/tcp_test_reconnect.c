@@ -92,15 +92,14 @@ static int __init tcp_test_reconnect_init(void){
     eh_signal_slot_connect(&sig_eth0_ip_add, &slot_ip_setting_ok);
 
     eh_timer_advanced_init(eh_signal_to_custom_event(&timeout_signal), (eh_sclock_t)eh_msec_to_clock(1000 * 10), 0);
-    eh_signal_register(&timeout_signal);
+
     eh_signal_slot_connect(&timeout_signal, &timeout_slot);
     return 0;
 }
 
 static void __exit tcp_test_reonnect_exit(void){
-    eh_signal_slot_disconnect(&timeout_slot);
-    eh_signal_unregister(&timeout_signal);
-    eh_signal_slot_disconnect(&slot_ip_setting_ok);
+    eh_signal_slot_disconnect(&timeout_signal, &timeout_slot);
+    eh_signal_slot_disconnect(&sig_eth0_ip_add, &slot_ip_setting_ok);
     ehip_tcp_client_delete(test_client);
 }
 

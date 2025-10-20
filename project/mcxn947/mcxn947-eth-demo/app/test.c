@@ -56,8 +56,8 @@ static int __init test_init(void){
 }
 
 static void __exit test_exit(void){
-    eh_signal_slot_disconnect(&slot_button_sw3);
-    eh_signal_slot_disconnect(&slot_arp_table_changed);
+    eh_signal_slot_disconnect(&button_sw3_signal, &slot_button_sw3);
+    eh_signal_slot_disconnect(&signal_arp_table_changed, &slot_arp_table_changed);
 }
 
 eh_module_level0_export(test_init, test_exit);

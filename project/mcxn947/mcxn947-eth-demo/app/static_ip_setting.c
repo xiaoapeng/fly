@@ -148,17 +148,16 @@ static int __init static_ip_init(void){
     if(ret < 0)
         return ret;
 
-    eh_signal_slot_connect(ehip_netdev_signal_flags(eth0_netdev), &slot_eth0_link_status_changed);
+    ret = eh_signal_slot_connect(ehip_netdev_signal_flags(eth0_netdev), &slot_eth0_link_status_changed);
+    if(ret < 0){
+        return ret;
+    }
     slot_functhion_eth0_link_status_changed(&ehip_netdev_signal_flags(eth0_netdev)->event, NULL);
-    eh_signal_register(&sig_eth0_ip_add);
-    eh_signal_register(&sig_eth0_ip_del);
-    return 0; 
+    return 0;
 }
 
 static void __exit static_ip_exit(void){
-    eh_signal_unregister(&sig_eth0_ip_add);
-    eh_signal_unregister(&sig_eth0_ip_del);
-    eh_signal_slot_disconnect(&slot_eth0_link_status_changed);
+    eh_signal_slot_disconnect(ehip_netdev_signal_flags(eth0_netdev), &slot_eth0_link_status_changed);
     ehip_netdev_tool_down(eth0_netdev);
     ehip_netdev_tool_down(loopback_netdev);
 }
