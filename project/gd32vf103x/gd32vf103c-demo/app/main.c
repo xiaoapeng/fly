@@ -55,9 +55,6 @@ void run(void){
         EH_TIMER_ATTR_AUTO_CIRCULATION
     );
     
-    /* 然后在注册信号 */
-    eh_signal_register(&timer_1000ms_signal);
-    
     /* 连接信号和槽 */
     eh_signal_slot_connect(&timer_1000ms_signal, &test_signal_timer_slot);
     
@@ -71,14 +68,12 @@ void run(void){
 
 
     eh_timer_stop(eh_signal_to_custom_event(&timer_1000ms_signal));
-    eh_signal_slot_disconnect(&test_signal_timer_slot);
+    eh_signal_slot_disconnect(&timer_1000ms_signal, &test_signal_timer_slot);
 
-    eh_signal_unregister(&timer_1000ms_signal);
+    eh_signal_slot_clean(&timer_1000ms_signal);
 
-    eh_signal_clean(&timer_1000ms_signal);
-
-    eh_signal_slot_disconnect(&test_signal_button_pa0_slot);
-    eh_signal_slot_disconnect(&test_signal_button_pb5_slot);
+    eh_signal_slot_disconnect(&button_pa0_signal, &test_signal_button_pa0_slot);
+    eh_signal_slot_disconnect(&button_pa0_signal, &test_signal_button_pa0_slot);
 
 }
 
