@@ -140,7 +140,6 @@ int task_main(void)
     
     eh_timer_advanced_init(eh_signal_to_custom_event(&timer_signal), (eh_sclock_t)eh_usec_to_clock(500), EH_TIMER_ATTR_AUTO_CIRCULATION);
     
-    eh_signal_register(&timer_signal);
     eh_signal_slot_connect(&timer_signal, &timer_slot);
     eh_signal_slot_connect(&button_sw3_signal, &sw3_slot);
 
@@ -149,13 +148,9 @@ int task_main(void)
     // eh_task_create("test_switch0", EH_TASK_FLAGS_DETACH, 1024, (void*)1, task_switch_test);
     // eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 1024, (void*)0, task_switch_test);
 
-    while(1){
-        __await eh_usleep(1000*1000*5);
-        eh_infofl("run!");
-    }
+    eh_signal_dispatch_loop();
     
-    eh_signal_slot_disconnect(&sw3_slot);
-    eh_signal_slot_disconnect(&timer_slot);
-    eh_signal_unregister(&timer_signal);
+    eh_signal_slot_disconnect(&button_sw3_signal, &sw3_slot);
+    eh_signal_slot_disconnect(&timer_signal, &timer_slot);
     return 0;
 }

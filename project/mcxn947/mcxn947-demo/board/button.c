@@ -16,6 +16,7 @@
 
 #include <eh.h>
 #include <eh_signal.h>
+#include <string.h>
 #include "button.h"
 #include "led.h"
 
@@ -36,7 +37,6 @@ static int __init board_button_init(void)
 {
 
     //event_button_sw3
-    eh_signal_register(&button_sw3_signal);
 
     /* Enables the clock for GPIO0: Enables clock */
     CLOCK_EnableClock(kCLOCK_Gpio0);
@@ -74,11 +74,8 @@ static int __init board_button_init(void)
     return 0;
 }
 
-static void __exit board_button_exit(void){
-    eh_signal_unregister(&button_sw3_signal);
-}
 
-eh_module_level0_export(board_button_init, board_button_exit);
+eh_module_level0_export(board_button_init, NULL);
 
 
 
