@@ -91,7 +91,6 @@ void task_main(void){
         (eh_sclock_t)eh_msec_to_clock(1000), 
         EH_TIMER_ATTR_AUTO_CIRCULATION
     );
-	eh_signal_register(&signal_1000ms_timer);
 	eh_signal_slot_connect(&signal_1000ms_timer, &slot_1000ms);
 	eh_timer_start(eh_signal_to_custom_event(&signal_1000ms_timer));
 
@@ -99,16 +98,11 @@ void task_main(void){
 	// eh_task_create("test_switch1", EH_TASK_FLAGS_DETACH, 1024, NULL, task_switch_off_test);
 	eh_task_create("test_float", EH_TASK_FLAGS_DETACH, 1024, NULL, task_float_test);
 
-	float a = 0.0;
-	while(1){
-		eh_usleep(1000*1000*1);
-		a += 1.111f;
-		eh_debugln("test:%f", a);
-	}
+
+    eh_signal_dispatch_loop();
 
 	eh_timer_stop(eh_signal_to_custom_event(&signal_1000ms_timer));
-    eh_signal_slot_disconnect(&slot_1000ms);
-    eh_signal_unregister(&signal_1000ms_timer);
-    eh_signal_clean(&signal_1000ms_timer);
+    eh_signal_slot_disconnect(&signal_1000ms_timer, &slot_1000ms);
+    eh_signal_slot_clean(&signal_1000ms_timer);
 }
 
