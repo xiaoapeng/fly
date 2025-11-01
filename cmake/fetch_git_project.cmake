@@ -33,8 +33,6 @@ function(fetch_git_project GIT_PROJECT_NAME)
     set(SOURCE_DL_DIR "${FLY_SOURCE_DL_BASE_DIR}/${GIT_PROJECT_NAME}-src")
     # Binary 目录
     set(BINARY_DL_DIR "${CMAKE_BINARY_DIR}/package_build/${GIT_PROJECT_NAME}")
-    # info_show_tmp 文件
-    set(INFO_SHOW_TMP_FILE "${CMAKE_BINARY_DIR}/package_build/${GIT_PROJECT_NAME}/info_show_tmp.txt")
     set(UPDATE_TARGET "package_update_${GIT_PROJECT_NAME}")
     set(UPDATE_TARGET_INFO_SHOW "package_update_${GIT_PROJECT_NAME}_info_show")
 
@@ -115,19 +113,28 @@ function(fetch_git_project GIT_PROJECT_NAME)
         VERBATIM
     )
 
+    set(CURRENT_PACKAGE_INFO
+        "${GIT_PROJECT_NAME}:\n    tag: ${CUSTOM_FUNC_GIT_TAG}\n    remote: ${CUSTOM_FUNC_GIT_REPOSITORY}"
+    )
+    # CURRENT_PACKAGE_INFO 内容写入文件
+    set(CURRENT_PACKAGE_INFO_FILE "${BINARY_DL_DIR}/package_info.txt")
+    file(WRITE "${CURRENT_PACKAGE_INFO_FILE}" "${CURRENT_PACKAGE_INFO}")
+
     add_custom_target(
         ${UPDATE_TARGET_INFO_SHOW}
-        COMMAND ${CMAKE_COMMAND} -E echo "${GIT_PROJECT_NAME}:" > ${INFO_SHOW_TMP_FILE}
-        COMMAND ${CMAKE_COMMAND} -E echo "      tag: ${CUSTOM_FUNC_GIT_TAG}" > ${INFO_SHOW_TMP_FILE}
-        COMMAND ${CMAKE_COMMAND} -E echo "      remote: ${CUSTOM_FUNC_GIT_REPOSITORY}" > ${INFO_SHOW_TMP_FILE}
-        COMMAND ${CMAKE_COMMAND} -E cat ${INFO_SHOW_TMP_FILE}
+        COMMAND ${CMAKE_COMMAND} -E echo "${CURRENT_PACKAGE_INFO}"
         VERBATIM
     )
     
+    # 全局变量保存所有更新目标信息
+    set(_FLY_ALL_PACKAGE_INFO_FILE_LIST "${FLY_ALL_PACKAGE_INFO_FILE_LIST}")
+    list(APPEND _FLY_ALL_PACKAGE_INFO_FILE_LIST "${CURRENT_PACKAGE_INFO_FILE}")
+    set(FLY_ALL_PACKAGE_INFO_FILE_LIST "${_FLY_ALL_PACKAGE_INFO_FILE_LIST}" CACHE INTERNAL "All package info")
+
     # 全局变量保存所有更新目标
-    set(_targets "${FLY_ALL_PACKAGE_UPDATE_TARGETS}")
-    list(APPEND _targets ${UPDATE_TARGET})
-    set(FLY_ALL_PACKAGE_UPDATE_TARGETS "${_targets}" CACHE INTERNAL "All package update targets")
+    set(_FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST "${FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST}")
+    list(APPEND _FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST ${UPDATE_TARGET})
+    set(FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST "${_FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST}" CACHE INTERNAL "All package update targets")
 
 endfunction()
 
