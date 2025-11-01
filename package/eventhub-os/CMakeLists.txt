@@ -4,22 +4,18 @@ if(CONFIG_PACKAGE_EVENTHUB_OS)
 
 project(packge-eventhub-os)
 
-include(FetchContent)
+include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching eventhub_os...")
 
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-
-FetchContent_Declare(
-    packge-eventhub-os
+fetch_git_project(
+    eventhub-os
+    DEEP_CLONE     ON
+    AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/xiaoapeng/eventhub_os.git
     GIT_TAG        main
-    SOURCE_DIR     "${FLY_SOURCE_DL_BASE_DIR}/eventhub_os-src"
-    BINARY_DIR     "${CMAKE_BINARY_DIR}/package_build/${PROJECT_NAME}"
 )
 
-
-
-FetchContent_MakeAvailable(packge-eventhub-os)
+fetch_git_project_add(eventhub-os)
 
 endif()

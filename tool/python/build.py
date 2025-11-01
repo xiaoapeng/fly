@@ -252,6 +252,22 @@ def run_append_path_env(source_dir, env_path):
     with open(env_path_config_json_path, 'w') as f:
         json.dump(env_PATH_data, f, indent=4)
 
+def run_package_update(source_dir, pack_name, list=False):
+    if not check_tool_installed('cmake'):
+        print("cmake not installed!!")
+        exit(1)
+    
+    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
+        print("build not exist!!")
+        exit(1)
+    
+    if list:
+        os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_show_list")
+    else:
+        os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_{pack_name}")
+
+
+
 def load_env(source_dir):
     if not os.path.exists(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"):
         return None
@@ -303,6 +319,11 @@ if __name__ == "__main__":
     # Subparser for rttlog
     parser_log = subparsers.add_parser('rttlog', help='Capture log.')
 
+    # Subparser for package_update <pack_name> -l --list 
+    parser_package_update = subparsers.add_parser('package_update', help='Update package.')
+    parser_package_update.add_argument('pack_name', type=str, nargs='?', default='all', help='Package name (default: all)')
+    parser_package_update.add_argument('-l', '--list', action='store_true', help='List all the dependent packages.')
+
     # Add the PATH environment variable
     parser_add_path = subparsers.add_parser('add_path_env', help='Add the PATH environment variable.')
     parser_add_path.add_argument('env_path', type=str, help='Environment variable path')
@@ -336,5 +357,7 @@ if __name__ == "__main__":
         run_rttlog(source_dir)
     elif args.command == 'add_path_env':
         run_append_path_env(source_dir, args.env_path)
+    elif args.command == 'package_update':
+        run_package_update(source_dir, args.pack_name, args.list)
     else:
         run_build(source_dir, jobs = args.jobs)
