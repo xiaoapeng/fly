@@ -58,11 +58,13 @@ void tcp_test_reconnect_events_callback(tcp_pcb_t pcb, enum tcp_event state){
         case TCP_ERROR:
         case TCP_RECV_RST:
         case TCP_SEND_TIMEOUT:
+        case TCP_KEEPALIVE_TIMEOUT:
         case TCP_DISCONNECTED:
             eh_timer_stop(eh_signal_to_custom_event(&timeout_signal));
             eh_debugfl("tcp_test_send_connect_change_callback state = %s", 
                 state == TCP_CONNECT_TIMEOUT ? "TCP_CONNECT_TIMEOUT" :
                 state == TCP_DISCONNECTED ? "TCP_DISCONNECTED" :
+                state == TCP_KEEPALIVE_TIMEOUT ? "TCP_KEEPALIVE_TIMEOUT" :
                 state == TCP_ERROR ? "TCP_ERROR" :
                 state == TCP_RECV_RST ? "TCP_RECV_RST" : "UNKNOWN"
             );

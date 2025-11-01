@@ -98,7 +98,7 @@ static EH_DEFINE_SLOT(slot_ping_sender_timer_test0, ping_sender_timer_handler, &
 
 static int __init  traceroute_init(void){
     int ret = 0;
-    traceroute_pcb_test0 = ehip_ping_any_new(ipv4_make_addr(39,156,66,10));
+    traceroute_pcb_test0 = ehip_ping_any_new(ipv4_make_addr(114,114,114,114));
     if(eh_ptr_to_error(traceroute_pcb_test0) < 0){
         eh_errln("traceroute_init failed...");
         return eh_ptr_to_error(traceroute_pcb_test0);

@@ -89,6 +89,7 @@ static void tcp_test_connect_change_callback(tcp_pcb_t pcb, enum tcp_event state
             state == TCP_RECV_FIN ? "TCP_RECV_FIN" :
             state == TCP_RECV_RST ? "TCP_RECV_RST" : 
             state == TCP_RECV_DATA ? "TCP_RECV_DATA" :
+            state == TCP_KEEPALIVE_TIMEOUT ? "TCP_KEEPALIVE_TIMEOUT" :
             state == TCP_RECV_ACK ? "TCP_RECV_ACK" : "UNKNOWN"
         );
     
@@ -98,6 +99,7 @@ static void tcp_test_connect_change_callback(tcp_pcb_t pcb, enum tcp_event state
         case TCP_RECV_FIN:
         case TCP_RECV_RST:
         case TCP_DISCONNECTED:
+        case TCP_KEEPALIVE_TIMEOUT:
         case TCP_SEND_TIMEOUT:
             ehip_tcp_client_delete(pcb);
             break;

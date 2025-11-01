@@ -28,8 +28,8 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x10000;
-STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x400;
+HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x0000;
+STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x800;
 RPMSG_SHMEM_SIZE = DEFINED(__use_shmem__) ? 0x2000 : 0;
 
 TEXT_START = DEFINED(__qspi_xip__)  ? 0x80001000 : 0x00000000; /* flexspi boot image start with 0x80000000 */

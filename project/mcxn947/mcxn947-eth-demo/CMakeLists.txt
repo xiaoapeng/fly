@@ -55,6 +55,7 @@ target_compile_options(segger-rtt PRIVATE
 )
 
 add_executable(mcxn947_eth_demo_app )
+target_compile_options(mcxn947_eth_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_libraries(mcxn947_eth_demo_app arch-mcxn947-core0 eventhub ehip segger-rtt c rdimon m gcc  )
 target_include_directories( mcxn947_eth_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
@@ -88,6 +89,7 @@ target_sources(mcxn947_eth_demo_app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app/tcp_test_recv.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/tcp_test_echo.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/tcp_test_fin.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/tcp_test_alive.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/tcp_test_reconnect.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/traceroute_test.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
