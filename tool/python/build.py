@@ -6,6 +6,7 @@ import kconfiglib
 import menuconfig
 import platform
 import json
+import fetch_git_project
 import check_git_status
 
 K_CONFIG_FILR_PATH = 'Kconfig'
@@ -16,6 +17,8 @@ AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/.config.cmake'
 AUTO_GENERATE_C_HEADER_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/autoconf.h'
 CURRENT_IMAGE_DIR_PATH = 'image/CURRENT'
 ENV_PATH_CONFIG_JSON_FILE_PATH = '.PATH.evn.json'
+GIT_MIRROR_SOURCE_JSON_FILE_PATH = '.git.mirror-source.json'
+GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT = 'resource/git.mirror-source.json'
 
 def check_tool_installed(tool_name):
     # Check if the tool is in PATH
@@ -267,6 +270,37 @@ def run_package_update(source_dir, pack_name, list=False):
         os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_{pack_name}")
 
 
+def run_package_mirror(source_dir, list=False, enable=None, disable=None, update=False):
+    # 判断.git.mirror-source.json文件是否存在
+    if not os.path.exists(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}"):
+        # 复制初始化文件
+        shutil.copy(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT}", f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
+        print(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH} init success!!")
+    
+    # 读取.git.mirror-source.json文件
+    git_mirror_source_data = []
+    with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'r') as f:
+        git_mirror_source_data = json.load(f)
+    
+    for item in git_mirror_source_data:
+        is_list = list
+        if item['name'] == enable:
+            item['enable'] = True
+            is_list = True
+        
+        if item['name'] == disable:
+            item['enable'] = False
+            is_list = True
+
+        if is_list:
+            print(f"{item['name']:<40} [{'ENABLE' if item['enable'] else 'DISABLE':<7}]")
+    # 写入.git.mirror-source.json文件
+    with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'w') as f:
+        json.dump(git_mirror_source_data, f, indent=4)
+    
+    if update:
+        mirror_source_manager = fetch_git_project.MirrorSourceManager(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
+        mirror_source_manager.find_best_mirror_source(force_update=True)
 
 def load_env(source_dir):
     if not os.path.exists(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"):
@@ -324,6 +358,13 @@ if __name__ == "__main__":
     parser_package_update.add_argument('pack_name', type=str, nargs='?', default='all', help='Package name (default: all)')
     parser_package_update.add_argument('-l', '--list', action='store_true', help='List all the dependent packages.')
 
+    # Subparser for package_mirror [-l,--list] [-e,--enable <name>] [-d,--disable <name>] [-u,--update]
+    parser_package_mirror = subparsers.add_parser('package_mirror', help='Update package mirror.')
+    parser_package_mirror.add_argument('-l', '--list', action='store_true', help='List all the package mirror.')
+    parser_package_mirror.add_argument('-e', '--enable', type=str, nargs='?', default=None, help='Enable the name.')
+    parser_package_mirror.add_argument('-d', '--disable', type=str, nargs='?', default=None, help='Disable the name.')
+    parser_package_mirror.add_argument('-u', '--update', action='store_true', help='Update the package mirror.')
+
     # Add the PATH environment variable
     parser_add_path = subparsers.add_parser('add_path_env', help='Add the PATH environment variable.')
     parser_add_path.add_argument('env_path', type=str, help='Environment variable path')
@@ -359,5 +400,7 @@ if __name__ == "__main__":
         run_append_path_env(source_dir, args.env_path)
     elif args.command == 'package_update':
         run_package_update(source_dir, args.pack_name, args.list)
+    elif args.command == 'package_mirror':
+        run_package_mirror(source_dir, args.list, args.enable, args.disable, args.update)
     else:
         run_build(source_dir, jobs = args.jobs)

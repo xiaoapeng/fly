@@ -41,6 +41,7 @@ endforeach()
 
 add_custom_target(package_update_show_list 
     COMMAND ${CMAKE_COMMAND} -E cat "${MERGED_INFO_FILE}"
+    VERBATIM
 )
 
 

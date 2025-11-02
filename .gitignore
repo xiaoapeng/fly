@@ -10,3 +10,4 @@ auto-generate/
 *.evn.json
 .clangd
 .venv/
+.git.mirror-source.json

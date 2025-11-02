@@ -33,108 +33,61 @@ function(fetch_git_project GIT_PROJECT_NAME)
     set(SOURCE_DL_DIR "${FLY_SOURCE_DL_BASE_DIR}/${GIT_PROJECT_NAME}-src")
     # Binary 目录
     set(BINARY_DL_DIR "${CMAKE_BINARY_DIR}/package_build/${GIT_PROJECT_NAME}")
+    set(PACKAGE_INFO_FILE "${BINARY_DL_DIR}/package_info.txt")
+
     set(UPDATE_TARGET "package_update_${GIT_PROJECT_NAME}")
     set(UPDATE_TARGET_INFO_SHOW "package_update_${GIT_PROJECT_NAME}_info_show")
 
-    # 检查源码和源码.git目录是否存在
-    if(NOT EXISTS "${SOURCE_DL_DIR}" OR NOT EXISTS "${SOURCE_DL_DIR}/.git")
-        message(STATUS "[fetch_git_project] Cloning ${CUSTOM_FUNC_GIT_REPOSITORY} to ${SOURCE_DL_DIR}")
-        if(CUSTOM_FUNC_DEEP_CLONE)
-            execute_process(
-                COMMAND ${GIT_EXECUTABLE} clone --branch ${CUSTOM_FUNC_GIT_TAG} ${CUSTOM_FUNC_GIT_REPOSITORY} ${SOURCE_DL_DIR}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            RESULT_VARIABLE GIT_CLONE_RESULT
-            )
-        else()
-            execute_process(
-                COMMAND ${GIT_EXECUTABLE} clone --depth 1 --branch ${CUSTOM_FUNC_GIT_TAG} ${CUSTOM_FUNC_GIT_REPOSITORY} ${SOURCE_DL_DIR}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            RESULT_VARIABLE GIT_CLONE_RESULT
-            )
-        endif()
-        if(NOT GIT_CLONE_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to clone ${CUSTOM_FUNC_GIT_REPOSITORY} to ${SOURCE_DL_DIR}")
-        endif()
-    else()
-        message(STATUS "[fetch_git_project] ${GIT_PROJECT_NAME} already cloned to ${SOURCE_DL_DIR}")
-        if(CUSTOM_FUNC_AUTO_UPDATE)
-            message(STATUS "[fetch_git_project] Updating ${GIT_PROJECT_NAME}...")
-            # Step 1: 获取当前 HEAD 信息
-            execute_process(
-                COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} rev-parse --abbrev-ref HEAD
-                OUTPUT_VARIABLE CURRENT_BRANCH
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
+    # 构建命令参数列表
+    set(PYTHON_COMMAND_ARGS 
+        --project-name ${GIT_PROJECT_NAME}
+        --repository ${CUSTOM_FUNC_GIT_REPOSITORY}
+        --tag ${CUSTOM_FUNC_GIT_TAG}
+        --source-dl-dir ${SOURCE_DL_DIR}
+        --package-info-file ${PACKAGE_INFO_FILE}
+        --mirror-source-json-file ${FLY_MIRROR_SOURCE_JSON_FILE}
+    )
+    # 条件添加参数
+    if(CUSTOM_FUNC_DEEP_CLONE)
+        list(APPEND PYTHON_COMMAND_ARGS --deep-clone)
+    endif()
+    
+    if(CUSTOM_FUNC_AUTO_UPDATE)
+        list(APPEND PYTHON_COMMAND_ARGS --auto-update)
+    endif()
 
-            # Step 2: 拉取最新内容
-            execute_process(
-                COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} fetch --all --tags
-                RESULT_VARIABLE FETCH_RESULT
-                OUTPUT_QUIET ERROR_QUIET
-            )
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/fetch_git_project.py ${PYTHON_COMMAND_ARGS}
+        RESULT_VARIABLE FETCH_RESULT
+    )
+    
+    if(NOT FETCH_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to fetch git project. Result code: ${FETCH_RESULT}")
+    endif()
 
-            if(NOT FETCH_RESULT EQUAL 0)
-                message(WARNING "[fetch_git_project] Failed to fetch updates for ${GIT_PROJECT_NAME}")
-            else()
-                # Step 3: 检查是否为 tag 或 branch
-                execute_process(
-                    COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} tag --list ${CUSTOM_FUNC_GIT_TAG}
-                    OUTPUT_VARIABLE IS_TAG
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                )
-
-                if(IS_TAG)
-                    # tag 通常是静态版本，不自动更新
-                    message(STATUS "[fetch_git_project] ${CUSTOM_FUNC_GIT_TAG} is a tag — no auto-update applied")
-                else()
-                    # 分支 → 自动拉取最新
-                    message(STATUS "[fetch_git_project] Switching to ${CUSTOM_FUNC_GIT_TAG} and pulling latest")
-                    execute_process(
-                        COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} checkout ${CUSTOM_FUNC_GIT_TAG}
-                        COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} pull
-                        RESULT_VARIABLE PULL_RESULT
-                        OUTPUT_QUIET ERROR_QUIET
-                    )
-                    if(NOT PULL_RESULT EQUAL 0)
-                        message(WARNING "[fetch_git_project] Failed to update branch ${CUSTOM_FUNC_GIT_TAG}")
-                    endif()
-                endif()
-            endif()
-        endif()
+    if(NOT CUSTOM_FUNC_AUTO_UPDATE)
+        list(APPEND PYTHON_COMMAND_ARGS --auto-update)
     endif()
 
     add_custom_target(
         ${UPDATE_TARGET}
-        COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} fetch --all --tags
-        COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} checkout ${CUSTOM_FUNC_GIT_TAG}
-        COMMAND ${GIT_EXECUTABLE} -C ${SOURCE_DL_DIR} pull
-        COMMENT "Updating ${GIT_PROJECT_NAME} repository"
+        COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/fetch_git_project.py ${PYTHON_COMMAND_ARGS} 
         VERBATIM
     )
-
-    set(CURRENT_PACKAGE_INFO
-        "${GIT_PROJECT_NAME}:\n    tag: ${CUSTOM_FUNC_GIT_TAG}\n    remote: ${CUSTOM_FUNC_GIT_REPOSITORY}"
-    )
-    # CURRENT_PACKAGE_INFO 内容写入文件
-    set(CURRENT_PACKAGE_INFO_FILE "${BINARY_DL_DIR}/package_info.txt")
-    file(WRITE "${CURRENT_PACKAGE_INFO_FILE}" "${CURRENT_PACKAGE_INFO}")
 
     add_custom_target(
         ${UPDATE_TARGET_INFO_SHOW}
-        COMMAND ${CMAKE_COMMAND} -E echo "${CURRENT_PACKAGE_INFO}"
+        COMMAND ${CMAKE_COMMAND} -E cat "${PACKAGE_INFO_FILE}"
         VERBATIM
     )
-    
+
     # 全局变量保存所有更新目标信息
-    set(_FLY_ALL_PACKAGE_INFO_FILE_LIST "${FLY_ALL_PACKAGE_INFO_FILE_LIST}")
-    list(APPEND _FLY_ALL_PACKAGE_INFO_FILE_LIST "${CURRENT_PACKAGE_INFO_FILE}")
-    set(FLY_ALL_PACKAGE_INFO_FILE_LIST "${_FLY_ALL_PACKAGE_INFO_FILE_LIST}" CACHE INTERNAL "All package info")
+    list(APPEND FLY_ALL_PACKAGE_INFO_FILE_LIST "${PACKAGE_INFO_FILE}")
+    set(FLY_ALL_PACKAGE_INFO_FILE_LIST "${FLY_ALL_PACKAGE_INFO_FILE_LIST}" CACHE INTERNAL "All package info")
 
     # 全局变量保存所有更新目标
-    set(_FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST "${FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST}")
-    list(APPEND _FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST ${UPDATE_TARGET})
-    set(FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST "${_FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST}" CACHE INTERNAL "All package update targets")
+    list(APPEND FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST ${UPDATE_TARGET})
+    set(FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST "${FLY_ALL_PACKAGE_UPDATE_TARGETS_LIST}" CACHE INTERNAL "All package update targets")
 
 endfunction()
 
@@ -149,5 +102,3 @@ function(fetch_git_project_add GIT_PROJECT_NAME)
         message(WARNING "[fetch_git_project_add] ${GIT_PROJECT_NAME} does not have a CMakeLists.txt")
     endif()
 endfunction()
-
-
