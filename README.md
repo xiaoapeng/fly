@@ -30,6 +30,7 @@ cd fly
     python -m venv .venv # or python3 -m venv .venv
     .venv\Scripts\pip3.exe install kconfiglib
     .venv\Scripts\pip3.exe install windows-curses
+    .venv\Scripts\pip3.exe install requests
     ```
 
 #### ubuntu 安装python
@@ -46,6 +47,7 @@ cd fly
     python3 -m venv .venv
     source .venv/bin/activate
     pip3 install kconfiglib
+    pip3 install requests
     ```
 
 #### mac os 安装kconfiglib (虚拟环境)
@@ -56,6 +58,7 @@ cd fly
     python3 -m venv .venv
     source .venv/bin/activate
     pip install kconfiglib
+    pip install requests
     ```
 
 ### 3.安装cmake
