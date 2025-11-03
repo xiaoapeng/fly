@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.10)
+SET(DEMAND_CMAKE_SYSTEM_PROCESSOR x86_64)
+
+set(DEMAND_COMPILER_OPTIONS
+    ""
+)
+
+set(DEMAND_LINK_OPTIONS
+    ""
+)
+
+set(DEMAND_COMPILE_TOOL_CHAIN "gcc-host-linux")

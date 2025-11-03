@@ -1,0 +1,25 @@
+
+
+choice
+    prompt "Select a linux platform project"
+    default PROJECT_LINUX_NONE
+    depends on ARCH_X64_LINUX
+
+config PROJECT_LINUX_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_EHIP_TEST
+    bool "EHIP test project"
+    help
+        Select this option to enable Module EHIP TEST.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_EHIP
+endchoice
+
+
+config PROJECT
+    string
+    default "linux/ehip-test" if PROJECT_EHIP_TEST
+
