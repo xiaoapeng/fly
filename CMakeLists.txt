@@ -20,7 +20,13 @@ include("${FLY_TOP_DIR}/cmake/jlink-make-image.cmake")
 include("${FLY_TOP_DIR}/cmake/openocd-make-image.cmake")
 include("${FLY_TOP_DIR}/cmake/vscode-cortex-debug-gdb.cmake")
 
+# Fix the issue where CMAKE_SYSTEM_NAME was modified
+set(TMP_CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
+
 project(fly LANGUAGES C CXX ASM)
+
+# Restore CMAKE_SYSTEM_NAME
+set(CMAKE_SYSTEM_NAME ${TMP_CMAKE_SYSTEM_NAME})
 
 arch_build_config()
 
