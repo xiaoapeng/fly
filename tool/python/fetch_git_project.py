@@ -53,54 +53,66 @@ class GitProjectFetcher:
             except subprocess.CalledProcessError as e:
                 print(f"[fetch_git_project] Failed to clone {git_repository}: {e}", file=sys.stderr)
                 return False
-        else:
-            print(f"[fetch_git_project] {git_project_name} already cloned to {self.source_dl_dir}")
+        elif auto_update:
+            print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} already cloned to {self.source_dl_dir}")
+            print(f"[fetch_git_project] Updating {git_project_name}...")
+
+            # 对比git_repository是否一致,不一致则重新设置remote origin URL
+            # 获取当前origin的URL
+            origin_url = subprocess.run(
+                ['git', '-C', self.source_dl_dir, 'remote', 'get-url', 'origin'],
+                capture_output=True, text=True
+            ).stdout.strip()
+            if origin_url.rstrip('/') != git_repository.rstrip('/'):
+                print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} remote origin URL is {origin_url}, not {git_repository}")
+                print(f"[fetch_git_project] Updating origin URL to {git_repository}")
+                subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'remote', 'set-url', 'origin', git_repository],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+
+            # 拉取最新内容
+            try:
+                subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'fetch', '--all', '--tags'],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+            except subprocess.CalledProcessError:
+                print(f"[fetch_git_project] Failed to fetch updates", file=sys.stderr)
+                return True  # 返回True，因为仓库已经存在，只是更新失败
             
-            if auto_update:
-                print(f"[fetch_git_project] Updating {git_project_name}...")
-                
-                # 拉取最新内容
+            # 检查是否为tag
+            is_tag = False
+            try:
+                tag_output = subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'tag', '--list', git_tag],
+                    capture_output=True, text=True
+                ).stdout.strip()
+                is_tag = len(tag_output) > 0
+            except subprocess.CalledProcessError:
+                pass
+            
+            if is_tag:
+                # tag通常是静态版本，不自动更新
+                print(f"[fetch_git_project] {git_tag} is a tag — no auto-update applied")
+            else:
+                # 分支 → 自动拉取最新
+                print(f"[fetch_git_project] Switching to {git_tag} and pulling latest")
                 try:
+                    # 切换到指定分支
                     subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'fetch', '--all', '--tags'],
+                        ['git', '-C', self.source_dl_dir, 'checkout', git_tag],
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
-                except subprocess.CalledProcessError:
-                    print(f"[fetch_git_project] Failed to fetch updates", file=sys.stderr)
+                    # 拉取最新内容
+                    subprocess.run(
+                        ['git', '-C', self.source_dl_dir, 'pull'],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
+                    print(f"[fetch_git_project] Updated {git_project_name} successfully")
+                except subprocess.CalledProcessError as e:
+                    print(f"[fetch_git_project] Failed to update branch {git_tag}: {e}", file=sys.stderr)
                     return True  # 返回True，因为仓库已经存在，只是更新失败
-                
-                # 检查是否为tag
-                is_tag = False
-                try:
-                    tag_output = subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'tag', '--list', git_tag],
-                        capture_output=True, text=True
-                    ).stdout.strip()
-                    is_tag = len(tag_output) > 0
-                except subprocess.CalledProcessError:
-                    pass
-                
-                if is_tag:
-                    # tag通常是静态版本，不自动更新
-                    print(f"[fetch_git_project] {git_tag} is a tag — no auto-update applied")
-                else:
-                    # 分支 → 自动拉取最新
-                    print(f"[fetch_git_project] Switching to {git_tag} and pulling latest")
-                    try:
-                        # 切换到指定分支
-                        subprocess.run(
-                            ['git', '-C', self.source_dl_dir, 'checkout', git_tag],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                        )
-                        # 拉取最新内容
-                        subprocess.run(
-                            ['git', '-C', self.source_dl_dir, 'pull'],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                        )
-                        print(f"[fetch_git_project] Updated {git_project_name} successfully")
-                    except subprocess.CalledProcessError as e:
-                        print(f"[fetch_git_project] Failed to update branch {git_tag}: {e}", file=sys.stderr)
-                        return True  # 返回True，因为仓库已经存在，只是更新失败
         
         # 创建package_info.txt文件
         if self.package_info_file:
