@@ -11,3 +11,5 @@ auto-generate/
 .clangd
 .venv/
 .git.mirror-source.json
+.cache/
+
