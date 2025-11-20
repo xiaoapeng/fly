@@ -1,0 +1,9 @@
+
+config PACKAGE_EHSHELL
+        bool "ehshell support"
+    help
+        Enable support for the ehshell.
+        Selecting this option will add support for the ehshell to the system. 
+        This is important for applications that require the ehshell. 
+        If ehshell is not needed, disabling this option can reduce the size of the program and decrease boot time.
+    select PACKAGE_EVENTHUB_OS
