@@ -1,0 +1,7 @@
+
+config PACKAGE_ARGUMENT_PARSER
+        bool "argument parser support"
+    help
+        Enable support for the argument parser.
+        Selecting this option will add support for the argument parser to the system. 
+    select PACKAGE_EVENTHUB_OS
