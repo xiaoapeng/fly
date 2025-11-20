@@ -8,21 +8,26 @@ set(TARGET_FLAGS
     "-Wconversion"
     "-Wsign-conversion"
     "-Wno-psabi"
-    "$<$<CONFIG:Debug>:-g;-O0>"
+    "$<$<CONFIG:Debug>:-g;-O0;-fprofile-arcs;-ftest-coverage;-fsanitize=address,leak>"
     "$<$<CONFIG:Release>:-g;-O3>"
     "$<$<CONFIG:MinSizeRel>:-g;-Os>"
+    "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
 )
 
 # app程序生成
 target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
+target_compile_options(ehshell PRIVATE "${TARGET_FLAGS}")
+target_compile_options(argparse PRIVATE "${TARGET_FLAGS}")
 
 
 target_compile_definitions(eventhub PUBLIC
     "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
+    "-DEH_DBG_MODEULE_LEVEL_EPOL_HUB=EH_DBG_WARNING"
     "-DEH_DBG_MODEULE_LEVEL_MEM_POOL=EH_DBG_WARNING"
-    "-DEH_CONFIG_EVENT_CB_DISPATCH_CNT_PER_YIELD=1"
+    "-DEH_CONFIG_EVENT_CB_DISPATCH_CNT_PER_YIELD=65535"
     "-DEH_CONFIG_EVENT_CB_DISPATCH_CNT_PER_CHECKTIMER=1"
+    "-DEH_CONFIG_DEBUG_ENTER_SIGN=\"\\r\\n\""
 )
 
 target_compile_definitions(ehip PUBLIC
@@ -51,9 +56,12 @@ target_compile_definitions(ehip PUBLIC
 
 add_executable(ehip_test )
 target_compile_options(ehip_test PRIVATE "${TARGET_FLAGS}")
-target_link_libraries(ehip_test eventhub ehip c m gcc  )
+target_link_libraries(ehip_test eventhub ehshell ehip argparse c m gcc  )
+target_link_options(ehip_test PRIVATE 
+    "$<$<CONFIG:Debug>:-fprofile-arcs;-ftest-coverage;-fsanitize=address,leak>"
+)
 target_include_directories( ehip_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/app/inc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/inc"
 )
 
 set(BOARD_SOURCES
@@ -65,6 +73,10 @@ target_sources(ehip_test PRIVATE
     "${BOARD_SOURCES}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/run.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/static_ip_setting.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/tty_io.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/test_cmd.c"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/src/test_ehshell_escape_test_parse.c"
 )
 
 target_compile_options(ehip_test PRIVATE "${TARGET_FLAGS}")

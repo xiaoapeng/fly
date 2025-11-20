@@ -16,6 +16,7 @@ int main(void){
     ret = eh_global_init();
     if(ret < 0){
         eh_errfl("eh_global_init failed, ret = %d", ret);
+        return ret;
     }
     eh_signal_dispatch_loop();
     eh_global_exit();

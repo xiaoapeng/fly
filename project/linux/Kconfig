@@ -16,6 +16,8 @@ config PROJECT_EHIP_TEST
         Select this option to enable Module EHIP TEST.
     select PACKAGE_EVENTHUB_OS
     select PACKAGE_EHIP
+    select PACKAGE_EHSHELL
+    select PACKAGE_ARGUMENT_PARSER
 endchoice
 
 
