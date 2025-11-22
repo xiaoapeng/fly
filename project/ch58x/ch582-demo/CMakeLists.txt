@@ -19,13 +19,11 @@ target_compile_definitions(segger-rtt PUBLIC
     #"-DSEGGER_RTT_MODE_DEFAULT=SEGGER_RTT_MODE_NO_BLOCK_TRIM"
 )
 
-# app程序生成
-# target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
-# target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
-
+package_lib_compile_options("${TARGET_FLAGS}")
 
 add_executable(ch582_demo_app )
-target_link_libraries(ch582_demo_app arch-ch58x segger-rtt c m gcc  )
+target_link_libraries(ch582_demo_app arch-ch58x c m gcc  )
+target_link_package_lib(ch582_demo_app)
 target_include_directories( ch582_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"

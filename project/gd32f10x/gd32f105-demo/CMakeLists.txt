@@ -17,15 +17,17 @@ set(TARGET_FLAGS
 target_compile_definitions(arch-gd32f10x PUBLIC -DGD32F10X_CL -DHXTAL_VALUE=8000000U )
 
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/inc")
-target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 
 target_compile_options(segger-rtt PRIVATE 
     "-DBUFFER_SIZE_UP=4096"
 )
 
+package_lib_compile_options("${TARGET_FLAGS}")
+
 # app程序生成
 add_executable(gd32f105-demo )
-target_link_libraries(gd32f105-demo eventhub segger-rtt arch-gd32f10x c m gcc  )
+target_link_libraries(gd32f105-demo  arch-gd32f10x c m gcc  )
+target_link_package_lib(gd32f105-demo)
 
 target_sources(gd32f105-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"

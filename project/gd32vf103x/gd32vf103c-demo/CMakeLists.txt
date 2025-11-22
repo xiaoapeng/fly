@@ -15,11 +15,14 @@ set(TARGET_FLAGS
 target_include_directories(arch-gd32vf103c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
 target_include_directories(eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
 
+package_lib_compile_options("${TARGET_FLAGS}")
+
 # app程序生成
 add_executable(gd32vf103c-demo)
 target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
 
-target_link_libraries(gd32vf103c-demo  arch-gd32vf103c segger-rtt factory-data eventhub c )
+target_link_libraries(gd32vf103c-demo  arch-gd32vf103c c )
+target_link_package_lib(gd32vf103c-demo)
 
 target_sources(gd32vf103c-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"

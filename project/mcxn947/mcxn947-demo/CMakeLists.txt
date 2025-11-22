@@ -12,11 +12,13 @@ set(TARGET_FLAGS
 
 # app程序生成
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/app/inc")
-target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 
+package_lib_compile_options("${TARGET_FLAGS}")
 
 add_executable(mcxn947_demo_app )
-target_link_libraries(mcxn947_demo_app  arch-mcxn947-core0 eventhub segger-rtt c rdimon m gcc  )
+target_link_libraries(mcxn947_demo_app  arch-mcxn947-core0 c rdimon m gcc  )
+target_link_package_lib(mcxn947_demo_app)
+
 target_include_directories( mcxn947_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/general/inc"

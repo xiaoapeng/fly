@@ -20,11 +20,13 @@ target_compile_definitions(segger-rtt PUBLIC
 
 # app程序生成
 target_include_directories( eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
-target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
 
+package_lib_compile_options("${TARGET_FLAGS}")
 
 add_executable(stm32f030x8_demo_app )
-target_link_libraries(stm32f030x8_demo_app arch-stm32f030x8 eventhub segger-rtt c m gcc  )
+target_link_libraries(stm32f030x8_demo_app arch-stm32f030x8 c m gcc  )
+target_link_package_lib(stm32f030x8_demo_app)
+
 target_include_directories( stm32f030x8_demo_app PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"

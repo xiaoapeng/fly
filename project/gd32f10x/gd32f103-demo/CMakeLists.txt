@@ -15,10 +15,11 @@ target_compile_definitions(arch-gd32f10x PRIVATE -DGD32F10X_HD )
 
 # app程序生成
 
+package_lib_compile_options("${TARGET_FLAGS}")
 
 add_executable(gd32f103-demo )
 target_link_libraries(gd32f103-demo  arch-gd32f10x c m gcc  )
-
+target_link_package_lib(gd32f103-demo)
 target_sources(gd32f103-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/boot/main.c"
 )

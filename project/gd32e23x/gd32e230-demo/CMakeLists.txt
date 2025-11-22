@@ -11,10 +11,12 @@ set(TARGET_FLAGS
     "-Wno-psabi"
 )
 
+package_lib_compile_options("${TARGET_FLAGS}")
+
 # app程序生成
 add_executable(gd32e230-demo )
-target_link_libraries(gd32e230-demo factory-data arch-gd32e23x segger-rtt c m gcc )
-
+target_link_libraries(gd32e230-demo arch-gd32e23x c m gcc )
+target_link_package_lib(gd32e230-demo)
 target_sources(gd32e230-demo PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
 )
