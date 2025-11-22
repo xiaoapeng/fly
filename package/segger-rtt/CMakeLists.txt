@@ -9,5 +9,6 @@ target_sources(segger-rtt PRIVATE
 )
 
 target_include_directories(segger-rtt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc/")
+package_lib_add(segger-rtt)
 
 endif(CONFIG_PACKAGE_SEGGER_RTT)

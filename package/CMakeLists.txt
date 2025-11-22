@@ -1,4 +1,4 @@
-
+include("${FLY_TOP_DIR}/cmake/package.cmake")
 file(GLOB PACKAGE_DIRECTORIES_LIST "${CMAKE_CURRENT_SOURCE_DIR}/*")
 
 foreach(dir IN LISTS PACKAGE_DIRECTORIES_LIST)

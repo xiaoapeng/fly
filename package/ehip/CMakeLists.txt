@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 
 if(CONFIG_PACKAGE_EHIP)
 
-project(packge-ehip)
 
 include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
@@ -17,5 +16,6 @@ fetch_git_project(
 )
 
 fetch_git_project_add(ehip)
+package_lib_add(ehip)
 
 endif()

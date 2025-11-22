@@ -4,16 +4,17 @@ if(CONFIG_PACKAGE_EHSHELL)
 
 include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
-message("Fetching ehshell...")
+message("Fetching ehip-tools...")
 
 fetch_git_project(
-    ehshell
+    ehip-tools
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
-    GIT_REPOSITORY https://github.com/xiaoapeng/ehshell.git
-    GIT_TAG        master
+    GIT_REPOSITORY https://github.com/xiaoapeng/ehip-tools.git
+    GIT_TAG        main
 )
 
-fetch_git_project_add(ehshell)
-package_lib_add(ehshell)
+fetch_git_project_add(ehip-tools)
+package_lib_add(ehip-tools)
+
 endif()

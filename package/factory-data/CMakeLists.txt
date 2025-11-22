@@ -10,4 +10,5 @@ target_sources(factory-data PRIVATE
 
 target_include_directories(factory-data PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc/")
 
+package_lib_add(factory-data)
 endif(CONFIG_FACTORY_DATA_SUPPORTED)

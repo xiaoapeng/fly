@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 
 if(CONFIG_PACKAGE_ARGUMENT_PARSER)
 
-project(packge-argparse)
-
 include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching ehshell...")
@@ -17,5 +15,6 @@ fetch_git_project(
 )
 
 fetch_git_project_add(argparse)
+package_lib_add(argparse)
 
 endif()
