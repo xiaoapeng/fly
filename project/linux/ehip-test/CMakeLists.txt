@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(mcxn947-eth-demo LANGUAGES C CXX ASM)
 
+include("${FLY_TOP_DIR}/cmake/package.cmake")
+
 set(TARGET_FLAGS 
     "-Wall"
     "-Wextra"
@@ -13,13 +15,6 @@ set(TARGET_FLAGS
     "$<$<CONFIG:MinSizeRel>:-g;-Os>"
     "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
 )
-
-# app程序生成
-target_compile_options(eventhub PRIVATE "${TARGET_FLAGS}")
-target_compile_options(ehip PRIVATE "${TARGET_FLAGS}")
-target_compile_options(ehshell PRIVATE "${TARGET_FLAGS}")
-target_compile_options(argparse PRIVATE "${TARGET_FLAGS}")
-
 
 target_compile_definitions(eventhub PUBLIC
     "-DEH_CONFIG_DEFAULT_DEBUG_LEVEL=EH_DBG_DEBUG"
@@ -54,9 +49,12 @@ target_compile_definitions(ehip PUBLIC
     "-DEH_DBG_MODEULE_LEVEL_TCP_RTO_TIMEOUT=EH_DBG_WARNING"
 )
 
+package_lib_compile_options("${TARGET_FLAGS}")
+
 add_executable(ehip_test )
 target_compile_options(ehip_test PRIVATE "${TARGET_FLAGS}")
-target_link_libraries(ehip_test eventhub ehshell ehip argparse c m gcc  )
+target_link_libraries(ehip_test c m gcc )
+target_link_package_lib(ehip_test)
 target_link_options(ehip_test PRIVATE 
     "$<$<CONFIG:Debug>:-fprofile-arcs;-ftest-coverage;-fsanitize=address,leak>"
 )
