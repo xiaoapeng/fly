@@ -1,0 +1,18 @@
+menuconfig PACKAGE_EHIP_TOOLS
+    bool "EHIP Tools Configuration"
+    help
+      Enable support for the ehip tools.
+      Selecting this option makes subcommands available.
+    select PACKAGE_EHIP
+    select PACKAGE_ARGUMENT_PARSER
+    select PACKAGE_EHSHELL
+
+if PACKAGE_EHIP_TOOLS
+
+config PACKAGE_EHIP_TOOLS_PING
+    bool "Enable ping command"
+    default n
+    help
+      Enable the ping command in the ehip tool.
+
+endif
