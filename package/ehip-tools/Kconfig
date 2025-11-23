@@ -3,6 +3,7 @@ menuconfig PACKAGE_EHIP_TOOLS
     help
       Enable support for the ehip tools.
       Selecting this option makes subcommands available.
+    select PACKAGE_EVENTHUB
     select PACKAGE_EHIP
     select PACKAGE_ARGUMENT_PARSER
     select PACKAGE_EHSHELL
@@ -14,5 +15,23 @@ config PACKAGE_EHIP_TOOLS_PING
     default n
     help
       Enable the ping command in the ehip tool.
+
+config PACKAGE_EHIP_TOOLS_NSLOOKUP
+    bool "Enable nslookup command"
+    default n
+    help
+      Enable the nslookup command in the ehip tool.
+
+config PACKAGE_EHIP_TOOLS_IFCONFIG
+    bool "Enable ifconfig command"
+    default n
+    help
+      Enable the ifconfig command in the ehip tool.
+
+config PACKAGE_EHIP_TOOLS_ROUTE
+    bool "Enable route command"
+    default n
+    help
+      Enable the route command in the ehip tool.
 
 endif
