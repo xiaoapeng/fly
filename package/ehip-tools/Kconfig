@@ -22,6 +22,12 @@ config PACKAGE_EHIP_TOOLS_NSLOOKUP
     help
       Enable the nslookup command in the ehip tool.
 
+config PACKAGE_EHIP_TOOLS_TELNET
+    bool "Enable telnet command"
+    default n
+    help
+      Enable the telnet command in the ehip tool.
+
 config PACKAGE_EHIP_TOOLS_IFCONFIG
     bool "Enable ifconfig command"
     default n
