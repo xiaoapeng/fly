@@ -47,6 +47,7 @@ target_compile_definitions(ehip PUBLIC
     "-DEH_DBG_MODEULE_LEVEL_TCP_CWND=EH_DBG_WARNING"
     "-DEH_DBG_MODEULE_LEVEL_TCP_RETRY=EH_DBG_WARNING"
     "-DEH_DBG_MODEULE_LEVEL_TCP_RTO_TIMEOUT=EH_DBG_WARNING"
+    "-DEH_DBG_MODEULE_LEVEL_DNS=EH_DBG_WARNING"
 )
 
 package_lib_compile_options("${TARGET_FLAGS}")
@@ -73,7 +74,6 @@ target_sources(ehip_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src/run.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/static_ip_setting.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/tty_io.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/test_cmd.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/src/test_ehshell_escape_test_parse.c"
 )
 
