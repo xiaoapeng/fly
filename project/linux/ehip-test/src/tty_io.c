@@ -26,6 +26,7 @@
 #include <eh_debug.h>
 #include <eh_platform.h>
 #include <ehshell.h>
+#include <ehshell_module.h>
 #include <epoll_hub.h>
 
 static struct termios s_old_in, s_new_in;
@@ -131,4 +132,4 @@ void __exit tty_io_exit(void){
 }
 
 
-eh_module_level0_export(tty_io_init, tty_io_exit);
+ehshell_module_default_shell_export(tty_io_init, tty_io_exit);
