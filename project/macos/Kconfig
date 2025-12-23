@@ -1,0 +1,28 @@
+
+
+choice
+    prompt "Select a macos platform project"
+    default PROJECT_MACOS_NONE
+    depends on ARCH_ARM64_MACOS
+
+config PROJECT_MACOS_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_MACOS_EHIP_TEST
+    bool "EHIP test project"
+    help
+        Select this option to enable Module EHIP TEST.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_EHIP
+    select PACKAGE_EHSHELL
+    select PACKAGE_ARGUMENT_PARSER
+
+endchoice
+
+
+config PROJECT
+    string
+    default "macos/ehip-test" if PROJECT_MACOS_EHIP_TEST
+
