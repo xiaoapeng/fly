@@ -16,9 +16,54 @@ function(add_target_make_bin ELF_FILE)
 endfunction()
 
 function(add_target_make_map TARGET_NAME)
-    target_link_options(${TARGET_NAME}  PRIVATE
-        "-Wl,-Map,${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.map"
-    )
+    # 确保是目标存在
+    if(NOT TARGET ${TARGET_NAME})
+        message(FATAL_ERROR "Target ${TARGET_NAME} does not exist")
+    endif()
+
+    # 设置 map 文件输出路径
+    set(MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.map")
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # GNU ld on Linux: -Wl,-Map=file.map
+        target_link_options(${TARGET_NAME} PRIVATE
+            "-Wl,-Map=${MAP_FILE}"
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        # ld64 on macOS: -Wl,-map,file.map
+        target_link_options(${TARGET_NAME} PRIVATE
+            "-Wl,-map,${MAP_FILE}"
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # MSVC link.exe on Windows: /MAP:file.map
+        if(MSVC)
+            target_link_options(${TARGET_NAME} PRIVATE
+                "/MAP:${MAP_FILE}"
+            )
+        else()
+            # MinGW on Windows: -Wl,-Map=file.map
+            target_link_options(${TARGET_NAME} PRIVATE
+                "-Wl,-Map=${MAP_FILE}"
+            )
+        endif()
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+        # FreeBSD 使用 GNU ld
+        target_link_options(${TARGET_NAME} PRIVATE
+            "-Wl,-Map=${MAP_FILE}"
+        )
+    else()
+        # 其他系统，尝试 GNU 语法，输出警告
+        message(WARNING "Unsupported system ${CMAKE_SYSTEM_NAME} for map file generation, trying GNU style")
+        target_link_options(${TARGET_NAME} PRIVATE
+            "-Wl,-Map=${MAP_FILE}"
+        )
+    endif()
+
+    # 添加清理规则，清理 map 文件
+    set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${MAP_FILE}")
+    
+    # 输出信息
+    message(STATUS "Map file will be generated: ${MAP_FILE}")
 endfunction(add_target_make_map)
 
 function(add_target_print_memory_usage TARGET_NAME)

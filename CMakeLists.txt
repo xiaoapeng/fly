@@ -13,7 +13,7 @@ include("${FLY_TOP_DIR}/auto-generate/.config.cmake")
 
 include("${FLY_TOP_DIR}/arch/${CONFIG_ARCH}/gcc-config.cmake")
 include("${FLY_TOP_DIR}/cmake/python3.cmake")
-include("${FLY_TOP_DIR}/cmake/gcc-tool-chain-general.cmake")
+include("${FLY_TOP_DIR}/cmake/tool-chain-general.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
 include("${FLY_TOP_DIR}/cmake/git-status.cmake")
 include("${FLY_TOP_DIR}/cmake/jlink-make-image.cmake")
