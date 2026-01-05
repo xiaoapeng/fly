@@ -29,6 +29,10 @@ function(add_target_make_map TARGET_NAME)
         target_link_options(${TARGET_NAME} PRIVATE
             "-Wl,-Map=${MAP_FILE}"
         )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+        target_link_options(${TARGET_NAME} PRIVATE
+            "-Wl,-Map=${MAP_FILE}"
+        )
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         # ld64 on macOS: -Wl,-map,file.map
         target_link_options(${TARGET_NAME} PRIVATE
