@@ -16,4 +16,9 @@ fetch_git_project(
 
 fetch_git_project_add(ehshell)
 package_lib_add(ehshell)
+
+if(NOT CONFIG_PACKAGE_EHSHELL_BUILTIN_NONE)
+    package_lib_add(ehshell_builtin)
+endif()
+
 endif()
