@@ -7,3 +7,58 @@ config PACKAGE_EHSHELL
         This is important for applications that require the ehshell. 
         If ehshell is not needed, disabling this option can reduce the size of the program and decrease boot time.
     select PACKAGE_EVENTHUB_OS
+
+choice
+    prompt "Select the default shell data channel"
+    default PACKAGE_EHSHELL_BUILTIN_NONE
+    depends on PACKAGE_EHSHELL
+
+
+config PACKAGE_EHSHELL_BUILTIN_NONE
+    bool "None"
+    help
+        Do not register the default shell. Users are required to implement it themselves.
+
+config PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
+    bool "Segger RTT"
+    help
+        Register the default shell as Segger RTT.
+        Users can use Segger RTT to interact with the system.
+    select PACKAGE_SEGGER_RTT
+    select PACKAGE_EVENTHUB_OS
+
+endchoice
+
+menu "ehshell built-in default shell config"
+    depends on !PACKAGE_EHSHELL_BUILTIN_NONE
+    depends on PACKAGE_EHSHELL
+
+config PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT_UP_CHANNEL_NUMBER
+    int "Segger RTT upload channel number"
+    default 0
+    help
+        The channel number for Segger RTT upload.
+    depends on PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
+
+config PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT_DOWN_CHANNEL_NUMBER
+    int "Segger RTT download channel number"
+    default 0
+    help
+        The channel number for Segger RTT download.
+    depends on PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
+
+config PACKAGE_EHSHELL_BUILTIN_SHELL_LINE_BUFFER_SIZE
+    int "Default shell line buffer size"
+    default 64
+    help
+        The buffer size for shell line.
+    depends on PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
+
+config PACKAGE_EHSHELL_BUILTIN_SHELL_INPUT_BUFFER_SIZE
+    int "Default shell input buffer size"
+    default 256
+    help
+        The max size for shell input.
+    depends on PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
+
+endmenu
