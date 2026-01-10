@@ -45,8 +45,21 @@ void  slot_function_arp_table_dump(eh_event_t *e, void *slot_param){
     }
 }
 
+void slot_function_printf_test(eh_event_t *e, void *slot_param){
+    (void)e;
+    (void)slot_param;
+    eh_infofl("UTF-8 字符测试:");
+    eh_infofl("特殊字符测试0: 🔥 ✨ 🌟 ⚡ ☀️ 🌙 ☁️ ❄️ 🌈 🍎 🚀 💻 💡");
+    eh_infofl("特殊字符测试2: 🔍 🔎 🔑 🔒 🔓 🔔 🔕 🔖");
+    eh_infofl("特殊字符测试3: 🔗 🔘 🔗 🔘 🔗 🔘 🔗 🔘");
+    eh_infofl("特殊字符测试4: ☀ ☁ ☔ ☃ ☄ ☎ ⌛ ⌚ ⌨ ✉ ✌ ✍ ✨ ❄");
+    eh_infofl("红色字体测试: \033[31m红色字体\033[0m");
+    eh_infofl("绿色字体测试: \033[32m绿色字体\033[0m");
+    eh_infofl("黄色字体测试: \033[33m黄色字体\033[0m");
+}
+
 EH_DEFINE_SLOT(slot_arp_table_changed, slot_function_arp_table_dump, NULL);
-EH_DEFINE_SLOT(slot_button_sw3, slot_function_arp_table_dump, NULL);
+EH_DEFINE_SLOT(slot_button_sw3, slot_function_printf_test, NULL);
 
 
 static int __init test_init(void){
