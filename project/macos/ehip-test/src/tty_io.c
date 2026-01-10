@@ -73,8 +73,8 @@ const struct ehshell_config shell_config = {
     .host = "eventos",
     .input_linebuf_size = 64,
     .input_ringbuf_size = 256,
-    .write = tty_write,
-    .finish = tty_finish,
+    .stream_write = tty_write,
+    .stream_finish = tty_finish,
     .input_ringbuf_process_finish = NULL,
     .max_command_count = 10,
 };
