@@ -44,6 +44,10 @@ static void tty_io_epool_callback(uint32_t events, void *arg){
             if(r <= 0) 
                 break;
             // eh_debugfl("read %d bytes |%.*hhq|", (int)r, (int)r, buf);
+            if(r == 1 ){
+                if(buf[0] == 0x7f)
+                    buf[0] = 0x08;
+            }
             eh_ringbuf_write(input_ringbuf, buf, (int32_t)r);
             ehshell_notify_processor(s_shell);
         }while(1);
@@ -82,7 +86,7 @@ int __init tty_io_init(void){
     s_new_in = s_old_in;
 
     // 关闭回显和熟模式（开启原始模式）
-    s_new_in.c_lflag &= (tcflag_t)~(ECHO | ICANON | ISIG);
+    s_new_in.c_lflag &= (tcflag_t)~(ECHO | ICANON | ISIG | IEXTEN);
 
     // 立即应用设置
     tcsetattr(STDIN_FILENO, TCSANOW, &s_new_in);

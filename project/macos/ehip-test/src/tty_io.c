@@ -47,6 +47,10 @@ static void tty_io_epool_callback(int fd, int16_t filter, void *arg){
             r = read(STDIN_FILENO, buf, sizeof(buf));
             if(r <= 0) 
                 break;
+            if(r == 1 ){
+                if(buf[0] == 0x7f)
+                    buf[0] = 0x08;
+            }
             // eh_debugfl("read %d bytes |%.*hhq|", (int)r, (int)r, buf);
             eh_ringbuf_write(input_ringbuf, buf, (int32_t)r);
             ehshell_notify_processor(s_shell);
