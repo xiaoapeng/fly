@@ -61,19 +61,19 @@ def _parse_version(version_string):
 
     return version_number,"v%d.%d.%d" % (major, minor, patch)
 
-# ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --win-jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
+# ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
-    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'win_jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf'])
+    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf'])
     FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
 
     # Required arguments
     parser.add_argument('--firmware-name', required=True, help='Name of the firmware.')
-    parser.add_argument('--win-jlink-path', required=True, help='Path to the J-Link tool.')
+    parser.add_argument('--jlink-path', required=True, help='Path to the J-Link tool.')
     parser.add_argument('--output-dir', required=True, help='Directory to output the generated image.')
     parser.add_argument('--chip-name', required=True, help='Chip models supported by J-Link.')
-    parser.add_argument('--symlink-name', default='CURRENT' ,required=False, help='Chip models supported by J-Link.')
+    parser.add_argument('--symlink-name', default='CURRENT' ,required=False, help='The name of the soft connection pointing to the firmware.')
     parser.add_argument('--speed', required=True, default=4000, help='J-Link speed.')
     parser.add_argument('--interface-name', default='swd', required=False, help='J-Link interface name.')
     parser.add_argument('--jtagconf', default='-1,-1', required=True, help='Configures the JTAG scan configuration of the target device.\nIRPre==-1 and DRPre==-1 can be passed to use auto-detection (=> first known device will be used).')
@@ -82,11 +82,11 @@ def parse_args():
     parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
 
     args = parser.parse_args()
-    if not os.path.exists(args.win_jlink_path):
-        print('JLink executable does not exist: {}'.format(args.win_jlink_path))
+    if not os.path.exists(args.jlink_path):
+        print('JLink executable does not exist: {}'.format(args.jlink_path))
         sys.exit(1)
         
-    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.win_jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf)
+    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf)
     for firmware_part in args.firmware_parts:
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     # 创建固件文件夹
     os.makedirs(make_firmware_path)
     # 复制jlink工具
-    shutil.copytree(args_info.win_jlink_path, make_firmware_path + '/' + 'tool')
+    shutil.copytree(args_info.jlink_path, make_firmware_path + '/tool/jlink')
     # 创建download.jlink文件
     with open(make_firmware_path + '/' + 'download.jlink', 'w') as f:
         f.write("r\n")  # 擦除芯片
@@ -140,87 +140,46 @@ if __name__ == '__main__':
     with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
-        f.write('\n')
+        f.write('cd /d "%script_dir%"\n\n')
+
+        # --- 平台检测逻辑 ---
+        f.write(':: Detect Architecture\n')
+        f.write('set "JLINK_EXE=%script_dir%\\tool\\jlink\\win-x64\\JLink.exe"\n')
+        # 如果是 x86 系统，PROCESSOR_ARCHITECTURE 会是 x86
+        # 且 PROCESSOR_ARCHITEW6432 不存在
+        f.write('if "%PROCESSOR_ARCHITECTURE%" == "x86" if "%PROCESSOR_ARCHITEW6432%" == "" (\n')
+        f.write('    set "JLINK_EXE=%script_dir%\\tool\\jlink\\win-x86\\JLink.exe"\n')
+        f.write(')\n\n')
+
         f.write('set "nowait_option="\n')
         f.write('if "%1" == "--nowait" (\n')
         f.write('    set "nowait_option=--nowait"\n')
-        f.write(')\n')
-        f.write('\n')
-        f.write('cd "%script_dir%"\n')
-        f.write(f'tool\\JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink\n')
-        f.write('\n')
+        f.write(')\n\n')
+
+        # --- 调用 JLink ---
+        f.write('echo Using: %JLINK_EXE%\n')
+        f.write(f'"%JLINK_EXE%" -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink\n\n')
+
         f.write('if not defined nowait_option (\n')
         f.write('    echo "Execution completed, will automatically exit in 10 seconds."\n')
         f.write('    timeout /t 10 /nobreak > nul\n')
         f.write(')\n')
-        f.write('\n')
         f.write('exit 0\n')
     # 生成windows日志查看脚本
     with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
-        f.write('cd "%script_dir%"\n\n')
-        f.write('powershell -ExecutionPolicy Bypass -File "log.ps1"')
-    with open(make_firmware_path + '/' + 'log.ps1', 'w') as f:
-        f.write(f'''
-$CUR_SH_DIR = (Get-Location).Path
-                
-# Set the log file path
-$OUTPUT_LOG = "log.txt"
+        f.write('cd /d "%script_dir%"\n\n')
 
-# Remove old log files and create new ones
-Write-Host "log path: $CUR_SH_DIR\\$OUTPUT_LOG"
-
-Write-Host "Debug using windows jlink.."
-$tmpLogFile = [System.IO.Path]::GetTempFileName()
-$outputFile = [System.IO.Path]::GetTempFileName()
-$erroroutputFile = [System.IO.Path]::GetTempFileName()
-$nulFile = [System.IO.Path]::GetTempFileName()
-New-Item -Path $nulFile -ItemType File -Force | Out-Null
-
-
-
-# Define the script block for processing the log file
-$scriptBlock = {{
-    param ($tmpLogFilePath, $outputFilePath)
-
-    # Continuously read the log file
-    Get-Content -Path $tmpLogFilePath -Encoding UTF8 -Wait | ForEach-Object {{
-        # Process each line, for example, by adding a timestamp
-        $date_str = Get-Date -Format "[yyyy-MM-dd HH:mm:ss.fff]"
-        Write-Output "$date_str $_"
-        Add-Content -Path $outputFilePath -Value "$date_str $_" -Encoding UTF8
-    }}
-}}
-
-# Save the script block to a temporary PowerShell script file
-$scriptFile = [System.IO.Path]::GetTempFileName() + ".ps1"
-$scriptBlock | Out-File -FilePath $scriptFile -Encoding UTF8
-
-# Start a new PowerShell process to run the log processing script
-$logProcess = Start-Process powershell -ArgumentList "-File `"$scriptFile`" -outputFilePath `"$OUTPUT_LOG`" -tmpLogFilePath `"$tmpLogFile`"" -NoNewWindow -PassThru
-
-# Start the JLinkRTTLogger tool
-$jLinkRTTLoggerProcess = Start-Process -FilePath "tool\\JLinkRTTLogger.exe" -ArgumentList "-Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed} -RTTChannel 0 $tmpLogFile" `
-    -PassThru -NoNewWindow `
-    -RedirectStandardOutput $outputFile -RedirectStandardError $erroroutputFile -RedirectStandardInput $nulFile
-
-$jLinkRTTLoggerProcess.WaitForExit()
-
-Write-Output "Debug finished.."
-# kill the logProcess
-Stop-Process -Id $logProcess.Id -Force
-
-# Clean up temporary files
-Remove-Item $tmpLogFile
-Remove-Item $nulFile
-Remove-Item $outputFile
-Remove-Item $erroroutputFile
-Remove-Item $scriptFile
-
-exit 0
-
-''')
+        f.write('set "RTT_EXE=%script_dir%\\tool\\jlink\\win-x64\\rtt-shell.exe"\n')
+        # 只有在纯 32 位系统下，PROCESSOR_ARCHITECTURE 才是 x86 且没有 64 位兼容层变量
+        f.write('if "%PROCESSOR_ARCHITECTURE%" == "x86" if "%PROCESSOR_ARCHITEW6432%" == "" (\n')
+        f.write('    set "RTT_EXE=%script_dir%\\tool\\jlink\\win-x86\\rtt-shell.exe"\n')
+        f.write(')\n\n')
+        # 使用引号包裹路径以防含有空格，并执行
+        f.write(f'"%RTT_EXE%" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
+        
+        f.write('pause\n')
 
     # 生成wsl/linux/macos的烧写脚本
     with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
@@ -278,7 +237,7 @@ exit 0
         f.write(f'        JLINK_CMD="$JLINK_LOCAL -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
         f.write('    else\n')
         f.write('        echo "[WSL] 未检测到J-Link设备，尝试使用tool/JLink.exe下载..."\n')
-        f.write(f'        JLINK_CMD="$CUR_SH_DIR/tool/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write(f'        JLINK_CMD="$CUR_SH_DIR/tool/win-x64/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
         f.write('    fi\n')
         f.write('\n')
         f.write('# ====================== 4. 普通Linux逻辑：直接执行下载 ======================\n')
@@ -305,23 +264,55 @@ exit 0
     # 生成wsl/linux/macos的日志查看脚本
     with open(make_firmware_path + '/' + 'log.sh', 'w') as f:
         f.write('#!/bin/bash\n\n')
-        f.write('CUR_SH_DIR=$(dirname $(readlink -f "$0"))\n')
-        f.write('wsl_is_use_jilink=$(lsusb | grep -i "J-Link")\n\n')
-        f.write('cd $CUR_SH_DIR\n')
-        f.write('TMP_LOG_FILE=$(mktemp)\n')
-        f.write('OUTPUT_LOG="log.txt"\n')
-        f.write('echo "log path: $CUR_SH_DIR/$OUTPUT_LOG"\n')
-        f.write('(tail -F "$TMP_LOG_FILE" | awk \'{cmd="date +\\"[%Y-%m-%d %H:%M:%S.%3N]\\""; cmd | getline date_str; close(cmd); print date_str, $0; fflush();}\' | tee -a "$OUTPUT_LOG") &\n')
-        f.write('if [ -n "$wsl_is_use_jilink" ]; then\n')
-        f.write('   echo "Debug using WSL jlink.."\n')
-        f.write(f'   JLinkRTTLogger -Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
-        f.write('else\n')
-        f.write('   echo "Debug using windows jlink.."\n')
-        f.write(f'   tool/JLinkRTTLogger.exe -Device {args_info.chip_name} -If {args_info.interface_name} -Speed {args_info.speed}  -RTTChannel 0 "$TMP_LOG_FILE" < /dev/zero >/dev/null 2>&1\n')
-        f.write('fi\n')
-        f.write('rm -f "$TMP_LOG_FILE"')
+        
+        f.write('# --- 环境识别 ---\n')
+        f.write('KERNEL=$(uname -r)\n')
+        f.write('SYSTEM=$(uname -s)\n')
+        f.write('ARCH=$(uname -m)\n\n')
+        
+        f.write('if echo "$KERNEL" | grep -qi "WSL"; then OS_TYPE="WSL";\n')
+        f.write('elif [ "$SYSTEM" = "Darwin" ]; then OS_TYPE="macOS";\n')
+        f.write('else OS_TYPE="Linux"; fi\n\n')
+
+        f.write('# --- 路径获取 ---\n')
+        f.write('if [ "$OS_TYPE" = "macOS" ]; then CUR_SH_DIR=$(cd "$(dirname "$0")" && pwd -P);\n')
+        f.write('else CUR_SH_DIR=$(dirname $(readlink -f "$0")); fi\n')
+        f.write('cd "$CUR_SH_DIR"\n\n')
+
+        f.write('# --- 架构与平台校验 ---\n')
+        f.write('case $OS_TYPE in\n')
+        f.write('    "WSL")\n')
+        f.write('        if lsusb | grep -qi "J-Link"; then\n')
+        f.write('            # WSL 内部运行，必须是 x86_64\n')
+        f.write('            if [ "$ARCH" != "x86_64" ]; then echo "错误：WSL环境仅支持 x86_64 架构"; exit 1; fi\n')
+        f.write('            RTT_EXE="$CUR_SH_DIR/tool/jlink/linux-x64/rtt-shell"\n')
+        f.write('        else\n')
+        f.write('            RTT_EXE="$CUR_SH_DIR/tool/jlink/win-x64/rtt-shell.exe"\n')
+        f.write('        fi ;;\n')
+        f.write('    "macOS")\n')
+        f.write('        # macOS 无论是 Intel(x86_64) 还是 Apple Silicon(arm64) 统统指向 macos 目录\n')
+        f.write('        RTT_EXE="$CUR_SH_DIR/tool/jlink/macos/rtt-shell" ;;\n')
+        f.write('    "Linux")\n')
+        f.write('        if [ "$ARCH" = "x86_64" ]; then\n')
+        f.write('            RTT_EXE="$CUR_SH_DIR/tool/jlink/linux-x64/rtt-shell"\n')
+        f.write('        elif [[ "$ARCH" == i*86 ]]; then\n')
+        f.write('            RTT_EXE="$CUR_SH_DIR/tool/jlink/linux-x86/rtt-shell"\n')
+        f.write('        else\n')
+        f.write('            echo "错误：Linux环境下不支持的架构: $ARCH (仅支持 x86_64/i386)"\n')
+        f.write('            exit 1\n')
+        f.write('        fi ;;\n')
+        f.write('esac\n\n')
+
+        f.write('if [ ! -f "$RTT_EXE" ]; then echo "错误：找不到执行文件 $RTT_EXE"; exit 1; fi\n')
+        f.write('chmod +x "$RTT_EXE" 2>/dev/null\n\n')
+
+        f.write('echo "Starting Log Viewer [$OS_TYPE / $ARCH]: $RTT_EXE"\n')
+
+        f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
+        
         f.write('echo "Debug finished.."\n')
         f.write('exit 0\n')
+
     os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
 
 
