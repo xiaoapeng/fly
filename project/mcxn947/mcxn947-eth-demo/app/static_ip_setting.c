@@ -20,6 +20,7 @@
 #include <ehip_netdev_tool.h>
 #include <ehip-ipv4/route.h>
 #include <ehip-ipv4/ip.h>
+#include <ehip-protocol/dns.h>
 
 #include "global_signal.h"
 
@@ -34,6 +35,11 @@ static eh_flags_t eth0_last_flags_status = 0;
 
 EH_DEFINE_SIGNAL( sig_eth0_ip_add );
 EH_DEFINE_SIGNAL( sig_eth0_ip_del );
+
+static ipv4_addr_t dns_server_ip[2] = {
+    ipv4_make_addr(114, 114, 114, 114),
+    ipv4_make_addr(223, 5, 5, 5),
+};
 
 static struct route_info eth0_route_info_tab[] = {
     {
@@ -139,6 +145,8 @@ EH_DEFINE_SLOT(slot_eth0_link_status_changed, slot_functhion_eth0_link_status_ch
 
 static int __init static_ip_init(void){
     int ret;
+    ehip_dns_set_server(&dns_server_ip[0], EH_ARRAY_SIZE(dns_server_ip));
+
     loopback_netdev = ehip_netdev_tool_find("lo");
     ehip_netdev_tool_up(loopback_netdev);
     eth0_netdev = ehip_netdev_tool_find("eth0");
