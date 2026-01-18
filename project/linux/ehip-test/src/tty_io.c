@@ -76,7 +76,6 @@ const struct ehshell_config shell_config = {
     .stream_write = tty_write,
     .stream_finish = tty_finish,
     .input_ringbuf_process_finish = NULL,
-    .max_command_count = 10,
 };
 
 int __init tty_io_init(void){
@@ -136,4 +135,4 @@ void __exit tty_io_exit(void){
 }
 
 
-ehshell_module_default_shell_export(tty_io_init, tty_io_exit);
+ehshell_module_shell_export(tty_io_init, tty_io_exit);

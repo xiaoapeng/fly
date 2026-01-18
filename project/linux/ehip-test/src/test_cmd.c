@@ -68,7 +68,7 @@ static struct ehshell_command_info ehshell_command_info_tbl[] = {
 
 int __init test_cmd_init(void){
     int ret;
-    ret = ehshell_register_commands(ehshell_default(), ehshell_command_info_tbl, EH_ARRAY_SIZE(ehshell_command_info_tbl));
+    ret = ehshell_register_commands(ehshell_command_info_tbl, EH_ARRAY_SIZE(ehshell_command_info_tbl));
     if(ret < 0){
         eh_errfl("ehshell_register_commands failed, ret = %d", ret);
         return ret;
@@ -77,4 +77,4 @@ int __init test_cmd_init(void){
 }
 
 
-eh_module_level1_export(test_cmd_init, NULL);
+ehshell_module_command_export(test_cmd_init, NULL);

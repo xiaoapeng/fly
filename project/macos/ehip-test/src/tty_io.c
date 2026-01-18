@@ -79,8 +79,7 @@ const struct ehshell_config shell_config = {
     .input_ringbuf_size = 256,
     .stream_write = tty_write,
     .stream_finish = tty_finish,
-    .input_ringbuf_process_finish = NULL,
-    .max_command_count = 10,
+    .input_ringbuf_process_finish = NULL
 };
 
 
@@ -189,4 +188,4 @@ void __exit tty_io_exit(void){
     sigaction(SIGTTOU, &s_old_ttou_sa, NULL);
 }
 
-ehshell_module_default_shell_export(tty_io_init, tty_io_exit);
+ehshell_module_shell_export(tty_io_init, tty_io_exit);
