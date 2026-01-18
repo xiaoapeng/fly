@@ -3,10 +3,10 @@ menuconfig PACKAGE_EHIP_TOOLS
     help
       Enable support for the ehip tools.
       Selecting this option makes subcommands available.
-    select PACKAGE_EVENTHUB
-    select PACKAGE_EHIP
+    depends on PACKAGE_EVENTHUB_OS
+    depends on PACKAGE_EHIP
+    depends on PACKAGE_EHSHELL
     select PACKAGE_ARGUMENT_PARSER
-    select PACKAGE_EHSHELL
 
 if PACKAGE_EHIP_TOOLS
 

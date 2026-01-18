@@ -4,4 +4,4 @@ config PACKAGE_ARGUMENT_PARSER
     help
         Enable support for the argument parser.
         Selecting this option will add support for the argument parser to the system. 
-    select PACKAGE_EVENTHUB_OS
+    depends on PACKAGE_EVENTHUB_OS
