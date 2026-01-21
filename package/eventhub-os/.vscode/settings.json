@@ -1,5 +1,0 @@
-{
-    "gcovViewer.buildDirectories": [
-        "${workspaceFolder}/build"
-    ]
-}
