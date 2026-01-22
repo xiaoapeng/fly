@@ -1,6 +1,29 @@
 
-config PACKAGE_EVENTHUB_OS
+menuconfig PACKAGE_EVENTHUB_OS
         bool "evnethub os kernel support"
     help
         "evnethub os kernel support"
 
+if PACKAGE_EVENTHUB_OS
+
+menuconfig PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
+    bool "evnethub global timer signal"
+    default n
+if PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
+
+config PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_1S
+    bool "evnethub global timer signal 1s"
+    default n
+
+config PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_500MS
+    bool "evnethub global timer signal 500ms"
+    default n
+
+config PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_100MS
+    bool "evnethub global timer signal 100ms"
+    default n
+
+endif # PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
+
+
+endif # PACKAGE_EVENTHUB_OS

@@ -16,5 +16,6 @@ fetch_git_project(
 
 fetch_git_project_add(eventhub)
 package_lib_add(eventhub)
+package_lib_add(eventhub-components)
 
 endif()

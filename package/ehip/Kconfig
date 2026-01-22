@@ -6,4 +6,9 @@ config PACKAGE_EHIP
         Selecting this option will add support for specific network protocols to the system. 
         This is important for applications that require networking capabilities. 
         If networking is not needed, disabling this option can reduce the size of the program and decrease boot time.
-    select PACKAGE_EVENTHUB_OS
+    depends on PACKAGE_EVENTHUB_OS
+    select PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
+    select PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_1S
+    select PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_500MS
+    select PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_100MS
+
