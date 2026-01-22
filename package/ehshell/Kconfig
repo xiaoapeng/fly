@@ -1,5 +1,5 @@
 
-config PACKAGE_EHSHELL
+menuconfig PACKAGE_EHSHELL
         bool "ehshell support"
     help
         Enable support for the ehshell.
@@ -8,8 +8,45 @@ config PACKAGE_EHSHELL
         If ehshell is not needed, disabling this option can reduce the size of the program and decrease boot time.
     depends on PACKAGE_EVENTHUB_OS
 
+if PACKAGE_EHSHELL
+    
+config PACKAGE_EHSHELL_PASSWORD
+    string "Password for shell access"
+    default "ehshell"
+    help
+        The password required to access the shell.
+        If not set, the shell will not require a password.
+
+config PACKAGE_EHSHELL_USE_PASSWORD
+    bool
+    default y if PACKAGE_EHSHELL_PASSWORD != ""
+    default n
+
+# 终端空闲后多长时间需要重新输入密码
+config PACKAGE_EHSHELL_PASSWORD_TIMEOUT
+    int "Password timeout in seconds"
+    default 600
+    help
+        The timeout for password input in seconds.
+        If not set, the password will not timeout.
+    depends on PACKAGE_EHSHELL_USE_PASSWORD
+
+config PACKAGE_EHSHELL_MAX_COMMAND_SIZE
+    int "Max number of commands"
+    default 24
+    help
+        The max number of commands that can be registered.
+        If not set, the default value is 24.
+
+config PACKAGE_EHSHELL_MAX_BACKGROUND_COMMAND_SIZE
+    int "Max number of background commands"
+    default 4
+    help
+        The max number of background commands that can be run.
+        If not set, the default value is 4.
+
 menuconfig PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT
-    bool "Segger RTT"
+    bool "Segger RTT shell"
     help
         Register the default shell as Segger RTT.
         Users can use Segger RTT to interact with the system.
@@ -43,3 +80,52 @@ config PACKAGE_EHSHELL_BUILTIN_SEGGER_RTT_SHELL_INPUT_BUFFER_SIZE
         The max size for shell input.
 
 endif
+
+
+menuconfig PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER
+    bool "Telnet server shell"
+    help
+        Register the default shell as Telnet Server.
+        Users can use Telnet Server to interact with the system.
+    depends on PACKAGE_EHSHELL
+    depends on PACKAGE_EHIP
+
+
+if PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_LINE_BUFFER_SIZE
+    int "Telnet Server shell line buffer size"
+    default 64
+    help
+        The buffer size for shell line.
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_INPUT_BUFFER_SIZE
+    int "Telnet Server shell input buffer size"
+    default 256
+    help
+        The max size for shell input.
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_MAX_CONNECTIONS
+    int "Telnet Server shell max connections"
+    default 4
+    help
+        The max number of connections for Telnet Server.
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_PORT
+    int "Telnet Server shell port"
+    default 23
+    help
+        The port number for Telnet Server.
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_TCP_ALIVE
+    int "Telnet Server shell TCP alive timeout"
+    default 10
+    help
+        The timeout for Telnet Server shell connection in seconds.
+
+endif
+
+
+
+
+endif #PACKAGE_EHSHELL
