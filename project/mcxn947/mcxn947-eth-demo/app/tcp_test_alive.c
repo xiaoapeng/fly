@@ -78,7 +78,8 @@ static void tcp_test_keepalive_connect_change_callback(tcp_pcb_t pcb, enum tcp_e
 }
 
 
-static void tcp_new_connect(tcp_pcb_t new_client){
+static void tcp_new_connect(tcp_server_pcb_t server_pcb, tcp_pcb_t new_client){
+    (void)server_pcb;
     uint16_t keepalive_time = 8;
     uint16_t keepalive_intvl = 4;
     uint8_t keepalive_retry_cnt = 4;

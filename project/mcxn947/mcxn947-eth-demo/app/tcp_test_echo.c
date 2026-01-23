@@ -103,7 +103,8 @@ static void tcp_test_echo_connect_change_callback(tcp_pcb_t pcb, enum tcp_event 
 }
 
 
-static void tcp_new_connect(tcp_pcb_t new_client){
+static void tcp_new_connect(tcp_server_pcb_t server_pcb, tcp_pcb_t new_client){
+    (void)server_pcb;
     eh_debugfl("tcp_new_connect");
     ehip_tcp_set_events_callback(new_client, tcp_test_echo_connect_change_callback);
     ehip_tcp_client_set_userdata(new_client, (void*)0);
