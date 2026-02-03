@@ -123,6 +123,24 @@ config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_TCP_ALIVE
     help
         The timeout for Telnet Server shell connection in seconds.
 
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_TCP_RX_WINDOW_SIZE
+    int "Telnet Server shell TCP RX window size"
+    default 128
+    help
+        The RX window size for Telnet Server shell connection.
+        If not set, the default value is 128.
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_TCP_TX_BUFFER_SIZE
+    int "Telnet Server shell TCP TX buffer size"
+    default 1024
+    help
+        The TX buffer size for Telnet Server shell connection.
+        If not set, the default value is 1024.
+
+config PACKAGE_EHSHELL_BUILTIN_TELNET_SERVER_SHELL_MAX_CLIENTS
+    int "Telnet Server shell max clients"
+    default 4
+    help
+        The max number of clients for Telnet Server.
 endif
 
 
