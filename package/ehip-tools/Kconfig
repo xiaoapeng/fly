@@ -40,4 +40,16 @@ config PACKAGE_EHIP_TOOLS_ROUTE
     help
       Enable the route command in the ehip tool.
 
+config PACKAGE_EHIP_TOOLS_UDP_ECHO
+    bool "Enable udp echo command"
+    default n
+    help
+      Enable the udp echo command in the ehip tool.
+
+config PACKAGE_EHIP_TOOLS_TCP_ECHO
+    bool "Enable tcp echo command"
+    default n
+    help
+      Enable the tcp echo server command in the ehip tool.
+
 endif
