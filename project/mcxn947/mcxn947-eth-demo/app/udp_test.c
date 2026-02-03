@@ -50,7 +50,7 @@ static void udp_sender_timer_handler(eh_event_t *e, void *slot_param){
         eh_merrfl(UDP_TEST, "buffer size %d", out_buffer_capacity_size);
         return ;
     }
-    *(uint32_t *)ehip_buffer_payload_append(out_buffer, 4) = eh_swab32(count++);
+    *(uint32_t *)ehip_buffer_payload_tail_append(out_buffer, 4) = eh_swab32(count++);
 
     ret = ehip_udp_send(udp_pcb, &udp_sender);
     if(ret < 0){

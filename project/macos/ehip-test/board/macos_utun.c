@@ -58,8 +58,8 @@
  *      sudo ifconfig utun10 inet 10.10.0.1 netmask 255.255.255.0
  */
 
-#ifndef EH_DBG_MODEULE_LEVEL_MACOS_UTUN 
-#define EH_DBG_MODEULE_LEVEL_MACOS_UTUN EH_DBG_MODEULE_LEVEL_INFO
+#ifndef EH_DBG_MODULE_LEVEL_MACOS_UTUN 
+#define EH_DBG_MODULE_LEVEL_MACOS_UTUN EH_DBG_INFO
 #endif
 
 #define UTUN_UNIT 10
@@ -285,8 +285,8 @@ static void utun_rx_process(ehip_netdev_t *netdev){
         ehip_buffer_free(ehip_buf);
         return ;
     }
-    ehip_buffer_payload_append(ehip_buf, (ehip_buffer_size_t)len);
-    type = (uint32_t *)ehip_buffer_head_reduce(ehip_buf, 4);
+    ehip_buffer_payload_tail_append(ehip_buf, (ehip_buffer_size_t)len);
+    type = (uint32_t *)ehip_buffer_payload_head_reduce(ehip_buf, 4);
     if((*type) != eh_hton32(AF_INET)){
         ehip_buffer_free(ehip_buf);
         return ;
@@ -388,9 +388,9 @@ static int utun_start_xmit(ehip_netdev_t *netdev, ehip_buffer_t *buf){
     int retv = 0;
     uint32_t *type;
     eh_mdebugfl(MACOS_UTUN, "utun tx:%d@|%.*hhq|", ehip_buffer_get_payload_size(buf), ehip_buffer_get_payload_size(buf), ehip_buffer_get_payload_ptr(buf));
-    type = (uint32_t *)ehip_buffer_head_append(buf, 4);
+    type = (uint32_t *)ehip_buffer_payload_head_append(buf, 4);
     if(type == NULL){
-        eh_mwarnfl(MACOS_UTUN, "ehip_buffer_head_append failed");
+        eh_mwarnfl(MACOS_UTUN, "ehip_buffer_payload_head_append failed");
         ehip_buffer_free(buf);
         return EH_RET_OK;
     }

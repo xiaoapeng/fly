@@ -350,7 +350,7 @@ static void eth_event_slot_function(eh_event_t *e, void *slot_param){
             ehip_buffer_free_raw_ptr(EHIP_BUFFER_TYPE_GENERAL_FRAME, rx_frame.rxBuffArray[0].buffer);
             continue;
         }
-        ehip_buffer_payload_append(ehip_buf, rx_frame.rxBuffArray[0].length);
+        ehip_buffer_payload_tail_append(ehip_buf, rx_frame.rxBuffArray[0].length);
         ehip_buf->netdev = s_lan8741a_en_netdev;
         ehip_buf->protocol = eth_hdr_ptype_get((struct eth_hdr *)rx_frame.rxBuffArray[0].buffer);
         ehip_rx(ehip_buf);

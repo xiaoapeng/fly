@@ -63,8 +63,8 @@
 #include <eh_platform.h>
 #include <epoll_hub.h>
 
-#ifndef EH_DBG_MODEULE_LEVEL_NETDEV_LINUX_TAP
-#define EH_DBG_MODEULE_LEVEL_NETDEV_LINUX_TAP EH_DBG_WARNING
+#ifndef EH_DBG_MODULE_LEVEL_NETDEV_LINUX_TAP
+#define EH_DBG_MODULE_LEVEL_NETDEV_LINUX_TAP EH_DBG_WARNING
 #endif
 
 static const struct ethernet_trait * s_ethernet_trait;
@@ -92,7 +92,7 @@ static void tap_rx_process(ehip_netdev_t *netdev){
             ehip_buffer_free(ehip_buf);
             break;
         }
-        ehip_buffer_payload_append(ehip_buf, (ehip_buffer_size_t)len);
+        ehip_buffer_payload_tail_append(ehip_buf, (ehip_buffer_size_t)len);
         ehip_buf->netdev = netdev;
         ehip_buf->protocol = eth_hdr_ptype_get((struct eth_hdr *)ehip_buffer_get_payload_ptr(ehip_buf));
         eh_mdebugfl(NETDEV_LINUX_TAP, "eth rx:%d@|%.*hhq|", len, len, buffer);
