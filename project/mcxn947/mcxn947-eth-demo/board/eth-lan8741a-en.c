@@ -280,7 +280,7 @@ static void ethernet_callback(ENET_Type *base,
     if( !(f & BOARD_ETH_EVENT_FLAGS_MASK) )
         eh_mdebugfl(LAN8741, "Unknown event %d", event);
     
-    eh_event_flags_set_bits(eh_signal_to_custom_event(&signal_eth_event_flags), f);
+    eh_event_flags_set_bits_change_notify(eh_signal_to_custom_event(&signal_eth_event_flags), f);
     if(event == kENET_TxIntEvent && txReclaimInfo){
         eh_ringbuf_write(s_tx_event, (uint8_t*)&txReclaimInfo->context, sizeof(txReclaimInfo->context));
     }
