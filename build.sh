@@ -15,13 +15,13 @@ require_module() {
 find_python() {
     local candidate
 
-    # 用户可通过环境变量强制指定 Python 解释器。
+    # Allow overriding the Python interpreter with an environment variable.
     if [ -n "${FLY_PYTHON:-}" ] && [ -x "${FLY_PYTHON}" ]; then
         echo "${FLY_PYTHON}"
         return 0
     fi
 
-    # 优先使用项目本地虚拟环境，避免污染系统环境。
+    # Prefer project-local virtualenv to avoid polluting system Python.
     if [ -x "$venv_dir/bin/python" ]; then
         echo "$venv_dir/bin/python"
         return 0
@@ -55,7 +55,7 @@ ensure_venv_and_deps() {
     fi
 
     echo "[build.sh] Installing required Python packages ..."
-    # 兼容 macOS/Linux 的权限与缓存差异，尽量避免非致命警告干扰。
+    # Improve compatibility across macOS/Linux permission/cache behaviors.
     if [ "$use_venv" = "1" ] && [ -x "$venv_dir/bin/python" ]; then
         PIP_NO_CACHE_DIR=1 python -m pip install --upgrade --disable-pip-version-check pip >/dev/null
         PIP_NO_CACHE_DIR=1 python -m pip install --disable-pip-version-check kconfiglib requests >/dev/null

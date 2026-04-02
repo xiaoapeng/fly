@@ -29,7 +29,7 @@ def check_tool_installed(tool_name):
         return False
 
 def get_file_modification_time(file_path):
-    # 获取文件的最后修改时间戳
+    # Return the last modification timestamp of a file.
     if not os.path.exists(file_path):
         return 0
     return os.path.getmtime(file_path)
@@ -66,7 +66,7 @@ def convert_config_to_cmake(config_file, cmake_file):
         f.write("# CMakeLists.txt generated from .config file\n")
         f.write("\n".join(cmake_lines) + "\n")
     
-    print(f"Conversion complete. CMake file written to {cmake_file}")
+    print(f"Conversion complete. CMake file written to: {cmake_file}")
 
 def try_update_cmake_config(source_dir):
     if get_file_modification_time(f"{source_dir}/{DOT_CONFIG_FILE_PATH}") > get_file_modification_time(f"{source_dir}/{AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH}"):
@@ -91,7 +91,7 @@ def parse_config_file(file_path):
     return config_dict
 
 def run_loadconfig(source_dir, input_file):
-    """加载配置文件"""
+    """Load a config file."""
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     kconf.load_config(input_file)
     kconf.write_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
@@ -102,7 +102,7 @@ def run_loadconfig(source_dir, input_file):
 
 
 def run_menuconfig(source_dir):
-    """启动 menuconfig 界面"""
+    """Launch the menuconfig UI."""
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     menuconfig.menuconfig(kconf)
     
@@ -113,38 +113,38 @@ def run_menuconfig(source_dir):
 
 
 def run_saveconfig(source_dir, output_file='defconfig'):
-    """保存 defconfig 文件到指定路径"""
+    """Save minimal config to the target defconfig path."""
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
     kconf.load_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
     config = parse_config_file(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
 
-    # 查找 CONFIG_DEFCONFIG_PATH 的值
+    # Resolve CONFIG_PROJECT path from .config.
     try:
         
         defconfig_path = f"{source_dir}/project/" + config['CONFIG_PROJECT'].strip('"')
     except Exception as e:
-        print(f"Error while accessing : {e}. Using default path: {defconfig_path}")
+        print(f"Failed to read CONFIG_PROJECT from .config: {e}")
         exit(1)
     
     if not os.path.exists(defconfig_path):
-        print(f"Defconfig file does not exist at {defconfig_path}")
+        print(f"Project config directory does not exist: {defconfig_path}")
         exit(1)
     defconfig_file = f"{defconfig_path}/{output_file}"
-    # 将当前配置保存到 defconfig 文件
+    # Save current config as minimal defconfig.
     kconf.write_min_config(defconfig_file)
-    print(f"Defconfig saved to {defconfig_file}")
+    print(f"Defconfig saved to: {defconfig_file}")
 
 def run_clean(source_dir):
-    """清理编译目录"""
+    """Clean build outputs."""
     if not check_tool_installed('cmake'):
-        print("cmake not installed!!")
+        print("cmake not installed. Please install cmake first.")
         exit(1)
     
     if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         os.system(f"cmake --build {source_dir}/build --target clean")
 
 def run_distclean(source_dir):
-    """ 删除build 和 dl """
+    """Remove build directory and generated config outputs."""
     if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         shutil.rmtree(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
     if os.path.exists(f"{source_dir}/{DOT_CONFIG_FILE_PATH}"):
@@ -153,9 +153,9 @@ def run_distclean(source_dir):
         shutil.rmtree(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
 
 def run_build(source_dir, build_type=None, jobs=None):
-    """编译"""
+    """Build project."""
     if not check_tool_installed('cmake'):
-        print("cmake not installed!!")
+        print("cmake not installed. Please install cmake first.")
         exit(1)
     
     if jobs == None:
@@ -203,15 +203,15 @@ def run_build(source_dir, build_type=None, jobs=None):
 
     cmake_ret = os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
     if cmake_ret != 0:
-        print(f'Build failed:{cmake_ret}')
+        print(f'Build failed, exit code: {cmake_ret}')
     
 def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
-        print("cmake not installed!!")
+        print("cmake not installed. Please install cmake first.")
         exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("build not exist!!")
+        print("Build directory does not exist. Run build first.")
         exit(1)
     os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
 
@@ -220,22 +220,22 @@ def run_flash(source_dir, flash_target='default'):
 
 def run_make_img(source_dir, flash_target='default'):
     if not check_tool_installed('cmake'):
-        print("cmake not installed!!")
+        print("cmake not installed. Please install cmake first.")
         exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("build not exist!!")
+        print("Build directory does not exist. Run build first.")
         exit(1)
     
-    # 生成时间戳文件,
+    # Generate build timestamp file.
     check_git_status.generate_timestamp(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
     os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
 
 def run_rttlog(source_dir):
     if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
-        print("image not exist!!")
+        print("Image directory not found. Run make_img first.")
         exit(1)
-    # 判断操作系统
+    # Dispatch to platform-specific log script.
     if platform.system() == 'Windows':
         os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.bat")
     else :
@@ -246,7 +246,7 @@ def run_append_path_env(source_dir, env_path):
     env_path = os.path.abspath(env_path)
     env_path_config_json_path = f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"
     if not os.path.exists(env_path):
-        print(f"{env_path} not exist!!")
+        print(f"Path does not exist: {env_path}")
         exit(1)
     if os.path.exists(env_path_config_json_path):
         with open(env_path_config_json_path, 'r') as f:
@@ -257,11 +257,11 @@ def run_append_path_env(source_dir, env_path):
 
 def run_package_update(source_dir, pack_name, list=False):
     if not check_tool_installed('cmake'):
-        print("cmake not installed!!")
+        print("cmake not installed. Please install cmake first.")
         exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("build not exist!!")
+        print("Build directory does not exist. Run build first.")
         exit(1)
     
     if list:
@@ -271,13 +271,13 @@ def run_package_update(source_dir, pack_name, list=False):
 
 
 def run_package_mirror(source_dir, list=False, enable=None, disable=None, update=False):
-    # 判断.git.mirror-source.json文件是否存在
+    # Initialize mirror source file if missing.
     if not os.path.exists(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}"):
-        # 复制初始化文件
+        # Copy default mirror source list.
         shutil.copy(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT}", f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
-        print(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH} init success!!")
+        print(f"Mirror source config initialized: {source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
     
-    # 读取.git.mirror-source.json文件
+    # Load mirror source config.
     git_mirror_source_data = []
     with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'r') as f:
         git_mirror_source_data = json.load(f)
@@ -294,7 +294,7 @@ def run_package_mirror(source_dir, list=False, enable=None, disable=None, update
 
         if is_list:
             print(f"{item['name']:<40} [{'ENABLE' if item['enable'] else 'DISABLE':<7}]")
-    # 写入.git.mirror-source.json文件
+    # Save mirror source config.
     with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'w') as f:
         json.dump(git_mirror_source_data, f, indent=4)
     
@@ -314,60 +314,60 @@ def load_env(source_dir):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Compile script.')
-    #parser.add_argument('source_dir', type=str, help='Directory containing the Kconfig file.')
+    parser = argparse.ArgumentParser(description='FLY build script.')
+    #parser.add_argument('source_dir', type=str, help='Directory containing Kconfig.')
     
     subparsers = parser.add_subparsers(dest='command', help='Command to execute.', required=False)
 
     # Subparser for menuconfig
-    parser_menuconfig = subparsers.add_parser('menuconfig', help='Start menuconfig interface.')
+    parser_menuconfig = subparsers.add_parser('menuconfig', help='Open menuconfig UI.')
 
     # Subparser for saveconfig
-    parser_saveconfig = subparsers.add_parser('saveconfig', help='Run saveconfig')
-    parser_saveconfig.add_argument('savefile_name', type=str,nargs='?', default="defconfig", help='Output file for saveconfig command.')
+    parser_saveconfig = subparsers.add_parser('saveconfig', help='Save current config as a minimal file.')
+    parser_saveconfig.add_argument('savefile_name', type=str,nargs='?', default="defconfig", help='Output filename (default: defconfig).')
 
     # Subparser for loadconfig
-    parser_loadconfig = subparsers.add_parser('loadconfig', help='Run loadconfig')
-    parser_loadconfig.add_argument('loadfile_name', type=str, help='Input file for loadconfig command.')
+    parser_loadconfig = subparsers.add_parser('loadconfig', help='Load config file.')
+    parser_loadconfig.add_argument('loadfile_name', type=str, help='Input config filepath.')
 
     # clean
-    parser_clean = subparsers.add_parser('clean', help='Clean the build directory.')
+    parser_clean = subparsers.add_parser('clean', help='Clean build outputs (keep config).')
 
     # distclean 
-    parser_distclean = subparsers.add_parser('distclean', help='Delete the build directory.')
+    parser_distclean = subparsers.add_parser('distclean', help='Delete build directory and generated configs.')
 
     # flash
-    parser_flash = subparsers.add_parser('flash', help='Flash the project.')
-    parser_flash.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
+    parser_flash = subparsers.add_parser('flash', help='Flash firmware to target.')
+    parser_flash.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash target (default: default).')
 
     # make_img
-    parser_make_img = subparsers.add_parser('make_img', help='Make image.')
-    parser_make_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash type (e.g., default,...).')
+    parser_make_img = subparsers.add_parser('make_img', help='Generate image files.')
+    parser_make_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Image target (default: default).')
 
     # Subparser for build
-    parser_build = subparsers.add_parser('build', help='Build the project.')
-    parser_build.add_argument('build_type', type=str, nargs='?', default=None, help='Build type (e.g., Debug, Release, MinSizeRel).')
-    parser_build.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of jobs to run simultaneously.')
-    parser.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of jobs to run simultaneously.')
+    parser_build = subparsers.add_parser('build', help='Build project.')
+    parser_build.add_argument('build_type', type=str, nargs='?', default=None, help='Build type (e.g. Debug/Release/MinSizeRel).')
+    parser_build.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of parallel jobs.')
+    parser.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of parallel jobs.')
     
     # Subparser for rttlog
-    parser_log = subparsers.add_parser('rttlog', help='Capture log.')
+    parser_log = subparsers.add_parser('rttlog', help='Capture RTT logs.')
 
     # Subparser for package_update <pack_name> -l --list 
-    parser_package_update = subparsers.add_parser('package_update', help='Update package.')
-    parser_package_update.add_argument('pack_name', type=str, nargs='?', default='all', help='Package name (default: all)')
-    parser_package_update.add_argument('-l', '--list', action='store_true', help='List all the dependent packages.')
+    parser_package_update = subparsers.add_parser('package_update', help='Update package dependencies.')
+    parser_package_update.add_argument('pack_name', type=str, nargs='?', default='all', help='Package name (default: all).')
+    parser_package_update.add_argument('-l', '--list', action='store_true', help='List updatable dependency packages.')
 
     # Subparser for package_mirror [-l,--list] [-e,--enable <name>] [-d,--disable <name>] [-u,--update]
-    parser_package_mirror = subparsers.add_parser('package_mirror', help='Update package mirror.')
-    parser_package_mirror.add_argument('-l', '--list', action='store_true', help='List all the package mirror.')
-    parser_package_mirror.add_argument('-e', '--enable', type=str, nargs='?', default=None, help='Enable the name.')
-    parser_package_mirror.add_argument('-d', '--disable', type=str, nargs='?', default=None, help='Disable the name.')
-    parser_package_mirror.add_argument('-u', '--update', action='store_true', help='Update the package mirror.')
+    parser_package_mirror = subparsers.add_parser('package_mirror', help='Manage package mirror source settings.')
+    parser_package_mirror.add_argument('-l', '--list', action='store_true', help='List mirror source status.')
+    parser_package_mirror.add_argument('-e', '--enable', type=str, nargs='?', default=None, help='Enable specified mirror source.')
+    parser_package_mirror.add_argument('-d', '--disable', type=str, nargs='?', default=None, help='Disable specified mirror source.')
+    parser_package_mirror.add_argument('-u', '--update', action='store_true', help='Refresh mirror benchmark and best source.')
 
     # Add the PATH environment variable
-    parser_add_path = subparsers.add_parser('add_path_env', help='Add the PATH environment variable.')
-    parser_add_path.add_argument('env_path', type=str, help='Environment variable path')
+    parser_add_path = subparsers.add_parser('add_path_env', help='Append path to FLY PATH config.')
+    parser_add_path.add_argument('env_path', type=str, help='Path to append.')
 
     all_args = sys.argv[1:]
     source_dir = all_args[0]

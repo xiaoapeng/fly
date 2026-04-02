@@ -12,6 +12,23 @@
 
 ## 使用教程
 
+### 快速开始（5分钟）
+
+> 默认情况下：Linux/macOS 使用 `./build.sh`，Windows 使用 `build.bat`，两者子命令一致。
+
+```bash
+# 1) 加载一个现成配置
+./build.sh loadconfig ./project/stm32f0xx/stm32f030x8-demo/defconfig
+
+# 2) 编译（默认 Release）
+./build.sh
+
+# 3) 生成镜像 / 烧写 / 查看日志（按需执行）
+./build.sh make_img
+./build.sh flash
+./build.sh rttlog
+```
+
 ### 1. clone项目到本地
 
 ```bash
@@ -19,17 +36,24 @@ git clone https://github.com/xiaoapeng/fly.git
 cd fly
 ```
 
-### 2. 安装必要python3环境和部分库
+### 2. 安装 Python3（依赖可自动补齐）
+
+> `build.sh` / `build.bat` 会在缺少依赖时自动安装 `kconfiglib`、`requests`。  
+> 如需手动指定解释器，可设置 `FLY_PYTHON`；如需关闭自动安装，可设置 `FLY_AUTO_SETUP_PY=0`。
 
 #### windows 安装python
 
 - [下载](https://www.python.org/downloads/)python,安装时(或安装后)请将python加入全局环境变量，并重启设备。
-- 安装kconfiglib 和 windows-curses
+- 如需在 Windows 下使用 `menuconfig`，可能还需要安装 `windows-curses`：
+
+    ```bat
+    .venv\Scripts\pip3.exe install windows-curses
+    ```
+- 如果希望手动准备虚拟环境，可执行：
 
     ```bat
     python -m venv .venv # or python3 -m venv .venv
     .venv\Scripts\pip3.exe install kconfiglib
-    .venv\Scripts\pip3.exe install windows-curses
     .venv\Scripts\pip3.exe install requests
     ```
 
@@ -151,6 +175,25 @@ cd fly
 ### 7. 选择芯片，开始构建、打包、烧写
 
 <p><span style="color: yellow;">构建时 windows使用build.bat脚本，linux使用build.sh脚本</span></p>
+
+#### 命令速查（全量）
+
+| 命令 | 作用 | 示例 |
+| --- | --- | --- |
+| `menuconfig` | 打开图形配置菜单 | `./build.sh menuconfig` |
+| `loadconfig <file>` | 加载配置文件 | `./build.sh loadconfig ./project/stm32f0xx/stm32f030x8-demo/defconfig` |
+| `saveconfig [name]` | 保存当前配置 | `./build.sh saveconfig` |
+| `build [type] [-j N]` | 编译项目 | `./build.sh build Debug -j 8` |
+| `clean` | 清理构建产物（保留配置） | `./build.sh clean` |
+| `distclean` | 删除构建目录与自动生成配置 | `./build.sh distclean` |
+| `make_img [target]` | 生成镜像 | `./build.sh make_img` |
+| `flash [target]` | 烧写固件 | `./build.sh flash` |
+| `rttlog` | 打开 RTT 日志 | `./build.sh rttlog` |
+| `package_update [name] [-l]` | 更新包或列出可更新包 | `./build.sh package_update -l` |
+| `package_mirror [-l/-e/-d/-u]` | 管理包镜像源 | `./build.sh package_mirror -l` |
+| `add_path_env <path>` | 追加工具路径到 FLY 环境 | `./build.sh add_path_env /path/to/tool/bin` |
+
+> Windows 下将 `./build.sh` 替换为 `build.bat` 即可，例如：`build.bat build Release -j 8`。
 
 #### 构建前准备，只需要执行一次（执行后环境变量会存储到 .PATH.evn.json中）
 
