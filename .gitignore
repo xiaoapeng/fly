@@ -12,4 +12,4 @@ auto-generate/
 .venv/
 .git.mirror-source.json
 .cache/
-
+.codex
