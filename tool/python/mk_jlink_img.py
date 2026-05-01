@@ -115,7 +115,9 @@ if __name__ == '__main__':
     print('make_firmware_name:', make_firmware_name)
     make_firmware_path = args_info.output_dir + '/' + make_firmware_name
     firmware_link_path = args_info.output_dir + '/' + args_info.symlink_name
-    # 创建固件文件夹
+    # 创建固件文件夹（如果已存在则清空后重建）
+    if os.path.exists(make_firmware_path):
+        shutil.rmtree(make_firmware_path)
     os.makedirs(make_firmware_path)
     # 复制jlink工具
     shutil.copytree(args_info.jlink_path, make_firmware_path + '/tool/jlink')

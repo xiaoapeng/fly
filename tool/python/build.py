@@ -9,7 +9,7 @@ import json
 import fetch_git_project
 import check_git_status
 
-K_CONFIG_FILR_PATH = 'Kconfig'
+K_CONFIG_FILE_PATH = 'Kconfig'
 DOT_CONFIG_FILE_PATH = '.config'
 CMAKE_BUILD_DIR_PATH = 'build'
 AUTO_GENERATE_DIR_PATH = 'auto-generate'
@@ -92,7 +92,7 @@ def parse_config_file(file_path):
 
 def run_loadconfig(source_dir, input_file):
     """Load a config file."""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
     kconf.load_config(input_file)
     kconf.write_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
     if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
@@ -103,7 +103,7 @@ def run_loadconfig(source_dir, input_file):
 
 def run_menuconfig(source_dir):
     """Launch the menuconfig UI."""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
     menuconfig.menuconfig(kconf)
     
     if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
@@ -114,7 +114,7 @@ def run_menuconfig(source_dir):
 
 def run_saveconfig(source_dir, output_file='defconfig'):
     """Save minimal config to the target defconfig path."""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILR_PATH}")
+    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
     kconf.load_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
     config = parse_config_file(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
 
@@ -124,11 +124,11 @@ def run_saveconfig(source_dir, output_file='defconfig'):
         defconfig_path = f"{source_dir}/project/" + config['CONFIG_PROJECT'].strip('"')
     except Exception as e:
         print(f"Failed to read CONFIG_PROJECT from .config: {e}")
-        exit(1)
+        sys.exit(1)
     
     if not os.path.exists(defconfig_path):
         print(f"Project config directory does not exist: {defconfig_path}")
-        exit(1)
+        sys.exit(1)
     defconfig_file = f"{defconfig_path}/{output_file}"
     # Save current config as minimal defconfig.
     kconf.write_min_config(defconfig_file)
@@ -138,7 +138,7 @@ def run_clean(source_dir):
     """Clean build outputs."""
     if not check_tool_installed('cmake'):
         print("cmake not installed. Please install cmake first.")
-        exit(1)
+        sys.exit(1)
     
     if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         os.system(f"cmake --build {source_dir}/build --target clean")
@@ -156,7 +156,7 @@ def run_build(source_dir, build_type=None, jobs=None):
     """Build project."""
     if not check_tool_installed('cmake'):
         print("cmake not installed. Please install cmake first.")
-        exit(1)
+        sys.exit(1)
     
     if jobs == None:
         jobs = os.cpu_count()
@@ -208,11 +208,11 @@ def run_build(source_dir, build_type=None, jobs=None):
 def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
         print("cmake not installed. Please install cmake first.")
-        exit(1)
+        sys.exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("Build directory does not exist. Run build first.")
-        exit(1)
+        sys.exit(1)
     os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
 
 def run_flash(source_dir, flash_target='default'):
@@ -221,11 +221,11 @@ def run_flash(source_dir, flash_target='default'):
 def run_make_img(source_dir, flash_target='default'):
     if not check_tool_installed('cmake'):
         print("cmake not installed. Please install cmake first.")
-        exit(1)
+        sys.exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("Build directory does not exist. Run build first.")
-        exit(1)
+        sys.exit(1)
     
     # Generate build timestamp file.
     check_git_status.generate_timestamp(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
@@ -234,7 +234,7 @@ def run_make_img(source_dir, flash_target='default'):
 def run_rttlog(source_dir):
     if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
         print("Image directory not found. Run make_img first.")
-        exit(1)
+        sys.exit(1)
     # Dispatch to platform-specific log script.
     if platform.system() == 'Windows':
         os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.bat")
@@ -247,7 +247,7 @@ def run_append_path_env(source_dir, env_path):
     env_path_config_json_path = f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"
     if not os.path.exists(env_path):
         print(f"Path does not exist: {env_path}")
-        exit(1)
+        sys.exit(1)
     if os.path.exists(env_path_config_json_path):
         with open(env_path_config_json_path, 'r') as f:
             env_PATH_data = json.load(f)
@@ -258,11 +258,11 @@ def run_append_path_env(source_dir, env_path):
 def run_package_update(source_dir, pack_name, list=False):
     if not check_tool_installed('cmake'):
         print("cmake not installed. Please install cmake first.")
-        exit(1)
+        sys.exit(1)
     
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("Build directory does not exist. Run build first.")
-        exit(1)
+        sys.exit(1)
     
     if list:
         os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_show_list")

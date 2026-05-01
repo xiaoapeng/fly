@@ -8,11 +8,11 @@ FC_DESCRIPTION_LEN = 64
 FC_MAGIC_A = 0xAA5555AA
 FC_MAGIC_B = 0x88777788
 
-# 定义结构体的格式（小端序），注意 oter_data 为动态长度部分
+# 定义结构体的格式（小端序），注意 other_data 为动态长度部分
 struct_format = '<IIIIII12s32s64s'
 
 # 构造结构体数据
-def create_factory_data(software_len, factory_len, crc32, software_version, part_name, firmware_name, generated_description, oter_data):
+def create_factory_data(software_len, factory_len, crc32, software_version, part_name, firmware_name, generated_description, other_data):
     # Ensure strings are of correct length
     part_name = part_name.ljust(FC_PART_NAME_MAX_SIZE, '\0')
     firmware_name = firmware_name.ljust(FC_FIRMWARE_NAME_MAX_SIZE, '\0')
@@ -32,8 +32,8 @@ def create_factory_data(software_len, factory_len, crc32, software_version, part
         generated_description.encode('utf-8')
     )
     
-    # Add oter_data at the end
-    packed_data += oter_data
+    # Add other_data at the end
+    packed_data += other_data
     
     return packed_data
 
@@ -44,7 +44,7 @@ def calculate_crc32(data, initial_crc=~(0xFFFFFFFF)):
     return crc
 
 # 读取二进制文件并添加结构体数据
-def append_to_bin_file(file_path, software_version, part_name, firmware_name, generated_description, oter_data):
+def append_to_bin_file(file_path, software_version, part_name, firmware_name, generated_description, other_data):
     # Read the existing file content
     with open(file_path, 'rb') as f:
         file_data = f.read()
@@ -55,7 +55,7 @@ def append_to_bin_file(file_path, software_version, part_name, firmware_name, ge
 
     # Create initial factory data with placeholder CRC32
     software_len = len(file_data) + padding_length  # 分区开始位置到本数据结构的长度
-    factory_len = struct.calcsize(struct_format) + len(oter_data)
+    factory_len = struct.calcsize(struct_format) + len(other_data)
     
     initial_factory_data = create_factory_data(
         software_len,
@@ -65,7 +65,7 @@ def append_to_bin_file(file_path, software_version, part_name, firmware_name, ge
         part_name,
         firmware_name,
         generated_description,
-        oter_data
+        other_data
     )
 
     # Combine file data, padding, and initial factory data for CRC32 calculation
@@ -82,7 +82,7 @@ def append_to_bin_file(file_path, software_version, part_name, firmware_name, ge
         part_name,
         firmware_name,
         generated_description,
-        oter_data
+        other_data
     )
 
     # Combine the file data, padding, and final factory data
@@ -96,7 +96,7 @@ def append_to_bin_file(file_path, software_version, part_name, firmware_name, ge
     with open(file_path, 'wb') as f:
         f.write(new_file_data + final_padding)
 
-def append_factory_data_to_bin(file_path, software_version, part_name, firmware_name, generated_description, oter_data=b''):
+def append_factory_data_to_bin(file_path, software_version, part_name, firmware_name, generated_description, other_data=b''):
     """
     向二进制文件末尾添加FactoryData结构体
     :param file_path: 二进制文件路径
@@ -104,6 +104,6 @@ def append_factory_data_to_bin(file_path, software_version, part_name, firmware_
     :param part_name: 分区名称
     :param firmware_name: 固件名称
     :param generated_description: 描述信息
-    :param oter_data: 其他数据 (bytes)
+    :param other_data: 其他数据 (bytes)
     """
-    append_to_bin_file(file_path, software_version, part_name, firmware_name, generated_description, oter_data)
+    append_to_bin_file(file_path, software_version, part_name, firmware_name, generated_description, other_data)

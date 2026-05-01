@@ -110,7 +110,9 @@ if __name__ == '__main__':
     make_firmware_path = args_info.output_dir + '/' + make_firmware_name
     firmware_link_path = args_info.output_dir + '/' + args_info.symlink_name
     config_option = ''
-    # 创建固件文件夹
+    # 创建固件文件夹（如果已存在则清空后重建）
+    if os.path.exists(make_firmware_path):
+        shutil.rmtree(make_firmware_path)
     os.makedirs(make_firmware_path)
     os.makedirs(f'{make_firmware_path}/openocd_config')
 

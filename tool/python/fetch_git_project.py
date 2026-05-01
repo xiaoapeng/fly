@@ -168,6 +168,8 @@ class MirrorSourceManager:
         try:
             start_time = time.time()
             response = requests.get(mirrored_url, timeout=timeout, stream=True)
+            if response.status_code != 200:
+                return mirror_source, float('inf')
             # 只读取一小部分数据来测试连接
             response.raw.read(10)
             response.close()
