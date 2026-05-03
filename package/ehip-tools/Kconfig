@@ -40,6 +40,12 @@ config PACKAGE_EHIP_TOOLS_ROUTE
     help
       Enable the route command in the ehip tool.
 
+config PACKAGE_EHIP_TOOLS_TRACEROUTE
+    bool "Enable traceroute command"
+    default n
+    help
+      Enable the traceroute command in the ehip tool.
+
 config PACKAGE_EHIP_TOOLS_UDP_ECHO
     bool "Enable udp echo command"
     default n

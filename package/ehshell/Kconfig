@@ -38,6 +38,14 @@ config PACKAGE_EHSHELL_MAX_COMMAND_SIZE
         The max number of commands that can be registered.
         If not set, the default value is 24.
 
+config PACKAGE_EHSHELL_ARGC_MAX
+    int "Max number of arguments per command"
+    default 8
+    range 4 32
+    help
+        The max number of arguments that can be passed to a single command.
+        If not set, the default value is 8.
+
 config PACKAGE_EHSHELL_MAX_BACKGROUND_COMMAND_SIZE
     int "Max number of background commands"
     default 4
