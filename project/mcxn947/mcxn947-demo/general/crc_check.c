@@ -13,12 +13,12 @@
 #include <stdint.h>
 #include "crc_check.h"
 
-static const uint16_t crc16TalbeAbs[] = {
+static const uint16_t crc16TableAbs[] = {
 	0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 
 	0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400, 
 };
 
-static const uint32_t crc32TalbeAbs[] = {
+static const uint32_t crc32TableAbs[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3,	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 	0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -72,8 +72,8 @@ uint16_t crc16(uint16_t init_val,const uint8_t* msg, uint16_t msg_len)
     for (i = 0; i < msg_len; i++)
     {
         ch = *msg++;
-        crc_val = crc16TalbeAbs[(ch ^ crc_val) & 15] ^ (crc_val >> 4);
-        crc_val = crc16TalbeAbs[((ch >> 4) ^ crc_val) & 15] ^ (crc_val >> 4);
+        crc_val = crc16TableAbs[(ch ^ crc_val) & 15] ^ (crc_val >> 4);
+        crc_val = crc16TableAbs[((ch >> 4) ^ crc_val) & 15] ^ (crc_val >> 4);
     }
     return crc_val;
 }
@@ -86,7 +86,7 @@ uint32_t crc32(uint32_t init_val, const uint8_t *msg, uint32_t len)
 
 	for (i = 0; i < len; i++) {
 		ch = msg[i];
-		crc_val = crc32TalbeAbs[(crc_val ^ ch) & 0xff] ^ ((crc_val) >> 8);
+		crc_val = crc32TableAbs[(crc_val ^ ch) & 0xff] ^ ((crc_val) >> 8);
 	}
 
 	return (~crc_val);

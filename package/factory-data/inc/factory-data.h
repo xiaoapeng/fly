@@ -41,7 +41,7 @@ typedef struct  __attribute__((aligned(1))) {
     char        part_name[FC_PART_NAME_MAX_SIZE];                       /* 所在分区名称 */
     char        firmware_name[FC_FIRMWARE_NAME_MAX_SIZE];               /* 固件的名称 */
     char        generated_description[FC_DESCRIPTION_LEN];              /* 应该存放git hash、生成日期、 比如 git@0fb003003f_dirty time@20240604_160211 */
-    uint8_t  oter_data[0];
+    uint8_t  other_data[0];
 }FactoryData ;
 
 extern const FactoryData* factory_data_detect(const void *part_start_addr, uint32_t part_size);

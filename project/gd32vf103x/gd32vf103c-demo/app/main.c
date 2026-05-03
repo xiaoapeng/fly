@@ -94,7 +94,7 @@ static void print_factory_data(void){
 
 	if(factory_data->factory_len - sizeof(FactoryData)){
 		eh_infoln("factory_len:%d", factory_data->factory_len);
-		eh_infohex(factory_data->oter_data, factory_data->factory_len - sizeof(FactoryData));
+		eh_infohex(factory_data->other_data, factory_data->factory_len - sizeof(FactoryData));
 	}
 }
 

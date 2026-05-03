@@ -1,7 +1,7 @@
 
 
 choice
-    prompt "Select a stm32f1xx platform project"
+    prompt "Select a stm32h7xx platform project"
     default PROJECT_STM32H7XX_NONE
     depends on ARCH_STM32H7XX
 

@@ -195,7 +195,7 @@ cd fly
 
 > Windows 下将 `./build.sh` 替换为 `build.bat` 即可，例如：`build.bat build Release -j 8`。
 
-#### 构建前准备，只需要执行一次（执行后环境变量会存储到 .PATH.evn.json中）
+#### 构建前准备，只需要执行一次（执行后环境变量会存储到 .PATH.env.json中）
 
 - 添加编译器路径到FLY,添加的路径请根据你安装的路径进行添加，若路径有空格，请用引号包裹路径。(注意，路径应该要加上bin目录)
 
