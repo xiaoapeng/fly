@@ -24,8 +24,8 @@ extern "C"{
 #define FC_MAGIC_A                      0xAA5555AA
 #define FC_MAGIC_B                      0x88777788
 typedef struct  __attribute__((aligned(1))) {
-    uint32_t Magic_A;
-    uint32_t Magic_B;
+    uint32_t magic_a;
+    uint32_t magic_b;
     uint32_t software_len;                                              /* 分区开始位置到本数据结构的长度 */
     uint32_t factory_len;                                               /* 本数据结构的长度，应该大于等于 sizeof(FactoryData) */
     uint32_t crc32;                                                     /* 整个包的CRC32大小，在做CRC32时本字段为0xFFFFFFFF */

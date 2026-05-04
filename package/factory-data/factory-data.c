@@ -43,8 +43,8 @@ const FactoryData* factory_data_detect(const void *part_start_addr, uint32_t par
     /* FactoryData 数据必然在8字节对齐的地址处 */
     for(; end_addr - pos_addr >= (int)sizeof(FactoryData); pos_addr+=8 ){
         pos_factory_data = (const FactoryData*)pos_addr;
-        if( pos_factory_data->Magic_A != FC_MAGIC_A || 
-            pos_factory_data->Magic_B != FC_MAGIC_B ||
+        if( pos_factory_data->magic_a != FC_MAGIC_A || 
+            pos_factory_data->magic_b != FC_MAGIC_B ||
             pos_factory_data->factory_len < offsetof(FactoryData, software_version) ||
             pos_factory_data->factory_len > (uint32_t)(end_addr - pos_addr)
         )

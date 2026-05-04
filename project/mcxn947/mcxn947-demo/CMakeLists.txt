@@ -41,10 +41,6 @@ target_sources(mcxn947_demo_app PRIVATE
     "${BOARD_SOURCES}"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/app/run.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu-burn-mcu-task.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/app/mpu_general_server.c"
 )
 target_compile_options(mcxn947_demo_app PRIVATE "${TARGET_FLAGS}")
 target_link_options(mcxn947_demo_app  PRIVATE

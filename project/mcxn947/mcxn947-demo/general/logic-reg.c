@@ -14,7 +14,7 @@
 #include <string.h>
 
 
-#include "common_ringbuffer.h"
+#include <eh_ringbuf.h>
 #include "memctrl.h"
 #include "logic-reg.h"
 
@@ -62,43 +62,43 @@ static int _NormalWrite(RegGroup *reg_g, uint16_t addr, uint16_t size, const uin
 
 
 static int _CbRead(RegGroup *reg_g, uint16_t addr, uint16_t size, uint8_t *reg_data){
-    Crb* crb = (Crb*)reg_g->mem;
+    eh_ringbuf_t* ringbuf = (eh_ringbuf_t*)reg_g->mem;
     addr -= reg_g->group_start;
     switch (addr) {
         case CBREG_CMD_GET_SIZE:
             if(size != 4) return 0;
-            SET_MEM_VAL_TYPE(reg_data, crb_Size(crb), uint32_t);
+            SET_MEM_VAL_TYPE(reg_data, eh_ringbuf_size(ringbuf), uint32_t);
             return size;
         case CBREG_CMD_GET_FREESIZE:
             if(size != 4) return 0;
-            SET_MEM_VAL_TYPE(reg_data, crb_FreeSize(crb), uint32_t);
+            SET_MEM_VAL_TYPE(reg_data, eh_ringbuf_free_size(ringbuf), uint32_t);
             return size;
         case CBREG_CMD_READ:
-            if(size > crb_Size(crb)) return 0;
-            return (int)crb_Read(crb, reg_data, size);
+            if(size > eh_ringbuf_size(ringbuf)) return 0;
+            return (int)eh_ringbuf_read(ringbuf, reg_data, (int32_t)size);
         case CBREG_CMD_PEEP:
-            if(size > crb_Size(crb)) return 0;
-            return (int)crb_Peep(crb, reg_data, size);
+            if(size > eh_ringbuf_size(ringbuf)) return 0;
+            return (int)eh_ringbuf_peek_copy(ringbuf, 0, reg_data, (int32_t)size);
     }
     return 0;
 }
 
 static int _CbWrite(RegGroup *reg_g, uint16_t addr, uint16_t size, const uint8_t *reg_data){
-    Crb* crb = (Crb*)reg_g->mem;
+    eh_ringbuf_t* ringbuf = (eh_ringbuf_t*)reg_g->mem;
     addr -= reg_g->group_start;
     switch (addr) {
         case CBREG_CMD_WRITE:
-            if(size > crb_FreeSize(crb)) return 0;
-            return (int)crb_Write(crb, reg_data, size);
+            if(size > eh_ringbuf_free_size(ringbuf)) return 0;
+            return (int)eh_ringbuf_write(ringbuf, reg_data, (int32_t)size);
         case CBREG_CMD_CLEAN:
             if(size != 1) return 0;
-            crb_Clear(crb);
+            eh_ringbuf_clear(ringbuf);
             return size;
         case CBREG_CMD_READAIR:
             if(size != 4) return 0;
-            if(GET_MEM_VAL(reg_data, uint32_t) > crb_Size(crb)) 
+            if(GET_MEM_VAL(reg_data, uint32_t) > eh_ringbuf_size(ringbuf))
                 return 0;
-            crb_ReadAir(crb, GET_MEM_VAL(reg_data, uint32_t));
+            eh_ringbuf_read_skip(ringbuf, (int32_t)GET_MEM_VAL(reg_data, uint32_t));
             return size;
     }
     return 0;

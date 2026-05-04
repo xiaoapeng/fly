@@ -16,15 +16,15 @@
 
 #include "regwr_cb.h"
 
-/* 
- * 实现分别对应 mcu模块common_ringbuffer的7个函数
- * extern uint32_t crb_Read(Crb* fifo, uint8_t *buf, uint32_t buf_size);
- * extern uint32_t crb_Peep(Crb* fifo, uint8_t *buf, uint32_t buf_size);
- * extern uint32_t crb_Write(Crb* fifo, const uint8_t *buf, uint32_t buf_size);
- * extern uint32_t crb_ReadAir(Crb* fifo, uint32_t buf_size);
- * extern void crb_Clear(Crb* fifo);
- * extern uint32_t crb_Size(Crb *fifo);
- * extern uint32_t crb_FreeSize(Crb* fifo);
+/*
+ * 实现分别对应 mcu模块eh_ringbuf的7个函数
+ * extern int32_t eh_ringbuf_read(eh_ringbuf_t *ringbuf, uint8_t *buf, int32_t len);
+ * extern int32_t eh_ringbuf_peek_copy(eh_ringbuf_t *ringbuf, int32_t offset, uint8_t *buf, int32_t len);
+ * extern int32_t eh_ringbuf_write(eh_ringbuf_t *ringbuf, const uint8_t *buf, int32_t len);
+ * extern int32_t eh_ringbuf_read_skip(eh_ringbuf_t *ringbuf, int32_t len);
+ * extern void eh_ringbuf_clear(eh_ringbuf_t *ringbuf);
+ * extern int32_t eh_ringbuf_size(eh_ringbuf_t *ringbuf);
+ * extern int32_t eh_ringbuf_free_size(eh_ringbuf_t *ringbuf);
  */
 
 

@@ -18,7 +18,7 @@
  #endif
  #endif /* __cplusplus */
 
-#include "common_ringbuffer.h"
+#include <eh_ringbuf.h>
 
 #define LOGICREG_MAX_GROUP_CNT      10           /* 最多支持5组寄存器 */
 
@@ -28,7 +28,7 @@
 #define CBREG_CMD_READ             0x02         /* 读N个字节 调用read函数 读前先获取容量 超过将失败 */
 #define CBREG_CMD_WRITE            0x03         /* 写N个字节 调用write函数 写前先获取容量 超过将失败 */
 #define CBREG_CMD_CLEAN            0x04         /* 随便写1个字节 调用clean函数 */
-#define CBREG_CMD_READAIR          0x05         /* 读空气 写4个字节 写要读的空气数量 调用 crb_ReadAir */
+#define CBREG_CMD_READAIR          0x05         /* 读空气 写4个字节 写要读的空气数量 调用 eh_ringbuf_read_skip */
 #define CBREG_CMD_PEEP             0x06         /* 偷看N个字节 调用read函数 读前先获取容量 超过将失败 */
 #define CBREG_SIZE                 0x07         /* CBREG 寄存器的长度 */
 
