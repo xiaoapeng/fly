@@ -13,3 +13,7 @@ auto-generate/
 .git.mirror-source.json
 .cache/
 .codex
+.claude/
+.omc/
+CLAUDE.md
+.PATH.env.json

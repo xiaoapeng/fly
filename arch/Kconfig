@@ -55,6 +55,10 @@ choice
         bool "arm64_macos"
         help
             Select this option if you are targeting arm64_macos architecture.
+    config ARCH_X64_WINDOWS
+        bool "x64_windows"
+        help
+            Select this option if you are targeting x64_windows architecture.
 
 endchoice
 
@@ -71,4 +75,5 @@ config ARCH
     default "ch58x"                     if ARCH_CH58X
     default "x64/linux"                 if ARCH_X64_LINUX
     default "arm64/macos"               if ARCH_ARM64_MACOS
+    default "x64/windows"               if ARCH_X64_WINDOWS
     

@@ -1,0 +1,31 @@
+choice
+    prompt "Select a windows platform project"
+    default PROJECT_WINDOWS_NONE
+    depends on ARCH_X64_WINDOWS
+
+config PROJECT_WINDOWS_NONE
+    bool "None"
+    help
+      Select this if you do not want to set any project.
+
+config PROJECT_WINDOWS_EHIP_TEST
+    bool "EHIP test project"
+    help
+        Select this option to enable Module EHIP TEST.
+    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_EHIP
+    select PACKAGE_EHSHELL
+    select PACKAGE_ARGUMENT_PARSER
+
+config PROJECT_WINDOWS_CO_CTX_TEST
+    bool "Coroutine context save/restore test"
+    help
+        Select this option to test coroutine context save/restore on x64.
+    select PACKAGE_EVENTHUB_OS
+endchoice
+
+
+config PROJECT
+    string
+    default "windows/ehip-test" if PROJECT_WINDOWS_EHIP_TEST
+    default "windows/co-ctx-test" if PROJECT_WINDOWS_CO_CTX_TEST
