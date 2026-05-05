@@ -54,7 +54,7 @@ const FactoryData* factory_data_detect(const void *part_start_addr, uint32_t par
             pos_factory_data->software_len + offsetof(FactoryData, crc32));
         crc32_val = factory_data_crc32(crc32_val, (uint8_t*)&ffffffff, sizeof(uint32_t));    /* 中间的crc32值使用0xffffffff代替 */
         crc32_val = factory_data_crc32(crc32_val, (uint8_t*)(&pos_factory_data->software_version), 
-            pos_factory_data->factory_len - offsetof(FactoryData, software_version));
+            (uint32_t)(pos_factory_data->factory_len - offsetof(FactoryData, software_version)));
         
         if(crc32_val != pos_factory_data->crc32)
             continue;
