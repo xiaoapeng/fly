@@ -1,7 +1,7 @@
 build/
 image/
 dl/
-tool/python/__pycache__/
+tool/**/__pycache__/
 .config
 .config.old
 .config.cmake
@@ -17,3 +17,4 @@ auto-generate/
 .omc/
 CLAUDE.md
 .PATH.env.json
+.opencode/

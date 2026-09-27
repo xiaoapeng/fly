@@ -1,10 +1,9 @@
+# eventhub-os sub-config. The scheduler choice
+# PACKAGE_SCHEDULER_EVENTHUB_OS is the user-facing entry point; this
+# file only contributes the global timer signal tunables under that
+# choice and is pulled in by package/scheduler/Kconfig::rsource.
 
-menuconfig PACKAGE_EVENTHUB_OS
-        bool "eventhub os kernel support"
-    help
-        "eventhub os kernel support"
-
-if PACKAGE_EVENTHUB_OS
+if PACKAGE_SCHEDULER_EVENTHUB_OS
 
 menuconfig PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
     bool "eventhub global timer signal"
@@ -25,5 +24,4 @@ config PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL_100MS
 
 endif # PACKAGE_EVENTHUB_GLOBAL_TIMER_SIGNAL
 
-
-endif # PACKAGE_EVENTHUB_OS
+endif # PACKAGE_SCHEDULER_EVENTHUB_OS

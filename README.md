@@ -312,7 +312,7 @@ cd fly
         bool "GD32VF103C demo project"
         help
             Select this option to enable Module GD32VF103C DEMO.
-        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SCHEDULER_EVENTHUB_OS
         select PACKAGE_SEGGER_RTT
 
     # 新建 TEST_DEMO
@@ -321,7 +321,7 @@ cd fly
         help
             Select this option to enable Module TEST DEMO.
     # 这里根据需要的包来添加默认依赖(包名请去看package/xxx/Kconfig里面有定义包的名称)
-        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SCHEDULER_EVENTHUB_OS
         select PACKAGE_SEGGER_RTT
 
         
@@ -687,7 +687,7 @@ simon@:~/fly/package/segger-rtt$ tree
         bool "GD32VF103C demo project"
         help
             Select this option to enable Module GD32VF103C DEMO.
-        select PACKAGE_EVENTHUB_OS
+        select PACKAGE_SCHEDULER_EVENTHUB_OS
         select PACKAGE_SEGGER_RTT
     # 添加依赖包 PACKAGE_TEST_ADD
         select PACKAGE_TEST_ADD

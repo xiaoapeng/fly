@@ -3,7 +3,7 @@ menuconfig PACKAGE_EHIP_TOOLS
     help
       Enable support for the ehip tools.
       Selecting this option makes subcommands available.
-    depends on PACKAGE_EVENTHUB_OS
+    depends on PACKAGE_SCHEDULER_EVENTHUB_OS
     depends on PACKAGE_EHIP
     depends on PACKAGE_EHSHELL
     select PACKAGE_ARGUMENT_PARSER

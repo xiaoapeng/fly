@@ -62,6 +62,16 @@ choice
 
 endchoice
 
+# Load per-architecture capability files (generic hardware/startup facts).
+# Must appear before project/package Kconfig parses so the FreeRTOS leg
+# of PACKAGE_SCHEDULER and similar symbols can rely on
+# ARCH_CPU_FAMILY_CORTEX_M and friends.
+#
+# This single-level glob matches arch/<vendor>/Kconfig. Vendors with
+# per-family capability files (e.g. stm32) place their own
+# `rsource "*/Kconfig"` inside their arch/<vendor>/Kconfig.
+rsource "*/Kconfig"
+
 config ARCH
     string
     default "mcxn947"                   if ARCH_MCXN947

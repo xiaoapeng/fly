@@ -14,7 +14,7 @@ config PROJECT_STM32H750VB_DEMO
     bool "STM32H750VB demo project"
     help
         Select this option to enable Module STM32H750VB DEMO.
-    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
     
 endchoice

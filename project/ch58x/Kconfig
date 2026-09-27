@@ -14,7 +14,7 @@ config PROJECT_CH582_DEMO
     bool "CH582 demo project"
     help
         Select this option to enable Module CH582 DEMO.
-    #select PACKAGE_EVENTHUB_OS
+    #select PACKAGE_SCHEDULER_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
     
 endchoice

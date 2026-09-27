@@ -20,7 +20,7 @@ config PROJECT_GD32F105_DEMO
     bool "GD32F105 demo project"
     help
         Select this option to enable Module GD32F105 DEMO.
-    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
 
 endchoice

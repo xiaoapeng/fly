@@ -1,0 +1,4 @@
+# STM32 vendor hub. The single-level glob matches the per-family
+# capability files below (stm32f0xx / stm32f1xx / stm32f4xx / stm32h7xx),
+# each gated by its own ARCH_STM32FXXX symbol.
+rsource "*/Kconfig"

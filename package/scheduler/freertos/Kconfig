@@ -1,0 +1,82 @@
+# FreeRTOS sub-config. The scheduler choice PACKAGE_SCHEDULER_FREERTOS
+# is the user-facing entry point; this file only contributes the tunables
+# under that choice and is pulled in by package/scheduler/Kconfig::rsource.
+
+if PACKAGE_SCHEDULER_FREERTOS
+
+choice PACKAGE_FREERTOS_VERSION
+    prompt "FreeRTOS-Kernel version"
+    default PACKAGE_FREERTOS_VERSION_V11100
+    help
+      Select the FreeRTOS-Kernel source version. The available versions
+      are the versions supported by this FLY integration.
+
+    config PACKAGE_FREERTOS_VERSION_V11100
+        bool "V11.1.0 (default)"
+endchoice
+
+config PACKAGE_FREERTOS_GIT_TAG
+    string
+    default "V11.1.0" if PACKAGE_FREERTOS_VERSION_V11100
+
+choice PACKAGE_FREERTOS_HEAP
+    prompt "Memory allocator (portable/MemMang)"
+    default PACKAGE_FREERTOS_HEAP_HEAP4
+    config PACKAGE_FREERTOS_HEAP_HEAP1
+        bool "heap_1.c (no free)"
+    config PACKAGE_FREERTOS_HEAP_HEAP2
+        bool "heap_2.c"
+    config PACKAGE_FREERTOS_HEAP_HEAP3
+        bool "heap_3.c (wraps newlib malloc)"
+    config PACKAGE_FREERTOS_HEAP_HEAP4
+        bool "heap_4.c (coalescing, default)"
+    config PACKAGE_FREERTOS_HEAP_HEAP5
+        bool "heap_5.c (multiple regions)"
+endchoice
+
+config PACKAGE_FREERTOS_TICK_RATE_HZ
+    int "Tick rate (Hz)"
+    default 1000
+
+config PACKAGE_FREERTOS_MAX_PRIORITIES
+    int "Number of task priorities"
+    default 5
+
+config PACKAGE_FREERTOS_TOTAL_HEAP_SIZE
+    int "Total heap size (bytes)"
+    default 8192
+
+config PACKAGE_FREERTOS_MINIMAL_STACK_SIZE
+    int "Minimal task stack size (words)"
+    default 128
+
+config PACKAGE_FREERTOS_SYSTICK_CLOCK_HZ
+    int "SysTick clock (Hz)"
+    default 120000000
+    help
+      Core clock frequency feeding the SysTick timer. It MUST match the
+      board's SystemCoreClock from the project's clock_config.c — a
+      mismatch scales all vTaskDelay/timeout values by the same ratio
+      (e.g. 120 MHz configured on a 150 MHz board makes a 500 ms delay
+      run in 400 ms). Pin this in the project defconfig; the 120 MHz
+      default is only a placeholder.
+
+config PACKAGE_FREERTOS_USE_TIMERS
+    bool "Software timers (timers.c)"
+    default n
+    help
+      When enabled, FreeRTOS software timer APIs are available. Changing
+      this option changes the compiled source files and triggers reconfiguration.
+
+config PACKAGE_FREERTOS_CHECK_STACK_OVERFLOW
+    int "Stack overflow check level (0/1/2)"
+    default 2
+
+config PACKAGE_FREERTOS_TICKLESS_IDLE
+    bool "Tickless idle (low-power mode)"
+    default n
+    help
+      Tickless idle is not currently implemented by the selected FreeRTOS port.
+      Leave this disabled; enabling it will not provide low-power tick suppression.
+
+endif # PACKAGE_SCHEDULER_FREERTOS

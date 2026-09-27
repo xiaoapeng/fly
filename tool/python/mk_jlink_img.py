@@ -61,9 +61,33 @@ def _parse_version(version_string):
 
     return version_number,"v%d.%d.%d" % (major, minor, patch)
 
+
+def find_rtt_ctrl_block_addr(nm_path, elf_path):
+    """Read the _SEGGER_RTT symbol address from an ELF via nm.
+
+    nm_path comes from CMake (CMAKE_NM), so no toolchain names are hardcoded
+    here. Returns a hex string like '0x2000249c', or None when the symbol is
+    not found or nm is unavailable. Used to pin the RTT control block address
+    for the log viewer, so it does not depend on J-Link's RAM auto-scan.
+    """
+    try:
+        result = subprocess.run(
+            [nm_path, elf_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode != 0:
+            return None
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 3 and parts[2] == '_SEGGER_RTT':
+                return '0x' + parts[0].lower()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
+
 # ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
-    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf'])
+    ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf', 'nm'])
     FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
@@ -77,6 +101,7 @@ def parse_args():
     parser.add_argument('--speed', required=True, default=4000, help='J-Link speed.')
     parser.add_argument('--interface-name', default='swd', required=False, help='J-Link interface name.')
     parser.add_argument('--jtagconf', default='-1,-1', required=True, help='Configures the JTAG scan configuration of the target device.\nIRPre==-1 and DRPre==-1 can be passed to use auto-detection (=> first known device will be used).')
+    parser.add_argument('--nm', required=True, help='Path to nm (from CMAKE_NM), used to read the RTT control block symbol address from the ELF.')
 
     # Positional arguments for firmware parts
     parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
@@ -86,7 +111,7 @@ def parse_args():
         print('JLink executable does not exist: {}'.format(args.jlink_path))
         sys.exit(1)
         
-    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf)
+    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf, args.nm)
     for firmware_part in args.firmware_parts:
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':')
@@ -238,8 +263,8 @@ if __name__ == '__main__':
         f.write('        echo "[WSL] 检测到J-Link设备，使用本地JLinkExe下载..."\n')
         f.write(f'        JLINK_CMD="$JLINK_LOCAL -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
         f.write('    else\n')
-        f.write('        echo "[WSL] 未检测到J-Link设备，尝试使用tool/JLink.exe下载..."\n')
-        f.write(f'        JLINK_CMD="$CUR_SH_DIR/tool/win-x64/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write('        echo "[WSL] 未检测到J-Link设备，尝试使用tool/jlink/win-x64/JLink.exe下载..."\n')
+        f.write(f'        JLINK_CMD="$CUR_SH_DIR/tool/jlink/win-x64/JLink.exe -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
         f.write('    fi\n')
         f.write('\n')
         f.write('# ====================== 4. 普通Linux逻辑：直接执行下载 ======================\n')
@@ -310,7 +335,29 @@ if __name__ == '__main__':
 
         f.write('echo "Starting Log Viewer [$OS_TYPE / $ARCH]: $RTT_EXE"\n')
 
-        f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
+        # Pin the RTT control block address read from the ELF (_SEGGER_RTT).
+        # J-Link's RAM auto-scan can miss control blocks that sit outside the
+        # region it probes (e.g. low in SRAM next to the kernel data), which
+        # shows up as "RTT_CMD_GET_NUM_BUF failed, ret = -2". Passing the
+        # exact address removes the dependency on the scan. When nm could not
+        # resolve the symbol, fall back to plain auto-scan.
+        #
+        # The firmware parts are .bin files; the matching ELF sits next to
+        # them with the .bin suffix stripped (the FLY build always emits
+        # <target>.bin next to <target>).
+        rtt_addr = None
+        for firmware_part in args_info.firmware_parts:
+            bin_path = firmware_part.file_path
+            elf_path = bin_path[:-4] if bin_path.endswith('.bin') else bin_path
+            if os.path.isfile(elf_path):
+                rtt_addr = find_rtt_ctrl_block_addr(args_info.nm, elf_path)
+                if rtt_addr:
+                    break
+        if rtt_addr:
+            print('RTT control block address: ' + rtt_addr)
+            f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --addr {rtt_addr} --out_log log.txt\n\n')
+        else:
+            f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
         
         f.write('echo "Debug finished.."\n')
         f.write('exit 0\n')

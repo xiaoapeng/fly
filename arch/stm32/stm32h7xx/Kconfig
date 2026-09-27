@@ -1,0 +1,39 @@
+if ARCH_STM32H7XX
+
+config ARCH_CPU_FAMILY_CORTEX_M
+    bool
+    default y
+
+config ARCH_CORE
+    string
+    default "cortex-m4"
+
+config ARCH_HAS_HARD_FPU
+    bool
+    default y
+
+config ARCH_FLOAT_ABI
+    string
+    default "hard"
+
+config ARCH_HAS_TRUSTZONE
+    bool
+    default n
+
+config ARCH_TRUSTZONE_MODE
+    string
+    default "non-secure"
+
+config ARCH_TRUSTZONE_NON_SECURE
+    bool
+    default n
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 4
+
+config ARCH_PROVIDES_SYSTICK_HANDLER
+    bool
+    default n
+
+endif

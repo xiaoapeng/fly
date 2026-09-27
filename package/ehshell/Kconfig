@@ -6,7 +6,7 @@ menuconfig PACKAGE_EHSHELL
         Selecting this option will add support for the ehshell to the system. 
         This is important for applications that require the ehshell. 
         If ehshell is not needed, disabling this option can reduce the size of the program and decrease boot time.
-    depends on PACKAGE_EVENTHUB_OS
+    depends on PACKAGE_SCHEDULER_EVENTHUB_OS
 
 if PACKAGE_EHSHELL
     

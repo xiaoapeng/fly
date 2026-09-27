@@ -30,7 +30,8 @@ function(add_jlink_image CMAKE_TARGET)
         COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/mk_jlink_img.py 
             --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --interface-name ${CUSTOM_FUNC_INTERFACE}
             --jlink-path  ${FLY_TOP_DIR}/tool/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ --jtagconf=${CUSTOM_FUNC_JTAGCONF}
-            --speed ${CUSTOM_FUNC_SPEED} --symlink-name ${CMAKE_TARGET}_jlink_CURRENT --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST} 
+            --speed ${CUSTOM_FUNC_SPEED} --symlink-name ${CMAKE_TARGET}_jlink_CURRENT --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST}
+            --nm "${CMAKE_NM}"
         COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_jlink_CURRENT ${FLY_TOP_DIR}/image/CURRENT
         DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp 

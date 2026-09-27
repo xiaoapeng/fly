@@ -39,13 +39,13 @@ class GitProjectFetcher:
         # 检查源码和.git目录是否存在
         if not os.path.exists(self.source_dl_dir) or not os.path.exists(os.path.join(self.source_dl_dir, '.git')):
             print(f"[fetch_git_project] Cloning {git_repository} to {self.source_dl_dir}")
-            
+
             # 构建克隆命令
             clone_cmd = ['git', 'clone']
             if not deep_clone:
                 clone_cmd.extend(['--depth', '1'])
             clone_cmd.extend(['--branch', git_tag, git_repository, self.source_dl_dir])
-            
+
             # 执行克隆命令
             try:
                 subprocess.run(clone_cmd, check=True)
@@ -53,12 +53,13 @@ class GitProjectFetcher:
             except subprocess.CalledProcessError as e:
                 print(f"[fetch_git_project] Failed to clone {git_repository}: {e}", file=sys.stderr)
                 return False
-        elif auto_update:
-            print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} already cloned to {self.source_dl_dir}")
-            print(f"[fetch_git_project] Updating {git_project_name}...")
+        else:
+            # Source already cloned. Sync to the requested ref on every build so
+            # that switching PACKAGE_FREERTOS_GIT_TAG in Kconfig (or a branch
+            # change) propagates without manual `rm -rf dl/` cleanup.
+            print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} already cloned; syncing to {git_tag}")
 
-            # 对比git_repository是否一致,不一致则重新设置remote origin URL
-            # 获取当前origin的URL
+            # 同步 remote origin URL（如果不一致）
             origin_url = subprocess.run(
                 ['git', '-C', self.source_dl_dir, 'remote', 'get-url', 'origin'],
                 capture_output=True, text=True
@@ -71,17 +72,18 @@ class GitProjectFetcher:
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
 
-            # 拉取最新内容
+            # 拉取最新内容（含 tag 列表）
             try:
                 subprocess.run(
                     ['git', '-C', self.source_dl_dir, 'fetch', '--all', '--tags'],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
                 )
-            except subprocess.CalledProcessError:
-                print(f"[fetch_git_project] Failed to fetch updates", file=sys.stderr)
-                return True  # 返回True，因为仓库已经存在，只是更新失败
-            
-            # 检查是否为tag
+            except subprocess.CalledProcessError as e:
+                print(f"[fetch_git_project] Failed to fetch updates: {e}", file=sys.stderr)
+                # 不返回 False：仓库已存在，只是 fetch 失败；让 build 自己报缺符号
+                return True
+
+            # 检查是否为 tag
             is_tag = False
             try:
                 tag_output = subprocess.run(
@@ -91,20 +93,38 @@ class GitProjectFetcher:
                 is_tag = len(tag_output) > 0
             except subprocess.CalledProcessError:
                 pass
-            
+
             if is_tag:
-                # tag通常是静态版本，不自动更新
-                print(f"[fetch_git_project] {git_tag} is a tag — no auto-update applied")
-            else:
-                # 分支 → 自动拉取最新
-                print(f"[fetch_git_project] Switching to {git_tag} and pulling latest")
+                # Tag：任何 sync 必须把 HEAD 落在该 tag 上；这是 build 一致性的保证。
+                head_sha = subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', 'HEAD'],
+                    capture_output=True, text=True
+                ).stdout.strip()
+                tag_sha = subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', f'refs/tags/{git_tag}'],
+                    capture_output=True, text=True
+                ).stdout.strip()
+                if tag_sha and head_sha != tag_sha:
+                    print(f"[fetch_git_project] HEAD {head_sha[:10]} != {git_tag} ({tag_sha[:10]}); checking out")
+                    try:
+                        subprocess.run(
+                            ['git', '-C', self.source_dl_dir, 'checkout', '--quiet', git_tag],
+                            check=True
+                        )
+                        print(f"[fetch_git_project] Checked out {git_tag}")
+                    except subprocess.CalledProcessError as e:
+                        print(f"[fetch_git_project] Failed to checkout {git_tag}: {e}", file=sys.stderr)
+                        return True  # 仓库存在；让 build 自己报缺符号
+                else:
+                    print(f"[fetch_git_project] HEAD already at {git_tag}")
+            elif auto_update:
+                # 分支 + AUTO_UPDATE：原行为（checkout + pull）
+                print(f"[fetch_git_project] Switching to branch {git_tag} and pulling latest")
                 try:
-                    # 切换到指定分支
                     subprocess.run(
                         ['git', '-C', self.source_dl_dir, 'checkout', git_tag],
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
-                    # 拉取最新内容
                     subprocess.run(
                         ['git', '-C', self.source_dl_dir, 'pull'],
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -112,7 +132,12 @@ class GitProjectFetcher:
                     print(f"[fetch_git_project] Updated {git_project_name} successfully")
                 except subprocess.CalledProcessError as e:
                     print(f"[fetch_git_project] Failed to update branch {git_tag}: {e}", file=sys.stderr)
-                    return True  # 返回True，因为仓库已经存在，只是更新失败
+                    return True  # 仓库存在；让 build 自己报缺符号
+            else:
+                # 分支 + AUTO_UPDATE OFF：保留本地可能存在的改动，不强制 sync。
+                # 用户改 GIT_TAG = 切到另一分支时，下次 build 仍可能读到旧分支；
+                # 但这与 AUTO_UPDATE OFF 的"我不想被自动覆盖"语义一致。
+                pass
         
         # 创建package_info.txt文件
         if self.package_info_file:

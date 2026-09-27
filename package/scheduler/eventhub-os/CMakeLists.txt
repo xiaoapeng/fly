@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-if(CONFIG_PACKAGE_EVENTHUB_OS)
+if(CONFIG_PACKAGE_SCHEDULER_EVENTHUB_OS)
 
 include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 

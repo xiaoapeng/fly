@@ -14,7 +14,7 @@ config PROJECT_GD32VF103C_DEMO
     bool "GD32VF103C demo project"
     help
         Select this option to enable Module GD32VF103C DEMO.
-    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
     
 endchoice

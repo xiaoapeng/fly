@@ -12,7 +12,7 @@ config PROJECT_WINDOWS_EHIP_TEST
     bool "EHIP test project"
     help
         Select this option to enable Module EHIP TEST.
-    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_EVENTHUB_OS
     select PACKAGE_EHIP
     select PACKAGE_EHSHELL
     select PACKAGE_ARGUMENT_PARSER
@@ -21,7 +21,7 @@ config PROJECT_WINDOWS_CO_CTX_TEST
     bool "Coroutine context save/restore test"
     help
         Select this option to test coroutine context save/restore on x64.
-    select PACKAGE_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_EVENTHUB_OS
 endchoice
 
 

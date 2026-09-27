@@ -1,0 +1,47 @@
+menu "Scheduler / OS model"
+
+choice PACKAGE_SCHEDULER
+    prompt "Concurrency / scheduler model"
+    default PACKAGE_SCHEDULER_NONE
+    help
+      The choice is the single, user-facing entry point for picking the
+      scheduler. Selecting a leg pulls in the matching OS sub-package
+      (eventhub-os/ or freertos/) as menu items right below; no separate
+      package flag needs toggling — there isn't one.
+
+      Do not `select PACKAGE_SCHEDULER_*` from a project Kconfig:
+      kconfiglib treats choice members as no-op targets for select/imply.
+      Pin the leg in the project's defconfig
+      (CONFIG_PACKAGE_SCHEDULER_<leg>=y) instead.
+
+      If a hand-edited `.config` accidentally pins both legs, kconfiglib
+      normalizes the choice to the leg declared later (FreeRTOS).
+
+    config PACKAGE_SCHEDULER_NONE
+        bool "None (bare-metal main loop)"
+
+    config PACKAGE_SCHEDULER_EVENTHUB_OS
+        bool "eventhub-os (cooperative signal/slot framework)"
+
+    config PACKAGE_SCHEDULER_FREERTOS
+        bool "FreeRTOS (preemptive kernel)"
+        depends on ARCH_CPU_FAMILY_CORTEX_M
+        help
+          FreeRTOS is currently available for Cortex-M cores. The package
+          selects the appropriate port using architecture facts such as
+          core type, TrustZone, FPU, and interrupt priority bits.
+endchoice
+
+# Per-leg OS sub-packages are pulled in via rsource, which resolves paths
+# relative to the file containing the rsource line (this file). The menu
+# wrapper above keeps the choice and every OS sub-item nested under one
+# "Scheduler / OS model" branch in menuconfig instead of spilling out
+# flat into the Target Packages list.
+if PACKAGE_SCHEDULER_EVENTHUB_OS
+    rsource "eventhub-os/Kconfig"
+endif
+if PACKAGE_SCHEDULER_FREERTOS
+    rsource "freertos/Kconfig"
+endif
+
+endmenu
