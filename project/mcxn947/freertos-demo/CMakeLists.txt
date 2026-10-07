@@ -25,6 +25,9 @@ target_compile_options(freertos-kernel PRIVATE -Wno-conversion -Wno-sign-convers
 target_compile_options(freertos-heap    PRIVATE -Wno-conversion -Wno-sign-conversion)
 target_compile_options(freertos-port    PRIVATE -Wno-conversion -Wno-sign-conversion)
 
+# Same for upstream nanosig sources (third-party C11, not conversion-clean).
+target_compile_options(nanosig PRIVATE -Wno-conversion -Wno-sign-conversion)
+
 add_executable(mcxn947_freertos_demo_app)
 target_link_libraries(mcxn947_freertos_demo_app
     arch-mcxn947-core0 c rdimon m gcc)

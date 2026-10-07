@@ -27,7 +27,13 @@ void vAssertCalled(const char *pcFile, unsigned long ulLine)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     (void)xTask;
-    (void)pcTaskName;
+    static char msg[96];
+    int n = snprintf(msg, sizeof(msg), "STACK OVERFLOW in task: %s\n",
+                     pcTaskName ? pcTaskName : "?");
+    if (n > 0) {
+        SEGGER_RTT_Write(0, msg, (unsigned)n);
+    }
+    taskDISABLE_INTERRUPTS();
     for (;;) {
     }
 }

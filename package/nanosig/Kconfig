@@ -1,0 +1,57 @@
+menu "nanosig"
+
+config PACKAGE_NANOSIG
+    bool "Enable nanosig signal/slot library"
+    default n
+    help
+        C11 signal/slot library (github.com/xiaoapeng/nanosig).
+        Provides signal connect/emit with a caller-owned, zero-allocation
+        hot path. The FLY integration compiles the upstream sources
+        directly, selecting the upstream FreeRTOS platform backend
+        (NANOSIG_PLATFORM=freertos) with no local patches.
+
+config PACKAGE_NANOSIG_GIT_COMMIT
+    string "nanosig pinned commit"
+    default "59338b191bcb80d350fcbe19b09e23712d4775d5"
+    depends on PACKAGE_NANOSIG
+    help
+        Full 40-hex commit SHA fetched from
+        https://github.com/xiaoapeng/nanosig.git. This pin carries the
+        upstream FreeRTOS platform backend; no local patches are applied.
+
+choice PACKAGE_NANOSIG_LOG_LEVEL
+    prompt "nanosig debug output level"
+    default PACKAGE_NANOSIG_LOG_LEVEL_SYS
+    depends on PACKAGE_NANOSIG
+    help
+        Compile-time default for nanosig's global debug level
+        (NS_CONFIG_DEFAULT_DEBUG_LEVEL). It gates the runtime output of
+        every ns_dbg_* / ns_m* log macro that survived its module-level
+        compile check. ERR/WARN/SYS are the useful production levels;
+        INFO/DEBUG are verbose. Can still be overridden at runtime with
+        ns_dbg_set_level().
+
+    config PACKAGE_NANOSIG_LOG_LEVEL_SUPPRESS
+        bool "Suppress (0)"
+    config PACKAGE_NANOSIG_LOG_LEVEL_ERR
+        bool "Error (1)"
+    config PACKAGE_NANOSIG_LOG_LEVEL_WARNING
+        bool "Warning (2)"
+    config PACKAGE_NANOSIG_LOG_LEVEL_SYS
+        bool "System (3)"
+    config PACKAGE_NANOSIG_LOG_LEVEL_INFO
+        bool "Info (4)"
+    config PACKAGE_NANOSIG_LOG_LEVEL_DEBUG
+        bool "Debug (5)"
+endchoice
+
+config PACKAGE_NANOSIG_LOG_LEVEL
+    int
+    default 0 if PACKAGE_NANOSIG_LOG_LEVEL_SUPPRESS
+    default 1 if PACKAGE_NANOSIG_LOG_LEVEL_ERR
+    default 2 if PACKAGE_NANOSIG_LOG_LEVEL_WARNING
+    default 3 if PACKAGE_NANOSIG_LOG_LEVEL_SYS
+    default 4 if PACKAGE_NANOSIG_LOG_LEVEL_INFO
+    default 5 if PACKAGE_NANOSIG_LOG_LEVEL_DEBUG
+
+endmenu

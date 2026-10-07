@@ -21,7 +21,7 @@ are not present in this host environment and any failure would be a
 toolchain availability issue, not a plan regression.
 
 Coverage:
-  * 11 arm-none-eabi-gcc projects: 4×STM32 + 3×GD32 (cortex-m) + 4×MCXN947
+  * 10 arm-none-eabi-gcc projects: 3×MCXN947 + 4×STM32 + 3×GD32 (cortex-m)
   * Excluded: gd32vf103c-demo, ch582-demo, linux/macos/windows ehip-test,
     windows co-ctx-test (RISC-V / x86_64 toolchains)
 """

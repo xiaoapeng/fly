@@ -97,4 +97,5 @@ Executable 通过 `target_link_package_lib` 经 PUBLIC 链拉到 `freertos-confi
 ## 8. 相关文档
 
 - FreeRTOS 移植设计：`docs/design/freertos-port.md`
+- FreeRTOS queue-set 后端（event-group 的整体替换）：`docs/design/queueset-backend.md`
 - OS 包并入 scheduler/ 的迁移方案：`docs/plans/scheduler-os-merge.md`

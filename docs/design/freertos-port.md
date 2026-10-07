@@ -101,4 +101,4 @@ endif
 
 ## 10. 配套实施
 
-实施计划见 `docs/plans/scheduler-os-merge.md`；RTOS 选择快速参考见 `docs/reference/rtos-choice.md`。
+实施计划见 `docs/plans/scheduler-os-merge.md`；RTOS 选择快速参考见 `docs/reference/rtos-choice.md`；FreeRTOS 后端已由 event-group 整体替换为 queue-set，watcher 可用性/成员契约/ISR 模型见 `docs/design/queueset-backend.md`。

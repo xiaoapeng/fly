@@ -84,6 +84,11 @@
 #define configUSE_MUTEXES                       1
 #define configUSE_COUNTING_SEMAPHORES           1
 #define configUSE_RECURSIVE_MUTEXES             1
+/* Queue sets back the nanosig FreeRTOS waitset (one member -> waitable).
+ * Enabling this adds a pxQueueSetContainer pointer to every Queue_t and
+ * turns on the queue-set code paths in queue.c (one extra branch on every
+ * send/give). Used only by the nanosig broker; harmless for other demos. */
+#define configUSE_QUEUE_SETS                    1
 #define configQUEUE_REGISTRY_SIZE               0
 #define configUSE_16_BIT_TICKS                  0
 #define configUSE_TASK_NOTIFICATIONS            1
