@@ -167,9 +167,15 @@ static void isr_trigger_start(void)
     ctimer_config_t tcfg;
     ctimer_match_config_t mcfg;
 
-    /* CTIMER_Init() gates the peripheral clock itself; only the clock source
-     * has to be selected (FRO 12 MHz, so the match value is exact). */
+    /* Select the CTIMER0 clock source (FRO 12 MHz, so the match value is
+     * exact) and set its functional-clock divider. CLOCK_SetClkDiv() is the
+     * SDK API that takes the CTIMER divider out of reset
+     * (SYSCON->CTIMERCLKDIV[n].HALT/RESET); while that divider is halted, ANY
+     * CTIMER register access stalls the AHB bus and locks the core up
+     * (unhaltable, no fault latched), so it must run before CTIMER_Init()
+     * touches the registers. */
     CLOCK_AttachClk(kFRO12M_to_CTIMER0);
+    CLOCK_SetClkDiv(kCLOCK_DivCtimer0Clk, 1U);
     CTIMER_GetDefaultConfig(&tcfg);
     tcfg.prescale = 0u;
     CTIMER_Init(CTIMER0, &tcfg);
