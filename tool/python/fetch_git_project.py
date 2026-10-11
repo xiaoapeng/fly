@@ -69,6 +69,9 @@ class GitProjectFetcher:
         os.makedirs(os.path.dirname(self.source_dl_dir), exist_ok=True)
 
         is_sha = bool(COMMIT_SHA_RE.match(git_tag)) if git_tag else False
+        # is_tag 必须在「新 clone」和「已存在」两条路径都可用，否则新 clone 一个
+        # tag 时会在下面的 `elif is_tag:` 触发 UnboundLocalError。
+        is_tag = False
 
         # 检查源码和.git目录是否存在
         if not os.path.exists(self.source_dl_dir) or not os.path.exists(os.path.join(self.source_dl_dir, '.git')):
@@ -103,6 +106,15 @@ class GitProjectFetcher:
                 except subprocess.CalledProcessError as e:
                     print(f"[fetch_git_project] Failed to checkout commit {git_tag}: {e.stderr.decode(errors='replace').strip()}", file=sys.stderr)
                     return False
+
+            if not is_sha:
+                # 新 clone 使用 `--branch <git_tag>`；判断它是否为 tag，
+                # 供后续 tag/HEAD 一致性校验使用。
+                tag_output = subprocess.run(
+                    ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', f'refs/tags/{git_tag}'],
+                    capture_output=True, text=True
+                ).stdout.strip()
+                is_tag = len(tag_output) > 0
         else:
             # Source already cloned. Sync to the requested ref on every build so
             # that switching PACKAGE_FREERTOS_GIT_TAG in Kconfig (or a branch
