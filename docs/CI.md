@@ -27,6 +27,7 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 
 - **ARM 交叉编译只在 ubuntu 跑一次**。交叉结果与宿主无关，重复在 macOS/Windows 上跑只增加 flake 面；三平台各自跑的是**只有该平台能编**的宿主工程，这才是真正区分平台的部分。
 - **Windows 必须 GNU 工具链**。`arch/x64/windows` 的 `gcc-host-windows` 工具链文件和工程里的 GNU 专有 flag（如 `-mpreferred-stack-boundary=4`）都不接受 MSVC / clang-cl。CI 用 runner 镜像自带的 MSYS2（`C:\msys64`）安装 `mingw-w64-x86_64-gcc`。
+- **CI 用 `.venv` 固定解释器**。`cmake/python3.cmake` 优先使用仓库根的 `.venv`，否则 `find_package(Python3)` 可能选到没有 `requests` 的系统 Python（macOS runner 上就踩到了：`fetch_git_project.py` 直接 ImportError）。所以每个构建 job 都先 `python3 -m venv .venv && .venv/bin/python -m pip install kconfiglib requests`，让 CMake 与 `build.sh` 用同一个解释器。
 - `check_build_arm.py` 每个工程前会删 `build/`，所以 CI 里每个工程都是干净重建，不吃缓存假阳性。
 - 依赖包（`eventhub-os`、`ehip`、`ehip-tools`、`ehshell`、`freertos-kernel`、`nanosig` …）在 configure 阶段由 `fetch_git_project` 从 GitHub 拉取；CI 依赖公网访问，无需额外配置。`dl/` 缓存目前没做（后续可加，注意 key 要带 defconfig 里的 pin）。
 - **本地 `dl/` 会漂移**。`ehip`/`ehip-tools`/`ehshell`/`eventhub` 的 `GIT_TAG` 是 `main`/`master` 加 `AUTO_UPDATE OFF`，所以本地克隆不会自动跟随上游：CI 新克隆拿的是最新 `main`，本地拿的是上次 fetch 的快照。本地构建失败而 CI 通过（或反之）时，先跑 `./build.sh package_update <name>`（`-l` 看列表）把包装到最新，再复现。彻底解决办法是把这些包也钉到 SHA，见"已知限制"。

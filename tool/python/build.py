@@ -4,7 +4,6 @@ import os
 import subprocess
 import sys
 import kconfiglib
-import menuconfig
 import platform
 import json
 import fetch_git_project
@@ -114,6 +113,14 @@ def run_loadconfig(source_dir, input_file):
 
 def run_menuconfig(source_dir):
     """Launch the menuconfig UI."""
+    # Imported lazily: menuconfig needs curses, and on Windows that means the
+    # optional windows-curses wheel. loadconfig / build must not require it.
+    try:
+        import menuconfig
+    except ImportError as e:
+        print(f"menuconfig UI unavailable ({e}). On Windows run: "
+              f"pip install windows-curses")
+        sys.exit(1)
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
     menuconfig.menuconfig(kconf)
     
