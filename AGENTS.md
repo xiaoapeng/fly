@@ -72,7 +72,7 @@ A project's `CMakeLists.txt` declares image targets via `add_jlink_image(<name> 
 原则借用 nanosig 上游的门禁模型：**PR 是唯一交付路径，必需检查全绿才允许合并，合并保持线性历史**。
 
 1. 改动走特性分支 + PR，**不直接 push `master`**（push 到 master 只触发事后兜底的 CI，不是交付路径）
-2. 必需检查（`kconfig`、`arm-build`、`host-linux`、`host-windows`）必须全绿；分支保护设了 `strict` 时，分支落后要先与 `master` 同步并重跑。`host-macos` 目前因上游 `eventhub` 的 C11 atomic 用法在 Apple Clang 下报错而不在必需列表内（见 `docs/CI.md`），修好后加入 `contexts`
+2. 必需检查（`kconfig`、`arm-build`、`host-linux`）必须全绿；分支保护设了 `strict` 时，分支落后要先与 `master` 同步并重跑。`host-macos` / `host-windows` 会跑但不阻塞：失败原因都在上游被 fetch 的包里（Apple Clang 的 C11 atomic 严格性、MinGW 缺 `bzero`/`isprint`），细节见 `docs/CI.md`，上游修好后把它们加进 `contexts`
 3. 合并统一用 **Rebase and merge**（`gh pr merge --rebase`），不用 squash / merge commit；合并后删除特性分支
 4. 本地必须先跑与 CI 等价的检查（至少 `python3 tool/test/check_freertos_config.py` 与 `python3 tool/test/check_kconfig_hygiene.py`）；改了 ARM 工程相关代码再跑 `python3 tool/test/check_build_arm.py`，改了宿主工程再跑 `python3 tool/test/check_build.py --platform <host>`
 5. 新增工程除了代码，必须同步 `tool/test/check_build_arm.py`（ARM）或 `tool/test/check_build.py` 的 `PLATFORM_PROJECTS`（宿主）
