@@ -42,6 +42,13 @@ fetch_git_project(
 
 fetch_git_project_add(ehshell)
 package_lib_add(ehshell)
+
+# Kconfig knob must reach C: upstream defaults EHSHELL_CONFIG_ARGC_MAX to 8 and
+# ehip-tools' route command static-asserts >= 9, so the value has to be
+# injected. PUBLIC because ehip-tools / ehshell_builtin read the same macro.
+target_compile_definitions(ehshell PUBLIC
+    -DEHSHELL_CONFIG_ARGC_MAX=${CONFIG_PACKAGE_EHSHELL_ARGC_MAX})
+
 fnv1a_64_hash_cmake("${CONFIG_PACKAGE_EHSHELL_PASSWORD}" FINAL_HASH)
 target_compile_definitions(ehshell PRIVATE -DCONFIG_PACKAGE_EHSHELL_PASSWORD_HASH=${FINAL_HASH})
 
