@@ -2,6 +2,13 @@ menu "Scheduler / OS model"
 
 choice PACKAGE_SCHEDULER
     prompt "Concurrency / scheduler model"
+    # 工程需要的支路由 PACKAGE_SCHEDULER_REQUIRE_* 表达：那两个是普通 bool，
+    # project Kconfig 可以 `select`；choice 成员本身仍是 select 的无效目标，
+    # 所以在这里用条件 default 把需求转成支路。多个 default 按声明顺序取第一个
+    # 条件成立的，因此无条件的 NONE 回退必须放最后。defconfig 里显式写
+    # CONFIG_PACKAGE_SCHEDULER_<leg> 仍然优先于这些默认值。
+    default PACKAGE_SCHEDULER_FREERTOS if PACKAGE_SCHEDULER_REQUIRE_FREERTOS
+    default PACKAGE_SCHEDULER_EVENTHUB_OS if PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
     default PACKAGE_SCHEDULER_NONE
     help
       The choice is the single, user-facing entry point for picking the
@@ -11,8 +18,10 @@ choice PACKAGE_SCHEDULER
 
       Do not `select PACKAGE_SCHEDULER_*` from a project Kconfig:
       kconfiglib treats choice members as no-op targets for select/imply.
-      Pin the leg in the project's defconfig
-      (CONFIG_PACKAGE_SCHEDULER_<leg>=y) instead.
+      A project that needs a specific leg selects the matching
+      PACKAGE_SCHEDULER_REQUIRE_* symbol instead, which the conditional
+      defaults above turn into the leg. A defconfig pin
+      (CONFIG_PACKAGE_SCHEDULER_<leg>=y) still overrides both.
 
       If a hand-edited `.config` accidentally pins both legs, kconfiglib
       normalizes the choice to the leg declared later (FreeRTOS).
@@ -31,6 +40,19 @@ choice PACKAGE_SCHEDULER
           selects the appropriate port using architecture facts such as
           core type, TrustZone, FPU, and interrupt priority bits.
 endchoice
+
+# 工程侧的「我需要哪个 OS」请求位。无 prompt（menuconfig 不可见），只由
+# project Kconfig 的 `select` 置位，再由上面的 choice 条件 default 转成支路。
+# 这样 scheduler 包不引用任何 PROJECT_* 符号，依赖方向保持 project → package。
+config PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
+    bool
+    help
+      Internal: selected by a project that must run on eventhub-os.
+
+config PACKAGE_SCHEDULER_REQUIRE_FREERTOS
+    bool
+    help
+      Internal: selected by a project that must run on FreeRTOS.
 
 # Per-leg OS sub-packages are pulled in via rsource, which resolves paths
 # relative to the file containing the rsource line (this file). The menu
