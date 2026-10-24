@@ -14,6 +14,7 @@
 ## 索引
 
 - [OS 包迁移到 scheduler/ 的方案](plans/scheduler-os-merge.md) — 已实施；将 eventhub-os 与 freertos 包并入 `package/scheduler/`，scheduler choice 成为唯一 OS 入口，`PACKAGE_EVENTHUB_OS` / `PACKAGE_FREERTOS` 内部 bool 已删除
+- [Kconfig 硬性规则](reference/kconfig-rules.md) — choice 成员禁止 select、请求位 + 条件 default、依赖方向 project → package、default 顺序、defconfig pin 优先级
 - [RTOS 选择语义](reference/rtos-choice.md) — FreeRTOS 与 eventhub-os 的互斥约定，以及 scheduler/ 下的子包如何被引用
 - [FreeRTOS 移植设计](design/freertos-port.md) — mcxn947 适配、Kconfig、port glue；当前 OS 包布局为 `package/scheduler/eventhub-os/` 与 `package/scheduler/freertos/`
 - [FreeRTOS queue-set 后端](design/queueset-backend.md) — event-group 整体替换为 `QueueSetHandle_t`；watcher 成员契约、select/take 成对、`FIXED_CAP` sizing、ISR 由调用方原生 give
