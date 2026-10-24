@@ -21,7 +21,9 @@ fetch_git_project(
 # FLY compiles the upstream core directly instead of adding upstream's CMake
 # target (same pattern as package/scheduler/freertos), so Kconfig drives the
 # cross build and the FreeRTOS SDK headers come from package/scheduler/
-# freertos. NANOSIG_PLATFORM_FREERTOS below selects the upstream backend.
+# freertos. Upstream selects its platform backend purely through the include
+# path: nanosig_port.h carries no platform macros and pulls the fixed-name
+# platform/<os>/nanosig_platform_port.h, hence platform/freertos below.
 set(NANOSIG_SRC_DIR "${FLY_SOURCE_DL_BASE_DIR}/nanosig-src")
 
 # Upstream generates include/nanosig/nanosig_version.h from a template via
@@ -54,16 +56,24 @@ add_library(nanosig
     "${NANOSIG_SRC_DIR}/platform/freertos/port.c"
 )
 
+# Upstream keeps %e float formatting bit-identical across compilers/archs by
+# disabling FP contraction for this file; FLY compiles the sources itself, so
+# replicate it (otherwise the low-order digits differ from upstream's tests).
+set_source_files_properties("${NANOSIG_SRC_DIR}/src/ns_formatio.c" PROPERTIES
+    COMPILE_OPTIONS "-ffp-contract=off"
+)
+
 target_include_directories(nanosig PUBLIC
     "${NANOSIG_SRC_DIR}/include"
     "${NANOSIG_VERSION_DIR}"
+    "${NANOSIG_SRC_DIR}/platform/freertos"
 )
 
-# Select the upstream FreeRTOS queue-set platform backend. PUBLIC so the
-# consuming project (e.g. the demo app) expands nanosig_port.h on the same
-# platform branch and links the matching ABI probe symbol.
-target_compile_definitions(nanosig PUBLIC
-    NANOSIG_PLATFORM_FREERTOS=1
+# Broker (timer) thread stack size in bytes; 0 = FreeRTOS backend default
+# (2 KB). Upstream injects this PRIVATE and hard-fails the build when it is
+# missing (src/ns_broker.c), so it stays PRIVATE here too.
+target_compile_definitions(nanosig PRIVATE
+    NANOSIG_BROKER_STACK_SIZE=0
 )
 
 # Global debug level from Kconfig (CONFIG_PACKAGE_NANOSIG_LOG_LEVEL maps to

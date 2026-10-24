@@ -45,7 +45,6 @@ static SemaphoreHandle_t watcher_member = NULL;
 /* Hardware-interrupt trigger, started once the watcher is registered. */
 static void isr_trigger_start(void);
 static ns_watcher_t demo_watcher;
-static ns_connection_t watcher_conn;
 static volatile uint32_t watcher_hits = 0u;
 static volatile int loop_exited = 0;
 
@@ -57,19 +56,15 @@ static void on_signal(void *user_data, const ns_no_payload_t *payload)
     SEGGER_RTT_Write(0, "nanosig: callback received\n", 27);
 }
 
-static int watcher_consume(ns_watcher_t *watcher)
+/* Watcher readiness handler. Upstream no longer embeds a signal in the watcher:
+ * this runs on the broker thread and is the only readiness exit, so the
+ * level-triggered member must be drained here. */
+static void on_watcher(ns_watcher_t *watcher, uint32_t triggered_events)
 {
     (void)watcher;
-    /* Drain the readiness member in the broker thread. Return 1 so the
-     * broker emits the watcher signal; any value <= 0 would skip the emit. */
+    (void)triggered_events;
+    /* Drain the readiness member in the broker thread. */
     (void)xSemaphoreTake(watcher_member, 0);
-    return 1;
-}
-
-static void on_watcher(void *user_data, const ns_watcher_event_t *event)
-{
-    (void)user_data;
-    (void)event;
     watcher_hits++;
     SEGGER_RTT_Write(0, "nanosig: watcher callback\n", 26);
 }
@@ -85,7 +80,7 @@ static void loop_task(void *p)
      * (CONFIG_PACKAGE_NANOSIG_LOG_LEVEL -> NS_CONFIG_DEFAULT_DEBUG_LEVEL);
      * no runtime override here so the Kconfig knob stays authoritative. */
     ns_sysln("nanosig debug bridge -> SEGGER RTT");
-    if(ns_loop_init(&demo_loop, NULL) != NS_OK) {
+    if(ns_loop_create(&demo_loop, NULL) != NS_OK) {
         SEGGER_RTT_Write(0, "nanosig: loop init failed\n", 26);
         vTaskDelete(NULL);
         return;
@@ -97,13 +92,10 @@ static void loop_task(void *p)
     watcher_member = xSemaphoreCreateBinary();
     if(watcher_member == NULL) {
         SEGGER_RTT_Write(0, "nanosig: member sem create failed\n", 34);
-    } else if(ns_watcher_init(&demo_watcher,
-                    (ns_waitable_handle_t){.handle = watcher_member},
-                    NS_WAITABLE_EVENT_IN, 0, watcher_consume) != NS_OK) {
+    } else if(ns_watcher_init(&demo_watcher, (ns_waitable_handle_t)watcher_member,
+                    NS_WAITABLE_EVENT_IN, 0, on_watcher) != NS_OK) {
         SEGGER_RTT_Write(0, "nanosig: watcher init failed\n", 29);
     } else {
-        ns_signal_connect_typed(demo_watcher.signal, on_watcher, ns_watcher_event_t,
-                                demo_loop, NULL, &watcher_conn);
         if(ns_broker_add(&demo_watcher) != NS_OK) {
             SEGGER_RTT_Write(0, "nanosig: broker add failed\n", 27);
         } else {
