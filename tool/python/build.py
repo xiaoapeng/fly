@@ -1,6 +1,7 @@
 import shutil
 import argparse
 import os
+import subprocess
 import sys
 import kconfiglib
 import menuconfig
@@ -90,6 +91,16 @@ def parse_config_file(file_path):
                 config_dict[key] = None
     return config_dict
 
+def run_command(command):
+    """Run a shell command and return its real exit code.
+
+    os.system() returns a wait status (exit code 2 -> 512), and the shell
+    truncates sys.exit(>255) back to 0, so build failures used to be
+    invisible to scripts and CI. Keep every configure/build step going
+    through here.
+    """
+    return subprocess.call(command, shell=True)
+
 def run_loadconfig(source_dir, input_file):
     """Load a config file."""
     kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
@@ -141,7 +152,10 @@ def run_clean(source_dir):
         sys.exit(1)
     
     if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        os.system(f"cmake --build {source_dir}/build --target clean")
+        rc = run_command(f"cmake --build {source_dir}/build --target clean")
+        if rc != 0:
+            print(f'Clean failed, exit code: {rc}')
+            sys.exit(1)
 
 def run_distclean(source_dir):
     """Remove build directory and generated config outputs."""
@@ -191,7 +205,7 @@ def run_build(source_dir, build_type=None, jobs=None):
             build_type = "Release"
 
     if rebuild or get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE") != build_type:
-        os.system(
+        configure_ret = run_command(
             f'cmake '
             f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
             f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
@@ -200,10 +214,14 @@ def run_build(source_dir, build_type=None, jobs=None):
             f'-B{source_dir}/build '
             f'{generator_args}'
         )
+        if configure_ret != 0:
+            print(f'Configure failed, exit code: {configure_ret}')
+            sys.exit(1)
 
-    cmake_ret = os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
+    cmake_ret = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
     if cmake_ret != 0:
         print(f'Build failed, exit code: {cmake_ret}')
+        sys.exit(1)
     
 def run_target(source_dir, target):
     if not check_tool_installed('cmake'):
@@ -213,7 +231,10 @@ def run_target(source_dir, target):
     if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
         print("Build directory does not exist. Run build first.")
         sys.exit(1)
-    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
+    rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
+    if rc != 0:
+        print(f'Target {target} failed, exit code: {rc}')
+        sys.exit(1)
 
 def run_flash(source_dir, flash_target='default'):
     run_target(source_dir, f'{flash_target}_flash')
@@ -229,7 +250,10 @@ def run_make_img(source_dir, flash_target='default'):
     
     # Generate build timestamp file.
     check_git_status.generate_timestamp(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
-    os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
+    rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
+    if rc != 0:
+        print(f'Make image ({flash_target}) failed, exit code: {rc}')
+        sys.exit(1)
 
 def run_rttlog(source_dir):
     if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
@@ -265,9 +289,12 @@ def run_package_update(source_dir, pack_name, list=False):
         sys.exit(1)
     
     if list:
-        os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_show_list")
+        rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_show_list")
     else:
-        os.system(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_{pack_name}")
+        rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_{pack_name}")
+    if rc != 0:
+        print(f'Package update failed, exit code: {rc}')
+        sys.exit(1)
 
 
 def run_package_mirror(source_dir, list=False, enable=None, disable=None, update=False):
