@@ -14,14 +14,14 @@ config PROJECT_MCXN947_DEMO
     bool "MCXN947 demo project"
     help
         Select this option to enable Module MCXN947 DEMO.
-    select PACKAGE_SCHEDULER_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
 
 config PROJECT_MCXN947_ETH_DEMO
     bool "MCXN947 eth demo project"
     help
         Select this option to enable Module MCXN947 eth DEMO.
-    select PACKAGE_SCHEDULER_EVENTHUB_OS
+    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
     select PACKAGE_SEGGER_RTT
     select PACKAGE_EHIP
 
@@ -29,10 +29,11 @@ config PROJECT_MCXN947_FREERTOS_DEMO
     bool "MCXN947 freertos demo project (FreeRTOS 2-task)"
     help
         Self-contained demo: 2 FreeRTOS tasks (RTT tick + LED), SysTick owned
-        by FreeRTOS. The FreeRTOS scheduler leg is selected by the project
-        defconfig (CONFIG_PACKAGE_SCHEDULER_FREERTOS=y) — do NOT 'select'
-        PACKAGE_SCHEDULER_FREERTOS here (no-op on choice symbols).
+        by FreeRTOS. Selects PACKAGE_SCHEDULER_REQUIRE_FREERTOS so the
+        scheduler choice defaults to the FreeRTOS leg (a plain choice pin
+        cannot be selected from here — no-op on choice symbols).
         Applies -Wno-conversion only to the freertos-kernel/heap/port targets.
+    select PACKAGE_SCHEDULER_REQUIRE_FREERTOS
     select PACKAGE_SEGGER_RTT
 
 endchoice
