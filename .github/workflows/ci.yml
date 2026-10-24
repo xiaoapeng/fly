@@ -1,0 +1,113 @@
+name: ci
+
+# PR gate. See docs/CI.md for the job list, required checks and the
+# branch-protection setup that makes these checks blocking.
+on:
+  pull_request:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast configuration gate: scheduler selection sweep + Kconfig hygiene.
+  kconfig:
+    name: kconfig
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install kconfiglib
+        run: python3 -m pip install --upgrade pip kconfiglib requests
+      - name: Scheduler selection sweep
+        run: python3 tool/test/check_freertos_config.py
+      - name: Kconfig hygiene sweep
+        run: python3 tool/test/check_kconfig_hygiene.py
+
+  # The 10 arm-none-eabi projects: build + symbol assertions
+  # (no FreeRTOS API undefined, legacy projects FreeRTOS-free, SysTick_Handler
+  # uniqueness). Same command a developer runs locally.
+  arm-build:
+    name: arm-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cross toolchain and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
+            ninja-build cmake git
+          python3 -m pip install kconfiglib requests
+      - name: Toolchain version
+        run: arm-none-eabi-gcc --version | head -1
+      - name: Build ARM projects
+        run: python3 tool/test/check_build_arm.py -j 4 --verbose
+
+  # Host triple: one real build per OS. These projects link the OS sockets /
+  # threading layer, so they catch host-specific breakage that cross builds
+  # never see. Linux and Windows use the GCC toolchain files, so MSVC cannot
+  # replace MinGW here.
+  host-linux:
+    name: host-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential ninja-build cmake git
+          python3 -m pip install kconfiglib requests
+      - name: Build linux host projects
+        run: python3 tool/test/check_build.py --platform linux
+
+  host-macos:
+    name: host-macos
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          brew install ninja cmake || true
+          python3 -m pip install --upgrade pip kconfiglib requests
+      - name: Build macos host projects
+        run: python3 tool/test/check_build.py --platform macos
+
+  host-windows:
+    name: host-windows
+    # MinGW-w64 GCC from the MSYS2 installation that ships with the runner
+    # image (C:\msys64). The x64/windows toolchain file looks up `gcc` by name.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install MinGW-w64 toolchain
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman -Sy --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-ninja"
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\msys64\mingw64\bin'
+      - name: Install kconfiglib
+        run: python -m pip install --upgrade pip kconfiglib requests
+      - name: Build windows host projects
+        run: python tool/test/check_build.py --platform windows
