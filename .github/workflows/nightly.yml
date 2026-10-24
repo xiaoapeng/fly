@@ -1,0 +1,65 @@
+name: nightly
+
+# Slow / low-signal-per-minute checks kept off the PR path:
+#   * Release builds of every ARM project (ci.yml builds Debug only)
+#   * firmware image packaging smoke test (jlink image target)
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  arm-release:
+    name: arm-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cross toolchain and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
+            ninja-build cmake git
+          python3 -m pip install kconfiglib requests
+      - name: Build every ARM project (Release)
+        run: |
+          set -eu
+          for dc in project/*/*/defconfig; do
+            case "$dc" in
+              project/linux/*|project/macos/*|project/windows/*) continue ;;
+            esac
+            # RISC-V projects need the xPack / MounRiver toolchains; see docs/CI.md.
+            case "$dc" in
+              project/ch58x/*|project/gd32vf103x/*) continue ;;
+            esac
+            echo "=== $dc"
+            ./build.sh loadconfig "$dc"
+            ./build.sh build
+          done
+
+  packaging:
+    name: packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cross toolchain and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
+            ninja-build cmake git
+          python3 -m pip install kconfiglib requests
+      - name: Build + package mcxn947/freertos-demo
+        run: |
+          ./build.sh loadconfig project/mcxn947/freertos-demo/defconfig
+          ./build.sh build
+          ./build.sh make_img
+          test -e image/CURRENT

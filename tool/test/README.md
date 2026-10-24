@@ -24,6 +24,8 @@ the user's `.config`" invariant stays in one place.
 |---|---|
 | `lib/__init__.py` | `load_defconfig`, `load_inline_config`, `expect`, `TestContext` |
 | `check_freertos_config.py` | V-5 + V-8 sweep: 12 legacy defconfigs + freertos-demo + ch582-demo + malformed `.config` safety net |
+| `check_kconfig_hygiene.py` | Tree-wide hygiene: no choice member may be targeted by select/imply, and every `project/*/*/defconfig` must load with zero kconfiglib warnings. Enforces `docs/reference/kconfig-rules.md` R1/R2 |
+| `check_build.py` | Host-platform builds: `--platform linux|macos|windows` selects the project table, then loadconfig + clean build + executable assertion per project. Refuses to run a platform that is not the host. CI's `host-*` jobs call this |
 | `check_build_arm.py` | Build-time regression: loadconfig + cmake configure + arm-none-eabi-gcc Debug build for 10 arm projects; asserts V-3 (no FreeRTOS API undefined), V-8 (legacy projects contain no FreeRTOS symbols), V-4 (freertos-demo has strong `SysTick_Handler`). Skips RISC-V (`gd32vf103x`, `ch58x`) and x86_64 (`linux`/`macos`/`windows`) projects whose toolchains are not in this host environment. |
 
 ## Conventions
