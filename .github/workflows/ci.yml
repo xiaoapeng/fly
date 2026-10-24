@@ -96,6 +96,8 @@ jobs:
       - name: Install build tools
         run: |
           brew install ninja cmake || true
+          # cmake/tool_chain/clang-host-darwin.cmake pins "-fuse-ld=lld".
+          brew install lld
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip kconfiglib requests
       - name: Build macos host projects

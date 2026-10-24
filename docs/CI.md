@@ -11,14 +11,14 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 
 同一分支的新 push 会取消上一次未完成的 CI（`concurrency` + `cancel-in-progress`）。
 
-## 快速 CI 的五个 job（3 个必需 + `host-macos`/`host-windows` 待上游修复）
+## 快速 CI 的五个 job（全部为必需检查）
 
 | 检查名 | runner | 内容 | 超时 |
 |---|---|---|---|
 | `kconfig` | ubuntu-latest | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
 | `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：10 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一） | 60 min |
 | `host-linux` | ubuntu-latest | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
-| `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（**当前已知失败，未设为必需检查**，见下文） | 20 min |
+| `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang + lld） | 20 min |
 | `host-windows` | windows-latest | `tool/test/check_build.py --platform windows`：`project/windows/ehip-test` + `co-ctx-test`（MinGW-w64 GCC） | 30 min |
 
 三个 `host-*` job 的构建逻辑都在 `tool/test/check_build.py` 里，平台 → 工程清单是该脚本的数据表；CI 只负责准备工具链然后调用它。脚本会先 `loadconfig`、删 `build/`、构建，再断言可执行文件存在（构建失败本身已经通过退出码判死，产物断言防的是"旧产物掩盖坏链接"）。
@@ -32,14 +32,21 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 - 依赖包（`eventhub-os`、`ehip`、`ehip-tools`、`ehshell`、`freertos-kernel`、`nanosig` …）在 configure 阶段由 `fetch_git_project` 从 GitHub 拉取；CI 依赖公网访问，无需额外配置。`dl/` 缓存目前没做（后续可加，注意 key 要带 defconfig 里的 pin）。
 - **本地 `dl/` 会漂移**。`ehip`/`ehip-tools`/`ehshell`/`eventhub` 的 `GIT_TAG` 是 `main`/`master` 加 `AUTO_UPDATE OFF`，所以本地克隆不会自动跟随上游：CI 新克隆拿的是最新 `main`，本地拿的是上次 fetch 的快照。本地构建失败而 CI 通过（或反之）时，先跑 `./build.sh package_update <name>`（`-l` 看列表）把包装到最新，再复现。彻底解决办法是把这些包也钉到 SHA，见"已知限制"。
 
-### `host-macos` / `host-windows` 当前为何不是必需检查
+### `host-macos` / `host-windows` 曾经不是必需检查（已修复）
 
-两者都会跑，但**不放进分支保护的 `contexts`**，因为失败原因都在上游被 fetch 的包里，FLY 按约定不本地打补丁：
+这两个 job 最初上线时是红的，原因都在上游被 fetch 的包里，不在 FLY 代码：
 
-- **`host-macos`**：`project/macos/ehip-test` → `dl/eventhub-src` 的 `eh_event_flags.c` 用 `atomic_load_explicit(&ef->flags, ...)`，而 `eh_flags_t` 是普通 `unsigned long`（非 `_Atomic`）。Apple Clang 21 严格按 C11 报错（`address argument to atomic operation must be a pointer to _Atomic type`），GCC 走 `__atomic_*` 内建因此放行。
-- **`host-windows`**：`project/windows/ehip-test` → `dl/ehshell-src` 在 MinGW 下缺 POSIX/ctype 声明：`ehshell_core.c:798 bzero`、`ehshell_builtin_commands.c:159 isprint`（`-Wimplicit-function-declaration` 报错）。
+- **`host-macos`**：`eventhub` 的 `eh_event_flags.c` 把普通 `eh_flags_t`（`typedef size_t`）传给 `atomic_load_explicit` 等 C11 泛型原子函数。标准要求实参是 `_Atomic` 指针，Apple Clang 21 严格报错（GCC 经 `__atomic_*` 放行，只是实现宽容）。
+- **`host-windows`**：`ehshell` 在 MinGW 下有两处隐式声明 —— `bzero`（MinGW 不提供）与缺 `<ctype.h>` 的 `isprint`；GCC 14 起 C99+ 把隐式声明默认当错误，Linux 上的 GCC 13 只当警告。
 
-两个包最新 `main`/`master` 仍未修，所以先保证可见性：job 保持运行、失败就红，但不阻塞合并。上游修好后把对应 job 名加进 `contexts` 即可，其余不用改。
+已在上游修掉并推送：
+
+| 仓库 | commit | 改动 |
+|---|---|---|
+| `xiaoapeng/eventhub_os` | `96916a7` | `eh_atomic.h` 的宏改用 `__atomic_*` 内建，不改字段类型、GCC/Clang 语义一致 |
+| `xiaoapeng/ehshell` | `a1c1bcf` | `bzero` → `memset`；补 `<ctype.h>` 并把 `isprint` 实参转 `unsigned char` |
+
+现在两个 job 与其余三项一样是必需检查。macOS runner 额外装 `lld`，因为 `cmake/tool_chain/clang-host-darwin.cmake` 固定加了 `-fuse-ld=lld`。
 
 ## 分支保护（必需检查 + rebase 合并）
 
@@ -51,7 +58,7 @@ gh api -X PUT "repos/:owner/:repo/branches/master/protection" --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["kconfig", "arm-build", "host-linux"]
+    "contexts": ["kconfig", "arm-build", "host-linux", "host-macos", "host-windows"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
@@ -118,8 +125,7 @@ gh run watch
 | RISC-V 工程（`ch58x/ch582-demo`、`gd32vf103x/gd32vf103c-demo`） | 未纳入 CI。需要 `riscv-none-elf-`（xPack）与 `riscv-none-embed-`（MounRiver）两套交叉工具链，apt/Homebrew 都没有；`check_build_arm.py` 与夜间流水线都显式跳过 |
 | `macos/ehip-test` 的 Debug 配置 | 工程 Debug flag 带 `-fsanitize=address,leak`；CI 只跑默认 Release，ASAN 路径未在 CI 中执行 |
 | Windows job | 依赖 runner 镜像的 `C:\msys64`。镜像若更换路径，改 `host-windows` 的 PATH 注入即可 |
-| `host-macos` | 上游 `eventhub` 的 C11 atomic 用法在 Apple Clang 21 下编译失败（详见上文），因此暂不作为必需检查 |
-| `host-windows` | 上游 `ehshell` 在 MinGW 下缺 `bzero` / `isprint` 声明（详见上文），因此暂不作为必需检查 |
+| `host-macos` 的工具链 | `clang-host-darwin.cmake` 固定 `-fuse-ld=lld`，机器上没有 `ld.lld` 时链接直接失败（报 `invalid linker name`）。CI 里 `brew install lld`；本地需要 `brew install lld` |
 | `ehip` / `ehip-tools` / `ehshell` / `eventhub` 的版本漂移 | 四个包的 `GIT_TAG` 是浮动的 `main`/`master` + `AUTO_UPDATE OFF`：本地 `dl/` 不会自动更新，CI 新克隆永远拿最新。二者不一致时会出现"本地炸、CI 过"。短期用 `./build.sh package_update <pkg>` 对齐；长期应像 `nanosig` 一样钉到 SHA（未做，改动会牵动 4 个包 + 三平台验证） |
 | 硬件行为 | CI 只做编译期与静态断言，Flash / RTT 运行证据仍需本地 `./build.sh flash` + `./build.sh rttlog`，PR 模板里要求人工附上 |
 | 首次落地 | 本流水线**尚未在真实 runner 上跑过**。建议先推到特性分支观察一轮，再开启分支保护，避免把不稳定的 job 设成必需检查 |
