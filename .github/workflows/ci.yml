@@ -51,6 +51,12 @@ jobs:
           python3 -m pip install kconfiglib requests
       - name: Toolchain version
         run: arm-none-eabi-gcc --version | head -1
+      - name: Bootstrap Python venv
+        # CMake picks .venv over whatever `python3` is first on PATH
+        # (cmake/python3.cmake), so pin the interpreter by creating it here.
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
       - name: Build ARM projects
         run: python3 tool/test/check_build_arm.py -j 4 --verbose
 
@@ -70,8 +76,11 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential ninja-build cmake git
-          python3 -m pip install kconfiglib requests
+          sudo apt-get install -y --no-install-recommends build-essential ninja-build cmake git python3-venv
+      - name: Bootstrap Python venv
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
       - name: Build linux host projects
         run: python3 tool/test/check_build.py --platform linux
 
@@ -87,7 +96,8 @@ jobs:
       - name: Install build tools
         run: |
           brew install ninja cmake || true
-          python3 -m pip install --upgrade pip kconfiglib requests
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
       - name: Build macos host projects
         run: python3 tool/test/check_build.py --platform macos
 
@@ -107,7 +117,10 @@ jobs:
         run: |
           C:\msys64\usr\bin\bash.exe -lc "pacman -Sy --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-ninja"
           Add-Content -Path $env:GITHUB_PATH -Value 'C:\msys64\mingw64\bin'
-      - name: Install kconfiglib
-        run: python -m pip install --upgrade pip kconfiglib requests
+      - name: Bootstrap Python venv
+        # cmake/python3.cmake prefers .venv over the PATH interpreter.
+        run: |
+          python -m venv .venv
+          & .\.venv\Scripts\python.exe -m pip install --upgrade pip kconfiglib requests
       - name: Build windows host projects
         run: python tool/test/check_build.py --platform windows

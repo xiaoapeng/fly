@@ -171,12 +171,13 @@ def build_one(ctx: TestContext, repo_root: Path, defconfig: str, exe_basename: s
         shutil.rmtree(build_dir)
 
     # 3) build Debug
-    rc, _out = _run(
+    rc, out = _run(
         [str(build_sh), "build", "Debug", "-j", str(jobs)],
         cwd=repo_root, timeout=900,
     )
     if rc != 0:
-        res.error = f"build Debug failed (rc={rc})"
+        # Keep the tail: without it a CI failure is just "rc=1".
+        res.error = f"build Debug failed (rc={rc})\n{out[-3000:]}"
         return res
 
     # 4) locate ELF
