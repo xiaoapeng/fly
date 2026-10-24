@@ -95,9 +95,9 @@ jobs:
           python-version: "3.12"
       - name: Install build tools
         run: |
+          # 不装 lld：clang-host-darwin.cmake 只在检测到 ld.lld 时才加
+          # -fuse-ld=lld，这里正好覆盖"纯净 macOS 用系统链接器"的路径。
           brew install ninja cmake || true
-          # cmake/tool_chain/clang-host-darwin.cmake pins "-fuse-ld=lld".
-          brew install lld
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip kconfiglib requests
       - name: Build macos host projects

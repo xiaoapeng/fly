@@ -18,7 +18,7 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 | `kconfig` | ubuntu-latest | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
 | `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：10 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一） | 60 min |
 | `host-linux` | ubuntu-latest | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
-| `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang + lld） | 20 min |
+| `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang；机器有 `ld.lld` 才用 lld 链接） | 20 min |
 | `host-windows` | windows-latest | `tool/test/check_build.py --platform windows`：`project/windows/ehip-test` + `co-ctx-test`（MinGW-w64 GCC） | 30 min |
 
 三个 `host-*` job 的构建逻辑都在 `tool/test/check_build.py` 里，平台 → 工程清单是该脚本的数据表；CI 只负责准备工具链然后调用它。脚本会先 `loadconfig`、删 `build/`、构建，再断言可执行文件存在（构建失败本身已经通过退出码判死，产物断言防的是"旧产物掩盖坏链接"）。
@@ -46,7 +46,7 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 | `xiaoapeng/eventhub_os` | `96916a7` | `eh_atomic.h` 的宏改用 `__atomic_*` 内建，不改字段类型、GCC/Clang 语义一致 |
 | `xiaoapeng/ehshell` | `a1c1bcf` | `bzero` → `memset`；补 `<ctype.h>` 并把 `isprint` 实参转 `unsigned char` |
 
-现在两个 job 与其余三项一样是必需检查。macOS runner 额外装 `lld`，因为 `cmake/tool_chain/clang-host-darwin.cmake` 固定加了 `-fuse-ld=lld`。
+现在两个 job 与其余三项一样是必需检查。
 
 ## 分支保护（必需检查 + rebase 合并）
 
@@ -125,7 +125,7 @@ gh run watch
 | RISC-V 工程（`ch58x/ch582-demo`、`gd32vf103x/gd32vf103c-demo`） | 未纳入 CI。需要 `riscv-none-elf-`（xPack）与 `riscv-none-embed-`（MounRiver）两套交叉工具链，apt/Homebrew 都没有；`check_build_arm.py` 与夜间流水线都显式跳过 |
 | `macos/ehip-test` 的 Debug 配置 | 工程 Debug flag 带 `-fsanitize=address,leak`；CI 只跑默认 Release，ASAN 路径未在 CI 中执行 |
 | Windows job | 依赖 runner 镜像的 `C:\msys64`。镜像若更换路径，改 `host-windows` 的 PATH 注入即可 |
-| `host-macos` 的工具链 | `clang-host-darwin.cmake` 固定 `-fuse-ld=lld`，机器上没有 `ld.lld` 时链接直接失败（报 `invalid linker name`）。CI 里 `brew install lld`；本地需要 `brew install lld` |
+| `host-macos` 的链接器 | `cmake/tool_chain/clang-host-darwin.cmake` 会探测 `ld.lld`：找到就加 `-fuse-ld=lld`（`brew install lld`），找不到就用系统默认 Apple ld 并打印 `ld.lld not found, using the default linker`。CI 故意不装 lld，覆盖后一条路径 |
 | `ehip` / `ehip-tools` / `ehshell` / `eventhub` 的版本漂移 | 四个包的 `GIT_TAG` 是浮动的 `main`/`master` + `AUTO_UPDATE OFF`：本地 `dl/` 不会自动更新，CI 新克隆永远拿最新。二者不一致时会出现"本地炸、CI 过"。短期用 `./build.sh package_update <pkg>` 对齐；长期应像 `nanosig` 一样钉到 SHA（未做，改动会牵动 4 个包 + 三平台验证） |
 | 硬件行为 | CI 只做编译期与静态断言，Flash / RTT 运行证据仍需本地 `./build.sh flash` + `./build.sh rttlog`，PR 模板里要求人工附上 |
 | 首次落地 | 本流水线**尚未在真实 runner 上跑过**。建议先推到特性分支观察一轮，再开启分支保护，避免把不稳定的 job 设成必需检查 |
