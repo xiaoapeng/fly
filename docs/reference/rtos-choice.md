@@ -4,6 +4,8 @@
 
 ```
 choice PACKAGE_SCHEDULER
+    default PACKAGE_SCHEDULER_FREERTOS if PACKAGE_SCHEDULER_REQUIRE_FREERTOS
+    default PACKAGE_SCHEDULER_EVENTHUB_OS if PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
     default PACKAGE_SCHEDULER_NONE
     PACKAGE_SCHEDULER_NONE          → 无 scheduler（bare-metal main loop）
     PACKAGE_SCHEDULER_EVENTHUB_OS   → eventhub-os（cooperative signal/slot framework）
@@ -13,7 +15,7 @@ choice PACKAGE_SCHEDULER
 
 - choice 是**唯一**互斥 authority；OS 子包按 `if PACKAGE_SCHEDULER_*` rsource 进入。
 - 默认 `NONE`：未 pin 的项目不会自动启用 scheduler。
-- kconfiglib 对 choice member 的 `select` 是 no-op → 项目 Kconfig 中 `select PACKAGE_SCHEDULER_*` 仅表达迁移意图，真正驱动必须靠 defconfig pin。
+- kconfiglib 对 choice member 的 `select` 是 no-op → 项目 Kconfig **不得** select 成员，改为 select `PACKAGE_SCHEDULER_REQUIRE_<leg>`（普通 bool），由上面的条件 default 转成支路。规则见 [kconfig-rules.md](kconfig-rules.md) R1/R2。
 - 手工 dual-pin 时（`CONFIG_PACKAGE_SCHEDULER_EVENTHUB_OS=y` + `CONFIG_PACKAGE_SCHEDULER_FREERTOS=y`），kconfiglib 归一为 `scheduler/Kconfig` 中声明顺序靠后的 leg（FreeRTOS）。
 
 ## 2. 子包 Kconfig 与 CMake
@@ -26,6 +28,11 @@ choice PACKAGE_SCHEDULER
 子包 CMakeLists 用 `if(CONFIG_PACKAGE_SCHEDULER_*)` 自 gate，无 OS 选中时不 fetch、不注册 target。
 
 ## 3. 项目迁移名册
+
+> 历史记录：本节描述当时的两步迁移（Kconfig 里 select 成员 + defconfig pin）。
+> 该做法已被 [kconfig-rules.md](kconfig-rules.md) R2 取代：工程 Kconfig 现在 select
+> `PACKAGE_SCHEDULER_REQUIRE_<leg>`，defconfig 不再需要 scheduler pin。下表的
+> 「defconfig 改动」一列按 R5 仍有效但已冗余。
 
 ### Legacy 两步迁移（12 active 项目）
 
@@ -45,7 +52,8 @@ choice PACKAGE_SCHEDULER
 | `project/windows/Kconfig:15,24` | `project/windows/ehip-test/defconfig`、`windows/co-ctx-test/defconfig` 加同上 |
 | `project/ch58x/Kconfig:17`（注释） | `project/ch58x/ch582-demo/defconfig` 加 `CONFIG_PACKAGE_SCHEDULER_NONE=y` |
 
-Kconfig 改动统一把 `select PACKAGE_EVENTHUB_OS` 改成 `select PACKAGE_SCHEDULER_EVENTHUB_OS`（仍是 no-op，仅表达迁移意图）。
+Kconfig 改动：`select PACKAGE_EVENTHUB_OS` → `select PACKAGE_SCHEDULER_EVENTHUB_OS`（当时是 no-op），
+现已改为 `select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS`（生效）。
 
 ### 依赖型外部包
 
@@ -53,7 +61,7 @@ Kconfig 改动统一把 `select PACKAGE_EVENTHUB_OS` 改成 `select PACKAGE_SCHE
 
 ### 新项目
 
-- `project/mcxn947/freertos-demo/`：`defconfig` 含 `CONFIG_PACKAGE_SCHEDULER_FREERTOS=y`（项目 Kconfig **不** select scheduler leg）。
+- `project/mcxn947/freertos-demo/`：`select PACKAGE_SCHEDULER_REQUIRE_FREERTOS`（项目 Kconfig select 的是请求位，不是 choice 成员）。
 
 ## 4. 自动验证
 
@@ -82,7 +90,8 @@ Executable 通过 `target_link_package_lib` 经 PUBLIC 链拉到 `freertos-confi
 
 ## 6. Kconfig 互斥规则
 
-- 正常路径：freertos-demo config `SCHEDULER_FREERTOS=y`；eventhub-pinned 反之。
+- 正常路径：freertos-demo 由 `PACKAGE_SCHEDULER_REQUIRE_FREERTOS` 的请求位选出 `SCHEDULER_FREERTOS=y`；eventhub 工程同理走 `PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS`。
+- 显式 defconfig pin 优先于请求位（[kconfig-rules.md](kconfig-rules.md) R5）；不要写与工程需求矛盾的 pin。
 - 手工 dual-pin 路径：scheduler 归一为 `scheduler/Kconfig` 中声明顺序靠后的 leg（FreeRTOS）。
 - CMake 不写跨 OS guard；任何残留 `FATAL_ERROR` 都是回归。
 
@@ -96,6 +105,7 @@ Executable 通过 `target_link_package_lib` 经 PUBLIC 链拉到 `freertos-confi
 
 ## 8. 相关文档
 
+- Kconfig 硬性规则（choice / select / 请求位 / 依赖方向）：`docs/reference/kconfig-rules.md`
 - FreeRTOS 移植设计：`docs/design/freertos-port.md`
 - FreeRTOS queue-set 后端（event-group 的整体替换）：`docs/design/queueset-backend.md`
 - OS 包并入 scheduler/ 的迁移方案：`docs/plans/scheduler-os-merge.md`
