@@ -39,6 +39,7 @@ target_compile_options(mcxn947_freertos_demo_app PRIVATE "${TARGET_FLAGS}")
 # template at package/scheduler/freertos/inc/ is the only one and reaches the OBJECT libs
 # via the freertos-config INTERFACE chain (kernel include → portmacro.h).
 target_include_directories(mcxn947_freertos_demo_app PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/board/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/board"
 )
@@ -54,6 +55,9 @@ set(BOARD_SOURCES
 target_sources(mcxn947_freertos_demo_app PRIVATE
     ${BOARD_SOURCES}
     "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/runtime.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/key.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/test.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/task_main.c"
 )
 
