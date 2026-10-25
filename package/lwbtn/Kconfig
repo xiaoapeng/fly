@@ -1,0 +1,114 @@
+menu "lwbtn"
+
+config PACKAGE_LWBTN
+    bool "Enable lwbtn button manager"
+    default n
+    help
+        Lightweight button manager (github.com/MaJerle/lwbtn).
+        Polling-based: the application calls lwbtn_process(now_ms)
+        periodically and receives ONPRESS / ONRELEASE / ONCLICK /
+        KEEPALIVE events through a single callback.
+        The FLY integration compiles the upstream single source file
+        directly and maps the options below onto LWBTN_CFG_* macros.
+
+config PACKAGE_LWBTN_GIT_COMMIT
+    string "lwbtn pinned commit"
+    default "92307ea7693d4174cd9aa4537664a712cd03e0c6"
+    depends on PACKAGE_LWBTN
+    help
+        Full 40-hex commit SHA fetched from
+        https://github.com/MaJerle/lwbtn.git (develop HEAD, header
+        version v1.3.2). No local patches are applied.
+
+config PACKAGE_LWBTN_USE_KEEPALIVE
+    bool "Keepalive events while button is active"
+    default y
+    depends on PACKAGE_LWBTN
+    help
+        Maps to LWBTN_CFG_USE_KEEPALIVE. Disabling it removes the
+        keepalive state machine, the LWBTN_EVT_KEEPALIVE enum value and
+        the related fields from struct lwbtn_btn.
+
+config PACKAGE_LWBTN_USE_CLICK
+    bool "Click / multi-click detection"
+    default y
+    depends on PACKAGE_LWBTN
+    help
+        Maps to LWBTN_CFG_USE_CLICK. Disabling it removes the click state
+        machine, the LWBTN_EVT_ONCLICK enum value and the related fields
+        from struct lwbtn_btn.
+
+config PACKAGE_LWBTN_DEBOUNCE_PRESS_MS
+    int "Press debounce time (ms)"
+    range 0 10000
+    default 20
+    depends on PACKAGE_LWBTN
+    help
+        Maps to LWBTN_CFG_TIME_DEBOUNCE_PRESS.
+
+config PACKAGE_LWBTN_DEBOUNCE_RELEASE_MS
+    int "Release debounce time (ms)"
+    range 0 10000
+    default 0
+    depends on PACKAGE_LWBTN
+    help
+        Maps to LWBTN_CFG_TIME_DEBOUNCE_RELEASE. Upstream default is 0
+        (release is accepted immediately).
+
+config PACKAGE_LWBTN_KEEPALIVE_PERIOD_MS
+    int "Keepalive period while active (ms)"
+    range 1 60000
+    default 100
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_KEEPALIVE
+    help
+        Maps to LWBTN_CFG_TIME_KEEPALIVE_PERIOD. Upstream default is
+        100 ms.
+
+config PACKAGE_LWBTN_CLICK_MIN_MS
+    int "Minimum press time for a click (ms)"
+    range 0 60000
+    default 20
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_TIME_CLICK_MIN.
+
+config PACKAGE_LWBTN_CLICK_MAX_MS
+    int "Maximum press time for a click (ms)"
+    range 0 60000
+    default 300
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_TIME_CLICK_MAX.
+
+config PACKAGE_LWBTN_CLICK_MULTI_MAX_MS
+    int "Multi-click window (ms)"
+    range 0 60000
+    default 400
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_TIME_CLICK_MULTI_MAX.
+
+config PACKAGE_LWBTN_CLICK_MAX_CONSECUTIVE
+    int "Maximum consecutive clicks"
+    range 1 255
+    default 3
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_CLICK_MAX_CONSECUTIVE. Upstream stores this in
+        a uint8_t, so the range is capped at 255.
+
+config PACKAGE_LWBTN_CLICK_SEND_IMMEDIATELY
+    bool "Send click immediately when max consecutive is reached"
+    default y
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_CLICK_MAX_CONSECUTIVE_SEND_IMMEDIATELY.
+
+config PACKAGE_LWBTN_CLICK_KEEP_AFTER_SHORT_PRESS
+    bool "Keep click counter after a short press"
+    default n
+    depends on PACKAGE_LWBTN && PACKAGE_LWBTN_USE_CLICK
+    help
+        Maps to LWBTN_CFG_CLICK_CONSECUTIVE_KEEP_AFTER_SHORT_PRESS.
+
+endmenu
