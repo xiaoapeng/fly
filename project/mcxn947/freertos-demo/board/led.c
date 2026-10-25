@@ -16,7 +16,7 @@ void led_init(void)
 {
     gpio_pin_config_t out_config = {
         .pinDirection = kGPIO_DigitalOutput,
-        .outputLogic = 0U,
+        .outputLogic = 1U,   /* 共阳：高电平=灭，上电不留白闪 */
     };
 
     CLOCK_EnableClock(kCLOCK_Gpio0);
@@ -54,16 +54,17 @@ void led_init(void)
     led_set(0);
 }
 
-/* mask bit0=red, bit1=green, bit2=blue */
+/* mask bit0=red, bit1=green, bit2=blue；板上 RGB 为共阳接法，
+ * 低电平点亮，所以这里把逻辑 mask 反相后再驱动，对上层保持 bit=点亮。 */
 void led_set(uint8_t mask)
 {
     GPIO_PinWrite(BOARD_RGB_PINS_LED_RED_GPIO,
                   BOARD_RGB_PINS_LED_RED_GPIO_PIN,
-                  (mask & 0x01u) ? 1U : 0U);
+                  (uint8_t)((mask & 0x01u) ? 0U : 1U));
     GPIO_PinWrite(BOARD_RGB_PINS_LED_GREEN_GPIO,
                   BOARD_RGB_PINS_LED_GREEN_GPIO_PIN,
-                  (mask & 0x02u) ? 1U : 0U);
+                  (uint8_t)((mask & 0x02u) ? 0U : 1U));
     GPIO_PinWrite(BOARD_RGB_PINS_LED_BLUE_GPIO,
                   BOARD_RGB_PINS_LED_BLUE_GPIO_PIN,
-                  (mask & 0x04u) ? 1U : 0U);
+                  (uint8_t)((mask & 0x04u) ? 0U : 1U));
 }
