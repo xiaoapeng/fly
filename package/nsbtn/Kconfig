@@ -1,0 +1,41 @@
+menu "nsbtn"
+
+config PACKAGE_NSBTN
+    bool "Enable nsbtn (lwbtn button wrapper with nanosig signals)"
+    default n
+    depends on PACKAGE_NANOSIG
+    select PACKAGE_LWBTN
+    help
+        Wraps the lwbtn button manager and publishes button events as one
+        global nanosig signal (`nsbtn_event`). All registered buttons share
+        a single lwbtn instance; the caller injects a nanosig loop at
+        nsbtn_init() and the package drives lwbtn polling from a periodic
+        ns_timer on that loop.
+
+        Call order is a hard contract: init -> register... -> scan_start ->
+        (events) -> scan_stop -> deinit. Register is legal only while
+        scanning is stopped, which is what replaces locking. There is no
+        unregister: handles stay valid until deinit.
+
+        Depends on nanosig (we do not select it: the loop backend and
+        scheduler choice stay the project's decision) and pulls in lwbtn.
+
+config PACKAGE_NSBTN_MAX_BUTTONS
+    int "Maximum registered buttons"
+    range 1 32
+    default 8
+    depends on PACKAGE_NSBTN
+    help
+        Size of the static button pool. nsbtn_register() returns NULL once
+        the pool is full. There is no unregister; deinit resets the pool.
+
+config PACKAGE_NSBTN_SCAN_PERIOD_MS
+    int "Button scan period (ms)"
+    range 1 100
+    default 10
+    depends on PACKAGE_NSBTN
+    help
+        Period of the poll timer that calls lwbtn_process_ex(). Matches the
+        previous application-level glue default (10 ms).
+
+endmenu
