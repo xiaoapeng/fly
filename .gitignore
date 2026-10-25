@@ -18,3 +18,4 @@ auto-generate/
 CLAUDE.md
 .PATH.env.json
 .opencode/
+.clawbench/
