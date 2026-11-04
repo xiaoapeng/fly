@@ -11,13 +11,15 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 
 同一分支的新 push 会取消上一次未完成的 CI（`concurrency` + `cancel-in-progress`）。
 
+Linux job（含 nightly）固定使用 `ubuntu-24.04`，避免 `ubuntu-latest` 自动升级发行版后改变系统 Python 和交叉工具链。升级 runner 版本须通过 PR 验证；该标签只固定操作系统版本，镜像内的软件和在线安装的依赖仍会更新。
+
 ## 快速 CI 的五个 job（全部为必需检查）
 
 | 检查名 | runner | 内容 | 超时 |
 |---|---|---|---|
-| `kconfig` | ubuntu-latest | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
-| `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：10 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一） | 60 min |
-| `host-linux` | ubuntu-latest | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
+| `kconfig` | ubuntu-24.04 | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
+| `arm-build` | ubuntu-24.04 | `tool/test/check_build_arm.py`：10 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一） | 60 min |
+| `host-linux` | ubuntu-24.04 | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
 | `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang；机器有 `ld.lld` 才用 lld 链接） | 20 min |
 | `host-windows` | windows-latest | `tool/test/check_build.py --platform windows`：`project/windows/ehip-test` + `co-ctx-test`（MinGW-w64 GCC） | 30 min |
 

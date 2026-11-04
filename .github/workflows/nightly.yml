@@ -11,7 +11,7 @@ on:
 jobs:
   arm-release:
     name: arm-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
 
   packaging:
     name: packaging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
