@@ -19,12 +19,15 @@ fetch_git_project(
 )
 
 # FLY compiles the upstream core directly instead of adding upstream's CMake
-# target (same pattern as package/scheduler/freertos), so Kconfig drives the
-# cross build and the FreeRTOS SDK headers come from package/scheduler/
-# freertos. Upstream selects its platform backend purely through the include
-# path: nanosig_port.h carries no platform macros and pulls the fixed-name
-# platform/<os>/nanosig_platform_port.h, hence platform/freertos below.
+# target, so Kconfig selects the backend through its platform include path.
 set(NANOSIG_SRC_DIR "${FLY_SOURCE_DL_BASE_DIR}/nanosig-src")
+if(CONFIG_PACKAGE_SCHEDULER_NONE)
+    set(_nanosig_backend baremetal)
+elseif(CONFIG_PACKAGE_SCHEDULER_FREERTOS)
+    set(_nanosig_backend freertos)
+else()
+    message(FATAL_ERROR "nanosig requires the bare-metal or FreeRTOS scheduler model")
+endif()
 
 # Upstream generates include/nanosig/nanosig_version.h from a template via
 # its own CMakeLists (which we deliberately do not add). Reproduce it here:
@@ -45,16 +48,22 @@ configure_file(
 
 add_library(nanosig
     "${NANOSIG_SRC_DIR}/src/nanosig.c"
-    "${NANOSIG_SRC_DIR}/src/ns_broker.c"
     "${NANOSIG_SRC_DIR}/src/ns_timer.c"
     "${NANOSIG_SRC_DIR}/src/ns_debug.c"
     "${NANOSIG_SRC_DIR}/src/ns_formatio.c"
     "${NANOSIG_SRC_DIR}/src/ds/ns_mpsc_record_ring.c"
     "${NANOSIG_SRC_DIR}/src/ds/ns_ringbuf.c"
-    "${NANOSIG_SRC_DIR}/src/ds/ns_hashtbl.c"
     "${NANOSIG_SRC_DIR}/src/ds/ns_rbtree.c"
-    "${NANOSIG_SRC_DIR}/platform/freertos/port.c"
+    "${NANOSIG_SRC_DIR}/platform/${_nanosig_backend}/port.c"
 )
+
+if(CONFIG_PACKAGE_SCHEDULER_FREERTOS)
+    target_sources(nanosig PRIVATE
+        "${NANOSIG_SRC_DIR}/src/ns_broker.c"
+        "${NANOSIG_SRC_DIR}/src/ds/ns_hashtbl.c")
+    target_compile_definitions(nanosig PRIVATE NANOSIG_BROKER_STACK_SIZE=0)
+    target_link_libraries(nanosig PUBLIC freertos-config)
+endif()
 
 # Upstream keeps %e float formatting bit-identical across compilers/archs by
 # disabling FP contraction for this file; FLY compiles the sources itself, so
@@ -66,14 +75,7 @@ set_source_files_properties("${NANOSIG_SRC_DIR}/src/ns_formatio.c" PROPERTIES
 target_include_directories(nanosig PUBLIC
     "${NANOSIG_SRC_DIR}/include"
     "${NANOSIG_VERSION_DIR}"
-    "${NANOSIG_SRC_DIR}/platform/freertos"
-)
-
-# Broker (timer) thread stack size in bytes; 0 = FreeRTOS backend default
-# (2 KB). Upstream injects this PRIVATE and hard-fails the build when it is
-# missing (src/ns_broker.c), so it stays PRIVATE here too.
-target_compile_definitions(nanosig PRIVATE
-    NANOSIG_BROKER_STACK_SIZE=0
+    "${NANOSIG_SRC_DIR}/platform/${_nanosig_backend}"
 )
 
 # Global debug level from Kconfig (CONFIG_PACKAGE_NANOSIG_LOG_LEVEL maps to
@@ -85,10 +87,6 @@ target_compile_definitions(nanosig PRIVATE
 target_compile_definitions(nanosig PRIVATE
     NS_CONFIG_DEFAULT_DEBUG_LEVEL=${CONFIG_PACKAGE_NANOSIG_LOG_LEVEL}
 )
-
-# The FreeRTOS backend port.c needs the kernel headers provided by the
-# freertos-config INTERFACE chain (package/scheduler/freertos).
-target_link_libraries(nanosig PUBLIC freertos-config)
 
 package_lib_add(nanosig)
 

@@ -29,6 +29,9 @@
 ./build.sh rttlog
 ```
 
+FRDM-MCXN947 的无 RTOS 按键/RGB 灯效例子见
+[baremetal-demo](project/mcxn947/baremetal-demo/README.md)，加载其 defconfig 后使用相同命令构建、打包和烧写。
+
 ### 1. clone项目到本地
 
 ```bash

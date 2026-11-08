@@ -7,7 +7,7 @@ FLY is a one-stop embedded build/flash/debug/firmware-packaging platform written
 - **Build chain:** `./build.sh` (Linux/macOS) or `build.bat` (Windows) → `tool/python/build.py` → CMake → cross-compiled firmware.
 - **Config flow:** `Kconfig` menus → `.config` → `auto-generate/.config.cmake` (CMake vars) + `auto-generate/autoconf.h` (C header).
 - **Top-level CMakeLists.txt** loads `.config.cmake`, then `arch/${CONFIG_ARCH}/gcc-config.cmake`, then adds `arch/`, `package/`, and `project/${CONFIG_PROJECT}` subdirectories.
-- **CI:** GitHub Actions — `.github/workflows/ci.yml`（PR 门禁：Kconfig 扫描 + 10 个 ARM 工程构建 + 三平台宿主工程构建）与 `nightly.yml`（Release 全量 + 打包冒烟）。5 个必需检查与分支保护设置见 [`docs/CI.md`](docs/CI.md)。
+- **CI:** GitHub Actions — `.github/workflows/ci.yml`（PR 门禁：Kconfig 扫描 + 11 个 ARM 工程构建 + 三平台宿主工程构建）与 `nightly.yml`（Release 全量 + 打包冒烟）。5 个必需检查与分支保护设置见 [`docs/CI.md`](docs/CI.md)。
 - **No formal unit-test framework.** Validation = CI + build + Segger RTT log on hardware.
 - `CLAUDE.md` at the repo root is gitignored — it's the user's local OMC orchestration config and is not part of this repo.
 
