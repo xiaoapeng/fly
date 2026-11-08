@@ -3,12 +3,13 @@ menu "nanosig"
 config PACKAGE_NANOSIG
     bool "Enable nanosig signal/slot library"
     default n
+    depends on PACKAGE_SCHEDULER_NONE || PACKAGE_SCHEDULER_FREERTOS
     help
         C11 signal/slot library (github.com/xiaoapeng/nanosig).
         Provides signal connect/emit with a caller-owned, zero-allocation
         hot path. The FLY integration compiles the upstream sources
-        directly, selecting the upstream FreeRTOS platform backend
-        (NANOSIG_PLATFORM=freertos) with no local patches.
+        directly, selecting the upstream bare-metal or FreeRTOS platform
+        backend from the scheduler model, with no local patches.
 
 config PACKAGE_NANOSIG_GIT_COMMIT
     string "nanosig pinned commit"
@@ -17,7 +18,7 @@ config PACKAGE_NANOSIG_GIT_COMMIT
     help
         Full 40-hex commit SHA fetched from
         https://github.com/xiaoapeng/nanosig.git. This pin carries the
-        upstream FreeRTOS platform backend; no local patches are applied.
+        upstream bare-metal and FreeRTOS backends; no local patches are applied.
 
 choice PACKAGE_NANOSIG_LOG_LEVEL
     prompt "nanosig debug output level"

@@ -6,7 +6,7 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 
 | 流水线 | 文件 | 触发 | 作用 |
 |---|---|---|---|
-| 快速 CI | `.github/workflows/ci.yml` | `pull_request`、push 到 `master`、`workflow_dispatch` | 配置扫描 + 10 个 ARM 工程 Debug 构建 + 三平台宿主工程构建 |
+| 快速 CI | `.github/workflows/ci.yml` | `pull_request`、push 到 `master`、`workflow_dispatch` | 配置扫描 + 11 个 ARM 工程 Debug 构建 + 三平台宿主工程构建 |
 | 夜间 CI | `.github/workflows/nightly.yml` | `schedule`（`17 2 * * *` UTC）+ `workflow_dispatch` | 全部 ARM 工程 Release 构建 + `make_img` 打包冒烟 |
 
 同一分支的新 push 会取消上一次未完成的 CI（`concurrency` + `cancel-in-progress`）。
@@ -16,7 +16,7 @@ FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `ma
 | 检查名 | runner | 内容 | 超时 |
 |---|---|---|---|
 | `kconfig` | ubuntu-latest | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
-| `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：10 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一） | 60 min |
+| `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：11 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一、裸机 demo 不含线程/broker 入口） | 60 min |
 | `host-linux` | ubuntu-latest | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
 | `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang；机器有 `ld.lld` 才用 lld 链接） | 20 min |
 | `host-windows` | windows-latest | `tool/test/check_build.py --platform windows`：`project/windows/ehip-test` + `co-ctx-test`（MinGW-w64 GCC） | 30 min |

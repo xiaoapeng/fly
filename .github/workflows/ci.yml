@@ -30,7 +30,7 @@ jobs:
       - name: Kconfig hygiene sweep
         run: python3 tool/test/check_kconfig_hygiene.py
 
-  # The 10 arm-none-eabi projects: build + symbol assertions
+  # The 11 arm-none-eabi projects: build + symbol assertions
   # (no FreeRTOS API undefined, legacy projects FreeRTOS-free, SysTick_Handler
   # uniqueness). Same command a developer runs locally.
   arm-build:

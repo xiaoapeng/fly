@@ -21,7 +21,7 @@ are not present in this host environment and any failure would be a
 toolchain availability issue, not a plan regression.
 
 Coverage:
-  * 10 arm-none-eabi-gcc projects: 3×MCXN947 + 4×STM32 + 3×GD32 (cortex-m)
+  * 11 arm-none-eabi-gcc projects: 4×MCXN947 + 4×STM32 + 3×GD32 (cortex-m)
   * Excluded: gd32vf103c-demo, ch582-demo, linux/macos/windows ehip-test,
     windows co-ctx-test (RISC-V / x86_64 toolchains)
 """
@@ -46,8 +46,9 @@ from tool.test.lib import TestContext, make_context  # noqa: E402
 # executable_basename is the target name produced by the project's CMakeLists
 # (MCXN947/STM32 use `<demo>_app`; GD32 uses `<demo>` directly).
 ARM_PROJECTS: list[tuple[str, str, str]] = [
-    # mcxn947 — 3 demos
+    # mcxn947 — 4 demos
     ("project/mcxn947/freertos-demo/defconfig",          "mcxn947_freertos_demo_app", "mcxn-freertos"),
+    ("project/mcxn947/baremetal-demo/defconfig",         "mcxn947_baremetal_demo_app", "mcxn-baremetal"),
     ("project/mcxn947/mcxn947-demo/defconfig",           "mcxn947_demo_app",          "mcxn-demo"),
     ("project/mcxn947/mcxn947-eth-demo/defconfig",       "mcxn947_eth_demo_app",      "mcxn-eth"),
     # STM32 — 4 demos
@@ -212,6 +213,34 @@ def build_one(ctx: TestContext, repo_root: Path, defconfig: str, exe_basename: s
             return res
         if verbose:
             print(f"    {sys_line.strip()}")
+
+    if project_id == "mcxn-baremetal":
+        rc, out = _run(["arm-none-eabi-nm", str(elf)], cwd=elf.parent)
+        if rc != 0:
+            res.error = f"bare-metal symbol check failed: {out}"
+            return res
+        symbols = [line.split() for line in out.splitlines() if len(line.split()) >= 3]
+        strong = {parts[-1] for parts in symbols if parts[-2] == "T"}
+        required = {"SysTick_Handler", "ns_loop_poll", "ns_baremetal_set_now_us"}
+        if not required.issubset(strong):
+            res.error = f"bare-metal runtime missing strong symbols: {sorted(required - strong)}"
+            return res
+        # SecureFault_Handler belongs to Cortex-M, not the FreeRTOS secure context.
+        forbidden = [parts[-1] for parts in symbols if
+                     parts[-1] in {"ns_loop_run", "ns_loop_start"} or
+                     parts[-1].startswith(("xTask", "vTask", "xQueue", "vQueue",
+                                          "xPort", "vPort", "pvPort",
+                                          "SecureContext_", "SecureInit_",
+                                          "ns_broker_", "ns_platform_thread_"))]
+        if forbidden:
+            res.error = f"bare-metal runtime contains threaded symbols: {forbidden}"
+            return res
+        addresses = {parts[-1]: int(parts[0], 16) for parts in symbols}
+        stack_top = addresses.get("__StackTop", 0)
+        stack_limit = addresses.get("__StackLimit", stack_top)
+        if stack_top - stack_limit < 4096:
+            res.error = "bare-metal main stack must retain the original app task's 4 KiB budget"
+            return res
 
     res.ok = True
     return res

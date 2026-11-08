@@ -10,6 +10,7 @@ mismatch.
 Coverage:
   * 12 active legacy defconfigs   (must pin SCHEDULER_EVENTHUB_OS)
   * freertos-demo defconfig       (must pin SCHEDULER_FREERTOS)
+  * baremetal-demo defconfig      (must pin SCHEDULER_NONE with nanosig/nsbtn)
   * ch582-demo defconfig          (must pin SCHEDULER_NONE)
   * synthetic dual-leg .config    (must normalize to one scheduler leg)
 """
@@ -49,6 +50,7 @@ LEGACY_DEFCONFIGS = [
 ]
 
 FREERTOS_DEFCONFIG = "project/mcxn947/freertos-demo/defconfig"
+BAREMETAL_DEFCONFIG = "project/mcxn947/baremetal-demo/defconfig"
 NONE_DEFCONFIG    = "project/ch58x/ch582-demo/defconfig"
 
 
@@ -81,6 +83,20 @@ def check_freertos(ctx: TestContext) -> list[str]:
         *arch_facts,
     ]
     return [m for (s, w) in sym_checks for m in (expect(k, s, w),) if m]
+
+
+def check_baremetal(ctx: TestContext) -> list[str]:
+    k, _ = load_defconfig(ctx, BAREMETAL_DEFCONFIG)
+    checks = [
+        ("PROJECT", "mcxn947/baremetal-demo"),
+        ("PACKAGE_SCHEDULER_NONE", "y"),
+        ("PACKAGE_SCHEDULER_FREERTOS", "n"),
+        ("PACKAGE_SCHEDULER_EVENTHUB_OS", "n"),
+        ("PACKAGE_NANOSIG", "y"),
+        ("PACKAGE_NSBTN", "y"),
+        ("PACKAGE_LWBTN_USE_CLICK", "y"),
+    ]
+    return [m for symbol, wanted in checks for m in (expect(k, symbol, wanted),) if m]
 
 
 def check_none(ctx: TestContext) -> list[str]:
@@ -156,6 +172,7 @@ def main(argv: list[str]) -> int:
 
     for name, runner in (
         ("freertos-demo",         check_freertos),
+        ("baremetal-demo",        check_baremetal),
         ("ch582-demo-none",       check_none),
         ("malformed-safety-net",  check_malformed_safety),
     ):
@@ -175,7 +192,7 @@ def main(argv: list[str]) -> int:
                 sys.stderr.write(f"    - {e}\n")
         return 1
 
-    total = len(LEGACY_DEFCONFIGS) + 3
+    total = len(LEGACY_DEFCONFIGS) + 4
     sys.stdout.write(f"check_freertos_config: PASS ({total} checks)\n")
     return 0
 
