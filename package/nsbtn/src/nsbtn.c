@@ -92,7 +92,7 @@ static void on_event(struct lwbtn *lwobj, struct lwbtn_btn *btn, lwbtn_evt_t evt
             break;
     }
 
-    /* 队列满时丢事件（nanosig emit 非阻塞），与旧应用层胶水行为一致。 */
+    /* 队列满时丢事件，与旧应用层胶水行为一致。 */
     (void)ns_signal_emit(nsbtn_event, &p);
 }
 

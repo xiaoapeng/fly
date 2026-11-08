@@ -12,7 +12,7 @@ config PACKAGE_NANOSIG
 
 config PACKAGE_NANOSIG_GIT_COMMIT
     string "nanosig pinned commit"
-    default "9abd957a2ca23512c1f093cb1f0f15a99bd3671f"
+    default "b3e4d87ff777574baf00dc1199e831daa2f7c5a2"
     depends on PACKAGE_NANOSIG
     help
         Full 40-hex commit SHA fetched from
