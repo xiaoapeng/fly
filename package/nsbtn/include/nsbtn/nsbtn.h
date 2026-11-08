@@ -52,7 +52,7 @@ typedef struct {
 
 /* 所有按钮共用同一个事件信号，按钮身份在 payload->handle 里区分。 */
 NS_SIGNAL_DECLARE(nsbtn_event);
-NS_DEFINE_SLOT(nsbtn_event_slot, nsbtn_event_payload_t);
+NS_SLOT_FN_TYPEDEF(nsbtn_event_slot, nsbtn_event_payload_t);
 
 /**
  * @brief 按键句柄（透明）：btn 指向包内连续数组，可直接用于 lwbtn API。

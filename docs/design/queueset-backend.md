@@ -1,7 +1,7 @@
 # FreeRTOS queue-set 后端设计（nanosig watcher）
 
 > 来源：`.omc/plans/queueset-watcher-v1.md`（v5）+ `.omc/specs/deep-interview-queueset-watcher.md`。
-> Pin：nanosig `59338b191bcb80d350fcbe19b09e23712d4775d5`（FreeRTOS queue-set 后端已由上游 `79729fc` 提供；FLY 不再打补丁）。
+> Pin：nanosig `b3e4d87ff777574baf00dc1199e831daa2f7c5a2`（FreeRTOS queue-set 后端已由上游 `79729fc` 提供；FLY 不再打补丁）。
 
 ## 1. 结论
 
@@ -72,11 +72,18 @@ FIXED_CAP ≥ Σ 成员容量 + max(成员容量)
 ## 8. nanosig 调试日志（RTT 桥接 + 等级）
 
 - nanosig 的所有调试输出（`ns_debug` / `ns_printf`）最终汇聚到 `src/ns_formatio.c` 里一个 **weak 的 `stdout_write()`**。
-- freertos-demo 提供**强符号 `stdout_write`** 指向 `SEGGER_RTT_Write(0, …)`，于是 nanosig 内部日志（broker / platform / timer）直接进同一条 RTT。符号解析验证：`addr2line` → `project/mcxn947/freertos-demo/app/main.c`。
+- FreeRTOS 后端的 `stdout_write()` 转调应用提供的**强符号 `platform_stdout_write`**，由 `project/mcxn947/freertos-demo/app/runtime.c` 桥接到 `SEGGER_RTT_Write(0, …)`，于是 nanosig 内部日志（broker / platform / timer）直接进同一条 RTT。
 - **全局等级 Kconfig**：`CONFIG_PACKAGE_NANOSIG_LOG_LEVEL`（choice：suppress/err/warning/sys/info/debug，默认 `sys`）→ `package/nanosig/CMakeLists.txt` 映射为 `-DNS_CONFIG_DEFAULT_DEBUG_LEVEL=<0..5>`，播种 `ns_debug.c` 的 `dbg_level` 默认值。运行时仍可用 `ns_dbg_set_level()` 覆盖。
-- **per-module 等级**：`ns_mdebugln(MOD, …)` 等由编译期的 `NS_DBG_MODULE_LEVEL_<MOD>` 门控。上游 pin（`59338b19`）已把核心 4 个模块（`src/{nanosig,ns_broker,ns_timer,ds/ns_mpsc_record_ring}.c`）的 `#define NS_DBG_MODULE_LEVEL_<MOD> NS_DBG_SYS` 包进 `#ifndef`，因此**可从项目 CMake 覆盖**：`target_compile_definitions(nanosig PRIVATE NS_DBG_MODULE_LEVEL_BROKER=NS_DBG_DEBUG)`。未定义时默认 SYS。注意核心当前只有错误级日志（`ns_merrln`），把模块等级调到 DEBUG 不会多出核心日志，但会成为后续在核心加 INFO/DEBUG 日志时的有效旋钮。用户/应用模块本就不在源码里写死等级，同样可直接 `-D`。
+- **per-module 等级**：`ns_mdebugln(MOD, …)` 等由编译期的 `NS_DBG_MODULE_LEVEL_<MOD>` 门控。核心及平台五个模块的等级均可覆盖，例如 `target_compile_definitions(nanosig PRIVATE NS_DBG_MODULE_LEVEL_BROKER=NS_DBG_DEBUG)`；未指定时跟随 `NS_DBG_MODULE_LEVEL_DEFAULT`（默认 SYS）。公共默认等级如需覆盖，应以 PUBLIC 编译定义同时传给库及应用。
 
-## 9. 相关文档
+## 9. 升级到 `b3e4d87`
+
+- 上游将 `NS_DEFINE_SLOT` 更名为 `NS_SLOT_FN_TYPEDEF`；nsbtn 同步改用新宏，保留 `nsbtn_event_slot` 类型名和回调签名。
+- MPSC 修复计数器回绕竞争并移除内部 `reserve_pos` 字段，库及调用方必须一起干净重编译，不能混用旧对象文件。
+- 当前 FreeRTOS 直接源码集成未启用 `NS_MPSC_CACHELINE_ALIGNED`，无需加入宿主缓存行探针或额外布局宏；源码清单、broker 栈和日志配置沿用现有接入方式。
+- emit 在队列满时返回错误，不等待消费者腾空；生产者争用期间仍可能自旋。
+
+## 10. 相关文档
 
 - FreeRTOS 移植设计：`docs/design/freertos-port.md`
 - RTOS 选择快速参考：`docs/reference/rtos-choice.md`
