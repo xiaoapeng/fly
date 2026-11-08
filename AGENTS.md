@@ -73,7 +73,7 @@ A project's `CMakeLists.txt` declares image targets via `add_jlink_image(<name> 
 
 1. 改动走特性分支 + PR，**不直接 push `master`**（push 到 master 只触发事后兜底的 CI，不是交付路径）
 2. 必需检查（`kconfig`、`arm-build`、`host-linux`、`host-macos`、`host-windows`）必须全绿；分支保护设了 `strict` 时，分支落后要先与 `master` 同步并重跑。这五项曾因上游 `eventhub`（Apple Clang C11 atomic）与 `ehshell`（MinGW 缺 `bzero`/`isprint`）而暂缓，现已在 `96916a7`/`a1c1bcf` 修复合入，五项全部必需
-3. 合并统一用 **Rebase and merge**（`gh pr merge --rebase`），不用 squash / merge commit；合并后删除特性分支
+3. 合并统一用 **Rebase and merge**（`gh pr merge --rebase`），不用 squash / merge commit；合并后删除特性分支，并自动切回本地 `master`，用 `git pull --ff-only` 同步远端；若切换会覆盖未提交改动或本地 `master` 已分叉，保留现场并报告，不自动丢弃改动或重置分支
 4. 本地必须先跑与 CI 等价的检查（至少 `python3 tool/test/check_freertos_config.py` 与 `python3 tool/test/check_kconfig_hygiene.py`）；改了 ARM 工程相关代码再跑 `python3 tool/test/check_build_arm.py`，改了宿主工程再跑 `python3 tool/test/check_build.py --platform <host>`
 5. 新增工程除了代码，必须同步 `tool/test/check_build_arm.py`（ARM）或 `tool/test/check_build.py` 的 `PLATFORM_PROJECTS`（宿主）
 6. 分支保护与合并方式的配置命令见 [`docs/CI.md`](docs/CI.md)，改了 job 名必须同步改 `contexts`，否则检查永远不会被要求
