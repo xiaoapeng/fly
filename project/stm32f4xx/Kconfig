@@ -1,6 +1,4 @@
-
-
-choice
+choice FLY_PROJECT_STM32F4XX
     prompt "Select a stm32f4xx platform project"
     default PROJECT_STM32F4XX_NONE
     depends on ARCH_STM32F4XX
@@ -10,17 +8,6 @@ config PROJECT_STM32F4XX_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_STM32F401CB_DEMO
-    bool "STM32F401CB demo project"
-    help
-        Select this option to enable Module STM32F401CB DEMO.
-    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
-    select PACKAGE_SEGGER_RTT
-    
 endchoice
 
-
-config PROJECT
-    string
-    default "stm32f4xx/stm32f401cb-demo" if PROJECT_STM32F401CB_DEMO
-
+rsource "*/Kconfig"

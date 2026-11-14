@@ -105,6 +105,15 @@ config SYMBOL
 - 改之前先看两三个同类块，照抄它们的顺序和缩进，不要凭个人习惯排版
 - 反面例子：把 `select PACKAGE_SCHEDULER_REQUIRE_*` 插在 `bool` 与 `help` 之间（2026-10 已按本条修正为块尾、紧邻 `select PACKAGE_SEGGER_RTT` 之前）
 
+## R8 工程声明放在工程自己的 Kconfig
+
+- `project/Kconfig` 自动加载各系列；`project/<family>/Kconfig` 定义命名 choice `FLY_PROJECT_<FAMILY>`，保留菜单、架构约束、默认 None 项，并用 `rsource "*/Kconfig"` 加载具体工程。
+- 每个 `project/<family>/<project>/Kconfig` 续接同一个命名 choice，声明自己的 `PROJECT_*` 选项、`depends on ARCH_*` 和包依赖。各工程共用同一 choice，不能各建互不关联的 choice 或普通开关。
+- `config PROJECT` 的路径默认值放在工程文件的 `endchoice` 后，用 `if PROJECT_*` 限定；字符串不能成为 choice 成员。
+- 保持现有 `PROJECT_*` 名称和路径，已有 defconfig 继续可用；Kconfig 符号没有目录级命名空间，新工程的符号必须全局唯一。
+- 新增同系列工程只需添加自己的 Kconfig，不再修改父级工程名单。每个系列至少保留一个工程 Kconfig；空系列会由 `rsource` 报错。
+- 参考 [MCXN947 系列入口](../../project/mcxn947/Kconfig) 和 [ETH demo 工程声明](../../project/mcxn947/mcxn947-eth-demo/Kconfig)。运行 `check_kconfig_hygiene.py` 验证每份 defconfig 的工程路径、单选约束和解析警告。
+
 ## 变更历史
 
 - 2026-10：11 处 `project/*/Kconfig` 的 `select PACKAGE_SCHEDULER_EVENTHUB_OS` 被确认为死代码（R1）并删除，改为 `select PACKAGE_SCHEDULER_REQUIRE_*` + `package/scheduler/Kconfig` 条件 default（R2）。同批修掉了「包 Kconfig 枚举 `PROJECT_*`」的错误做法（R3）。

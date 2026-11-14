@@ -1,6 +1,4 @@
-
-
-choice
+choice FLY_PROJECT_CH58X
     prompt "Select a ch58x platform project"
     default PROJECT_CH58X_NONE
     depends on ARCH_CH58X
@@ -10,17 +8,6 @@ config PROJECT_CH58X_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_CH582_DEMO
-    bool "CH582 demo project"
-    help
-        Select this option to enable Module CH582 DEMO.
-    #select PACKAGE_SCHEDULER_EVENTHUB_OS
-    select PACKAGE_SEGGER_RTT
-    
 endchoice
 
-
-config PROJECT
-    string
-    default "ch58x/ch582-demo" if PROJECT_CH582_DEMO
-
+rsource "*/Kconfig"
