@@ -1,0 +1,14 @@
+choice FLY_PROJECT_WINDOWS
+    depends on ARCH_X64_WINDOWS
+
+config PROJECT_WINDOWS_CO_CTX_TEST
+    bool "Coroutine context save/restore test"
+    help
+        Select this option to test coroutine context save/restore on x64.
+    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
+
+endchoice
+
+config PROJECT
+    string
+    default "windows/co-ctx-test" if PROJECT_WINDOWS_CO_CTX_TEST

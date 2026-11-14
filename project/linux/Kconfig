@@ -1,6 +1,4 @@
-
-
-choice
+choice FLY_PROJECT_LINUX
     prompt "Select a linux platform project"
     default PROJECT_LINUX_NONE
     depends on ARCH_X64_LINUX
@@ -10,18 +8,6 @@ config PROJECT_LINUX_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_EHIP_TEST
-    bool "EHIP test project"
-    help
-        Select this option to enable Module EHIP TEST.
-    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
-    select PACKAGE_EHIP
-    select PACKAGE_EHSHELL
-    select PACKAGE_ARGUMENT_PARSER
 endchoice
 
-
-config PROJECT
-    string
-    default "linux/ehip-test" if PROJECT_EHIP_TEST
-
+rsource "*/Kconfig"
