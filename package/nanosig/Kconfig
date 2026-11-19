@@ -9,18 +9,16 @@ config PACKAGE_NANOSIG
         Provides signal connect/emit with a caller-owned, zero-allocation
         hot path. The FLY integration compiles the upstream sources
         directly, selecting the upstream bare-metal or FreeRTOS platform
-        backend from the scheduler model. Repository patches are applied
-        after fetching the pinned upstream source.
+        backend from the scheduler model, with no local patches.
 
 config PACKAGE_NANOSIG_GIT_COMMIT
     string "nanosig pinned commit"
-    default "b3e4d87ff777574baf00dc1199e831daa2f7c5a2"
+    default "3110cf3e3d529097a531ee259eb84d7fa4ed98f8"
     depends on PACKAGE_NANOSIG
     help
         Full 40-hex commit SHA fetched from
         https://github.com/xiaoapeng/nanosig.git. This pin carries the
-        upstream bare-metal and FreeRTOS backends. The package patch directory
-        carries the MPSC preemption fix until it is included in a new pin.
+        upstream bare-metal and FreeRTOS backends; no local patches are applied.
 
 choice PACKAGE_NANOSIG_LOG_LEVEL
     prompt "nanosig debug output level"
