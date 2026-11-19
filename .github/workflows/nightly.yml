@@ -20,8 +20,12 @@ jobs:
           python-version: "3.12"
       - name: Install cross toolchain and build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          # The EC2 Ubuntu mirror stalled on toolchain downloads; Azure runners use this mirror.
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|http://[^ /]*ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
             gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
             gdb-multiarch ninja-build cmake git
           python3 -m pip install kconfiglib requests
@@ -57,8 +61,12 @@ jobs:
           python-version: "3.12"
       - name: Install cross toolchain and build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          # The EC2 Ubuntu mirror stalled on toolchain downloads; Azure runners use this mirror.
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|http://[^ /]*ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
             gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
             gdb-multiarch ninja-build cmake git
           python3 -m pip install kconfiglib requests
