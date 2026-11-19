@@ -16,6 +16,7 @@ fetch_git_project(
     AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/xiaoapeng/nanosig.git
     GIT_TAG        "${CONFIG_PACKAGE_NANOSIG_GIT_COMMIT}"
+    PATCH_DIR      "${CMAKE_CURRENT_LIST_DIR}/patches"
 )
 
 # FLY compiles the upstream core directly instead of adding upstream's CMake

@@ -1,0 +1,600 @@
+diff --git a/include/nanosig/nanosig_mpsc_record_ring.h b/include/nanosig/nanosig_mpsc_record_ring.h
+index 46f8cde..97e30b8 100644
+--- a/include/nanosig/nanosig_mpsc_record_ring.h
++++ b/include/nanosig/nanosig_mpsc_record_ring.h
+@@ -154,6 +154,8 @@ extern size_t ns_mpsc_record_ring_max_record_size(const ns_mpsc_record_ring_t *r
+  *
+  * 线程安全：可被多个生产者并发调用。
+  * 预留规划与位置发布串行，竞争时可能自旋等待；payload 复制可并行。
++ * RTOS 后端在预留阶段禁止同核任务抢占，payload 复制不延长该保护。
++ * 仅支持后端已声明的执行上下文，不因此获得 ISR 调用支持。
+  *
+  * @param[in,out] ring        已初始化的环。
+  * @param[in]     record      指向记录数据的指针；record_size 为 0 时可为 NULL。
+@@ -178,6 +180,8 @@ extern int ns_mpsc_record_ring_try_push(
+  *
+  * 线程安全：可被多个生产者并发调用。
+  * 预留规划与位置发布串行，竞争时可能自旋等待；payload 复制可并行。
++ * RTOS 后端在预留阶段禁止同核任务抢占，payload 复制不延长该保护。
++ * 仅支持后端已声明的执行上下文，不因此获得 ISR 调用支持。
+  *
+  * @param[in,out] ring       已初始化的环。
+  * @param[in]     parts      记录片段数组。
+diff --git a/include/nanosig/nanosig_port.h b/include/nanosig/nanosig_port.h
+index 1b6e321..dc5cae3 100644
+--- a/include/nanosig/nanosig_port.h
++++ b/include/nanosig/nanosig_port.h
+@@ -57,6 +57,11 @@ struct ns_platform_waitable;
+  * 平台后端头提供的符号：
+  * - `ns_waitable_handle_t` 及其谓词 `ns_waitable_handle_is_valid(h)`；
+  * - `NS_PLATFORM_ABI_PROBE`（跨 TU 平台错配的链接期探针）；
++ * - `ns_platform_preempt_state_t` 及内联 `ns_platform_preempt_enter/leave`：
++ *   RTOS 禁止同核任务抢占，其他后端为空操作；只用于不可阻塞的短元数据区，
++ *   必须在同一任务中按嵌套顺序配对，不扩展现有 ISR 调用契约；
++ *   FreeRTOS 恢复内核任务临界区嵌套，不承诺恢复手工修改的中断掩码；
++ *   Zephyr 要求调用任务处于 supervisor mode，不支持用户态直接调用；
+  * - `ns_platform_wakeup_t` / `ns_platform_mutex_t` / `ns_platform_thread_t`
+  *   / `ns_platform_waitset_t`，全部为平台内核原语的透明别名。
+  *
+diff --git a/platform/README.md b/platform/README.md
+index 6e9c264..a113c49 100644
+--- a/platform/README.md
++++ b/platform/README.md
+@@ -21,6 +21,7 @@ Windows（WaitForMultipleObjects + SRWLOCK）、FreeRTOS（queue set + 每对象
+ - 内存：`ns_platform_alloc`、`ns_platform_free`。
+ - wakeup：`init`、`deinit`、signal、单个等待。
+ - 同步：mutex 的 `init`、`deinit`、加锁和解锁。
++- 短预留保护：`ns_platform_preempt_enter` / `ns_platform_preempt_leave`。
+ - 时间：单调微秒时钟。
+ - 线程：`init`、join（`ns_platform_thread_join` 保留 join 命名：它确实阻塞至线程结束）、
+   栈大小上下限查询（`ns_platform_thread_stack_range`）。
+@@ -31,6 +32,19 @@ Windows（WaitForMultipleObjects + SRWLOCK）、FreeRTOS（queue set + 每对象
+ `platform/<os>/nanosig_platform_port.h` 以**透明别名**形式提供（见“平台类型注入”节）。
+ （唯一例外：Zephyr 后端的线程对象由 port 分配 —— 见“Zephyr 后端”一节。）
+ 
++每个后端头必须提供 `ns_platform_preempt_state_t` 和内联的 enter/leave，不能依靠
++公共头的默认空实现。FreeRTOS 使用 `taskENTER_CRITICAL` / `taskEXIT_CRITICAL`，
++由内核嵌套计数恢复任务临界区；state 是不透明标记，不用于恢复应用手工修改的中断掩码。
++Zephyr 使用 `irq_lock` / `irq_unlock` 保存并恢复 key，调用任务必须处于 supervisor mode，
++不支持用户态直接入队。宿主和单执行上下文裸机为空操作，
++不增加新的调度保证，也不增加裸机导出符号。
++
++MPSC 只在取得 busy 之前到容量复核、header 初始化、发布位置并清 busy 之间使用该保护；
++容量不足同样恢复状态，payload 复制和提交留在保护区外。调用方必须在同一任务中按
++嵌套顺序配对，保护区不得阻塞、分配、唤醒或调用用户回调。该机制不扩展 ISR 调用支持；
++FreeRTOS 高于内核屏蔽阈值的中断和 Zephyr zero-latency ISR 仍不得访问此队列。
++跨核的队列预留互斥仍由现有 CAS 协议保证；具体 RTOS 的 SMP 保护成本需按目标验证。
++
+ ## 线程栈大小
+ 
+ `ns_platform_thread_init` 的第 5 个参数 `stack_size` 指定线程栈大小，单位**字节**；
+diff --git a/platform/baremetal/nanosig_platform_port.h b/platform/baremetal/nanosig_platform_port.h
+index 783fc75..36c8020 100644
+--- a/platform/baremetal/nanosig_platform_port.h
++++ b/platform/baremetal/nanosig_platform_port.h
+@@ -176,4 +176,19 @@ void ns_baremetal_set_now_us(ns_baremetal_now_us_fn fn);
+ }
+ #endif
+ 
++/** 本后端不增加抢占保护；状态仅用于统一调用接口。 */
++typedef unsigned int ns_platform_preempt_state_t;
++
++/** 保持本后端既有调度语义。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    return 0u;
++}
++
++/** 与 enter 配对的空操作。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    (void)state;
++}
++
+ #endif /* NANOSIG_PLATFORM_PORT_H */
+diff --git a/platform/freertos/nanosig_platform_port.h b/platform/freertos/nanosig_platform_port.h
+index 64fb8db..4cd0982 100644
+--- a/platform/freertos/nanosig_platform_port.h
++++ b/platform/freertos/nanosig_platform_port.h
+@@ -76,4 +76,21 @@ typedef struct ns_platform_waitset {
+     struct ns_platform_waitable    *slots[NANOSIG_FREERTOS_WAITSET_CAP];
+ } ns_platform_waitset_t;
+ 
++/** 抢占保护状态为不透明标记；FreeRTOS 通过任务临界区嵌套计数恢复。 */
++typedef UBaseType_t ns_platform_preempt_state_t;
++
++/** 仅任务上下文使用；必须与 leave 配对，不与手工中断掩码操作混用。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    taskENTER_CRITICAL();
++    return 0u;
++}
++
++/** 恢复进入前的 FreeRTOS 任务临界区嵌套层数。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    (void)state;
++    taskEXIT_CRITICAL();
++}
++
+ #endif
+diff --git a/platform/linux/nanosig_platform_port.h b/platform/linux/nanosig_platform_port.h
+index 9350630..9fa7d93 100644
+--- a/platform/linux/nanosig_platform_port.h
++++ b/platform/linux/nanosig_platform_port.h
+@@ -65,4 +65,19 @@ typedef struct ns_platform_waitset {
+     size_t count;
+ } ns_platform_waitset_t;
+ 
++/** 本后端不增加抢占保护；状态仅用于统一调用接口。 */
++typedef unsigned int ns_platform_preempt_state_t;
++
++/** 保持本后端既有调度语义。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    return 0u;
++}
++
++/** 与 enter 配对的空操作。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    (void)state;
++}
++
+ #endif
+diff --git a/platform/macos/nanosig_platform_port.h b/platform/macos/nanosig_platform_port.h
+index b1d9236..3d51b53 100644
+--- a/platform/macos/nanosig_platform_port.h
++++ b/platform/macos/nanosig_platform_port.h
+@@ -64,4 +64,19 @@ typedef struct ns_platform_waitset {
+     size_t count;
+ } ns_platform_waitset_t;
+ 
++/** 本后端不增加抢占保护；状态仅用于统一调用接口。 */
++typedef unsigned int ns_platform_preempt_state_t;
++
++/** 保持本后端既有调度语义。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    return 0u;
++}
++
++/** 与 enter 配对的空操作。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    (void)state;
++}
++
+ #endif
+diff --git a/platform/windows/nanosig_platform_port.h b/platform/windows/nanosig_platform_port.h
+index f9b5b93..4abea0b 100644
+--- a/platform/windows/nanosig_platform_port.h
++++ b/platform/windows/nanosig_platform_port.h
+@@ -70,4 +70,19 @@ typedef struct ns_platform_waitset {
+     HANDLE                             timer;
+ } ns_platform_waitset_t;
+ 
++/** 本后端不增加抢占保护；状态仅用于统一调用接口。 */
++typedef unsigned int ns_platform_preempt_state_t;
++
++/** 保持本后端既有调度语义。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    return 0u;
++}
++
++/** 与 enter 配对的空操作。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    (void)state;
++}
++
+ #endif
+diff --git a/platform/zephyr/nanosig_platform_port.h b/platform/zephyr/nanosig_platform_port.h
+index 392cb06..9a140b5 100644
+--- a/platform/zephyr/nanosig_platform_port.h
++++ b/platform/zephyr/nanosig_platform_port.h
+@@ -92,4 +92,19 @@ typedef struct ns_platform_waitset {
+     struct k_poll_event           events[NS_ZEPHYR_WAITSET_CAP];
+ } ns_platform_waitset_t;
+ 
++/** 保存 Zephyr IRQ 锁的恢复 key。 */
++typedef unsigned int ns_platform_preempt_state_t;
++
++/** supervisor 任务上下文中保存 IRQ 状态并禁止本核抢占，不支持用户态直接调用。 */
++static inline ns_platform_preempt_state_t ns_platform_preempt_enter(void)
++{
++    return irq_lock();
++}
++
++/** 按嵌套顺序恢复进入前的 IRQ 锁状态。 */
++static inline void ns_platform_preempt_leave(ns_platform_preempt_state_t state)
++{
++    irq_unlock(state);
++}
++
+ #endif
+diff --git a/src/ds/ns_mpsc_record_ring.c b/src/ds/ns_mpsc_record_ring.c
+index 3385be6..763c678 100644
+--- a/src/ds/ns_mpsc_record_ring.c
++++ b/src/ds/ns_mpsc_record_ring.c
+@@ -10,6 +10,7 @@
+ #include <string.h>
+ #include <stdbool.h>
+ 
++#include <nanosig/nanosig_port.h>
+ #include <nanosig/nanosig_mpsc_record_ring.h>
+ 
+ /* Module overrides take precedence over the shared default (e.g. project CMake
+@@ -357,6 +358,7 @@ int ns_mpsc_record_ring_try_pushv(
+     size_t part_count)
+ {
+     ns_mpsc_record_push_plan_t plan;
++    ns_platform_preempt_state_t preempt_state;
+     size_t record_size = 0u;
+     size_t write_pos;
+     size_t read_pos;
+@@ -375,6 +377,8 @@ int ns_mpsc_record_ring_try_pushv(
+     }
+     if(record_size > ns_mpsc_record_ring_max_record_size(ring)) return NS_E_INVAL;
+ 
++    /* busy 持有者不能被同核生产者抢占，否则高优先级等待者会饿死它。 */
++    preempt_state = ns_platform_preempt_enter();
+     for(;;){
+         size_t expected;
+ 
+@@ -396,6 +400,7 @@ int ns_mpsc_record_ring_try_pushv(
+     read_pos = ns_atomic_load_explicit(&ring->read_pos, ns_memory_order_acquire);
+     if(!ns_mpsc_record_ring_plan_push(ring, record_size, write_pos, read_pos, &plan)){
+         ns_atomic_store_explicit(&ring->write_pos, write_pos, ns_memory_order_release);
++        ns_platform_preempt_leave(preempt_state);
+         return NS_E_QUEUE_FULL;
+     }
+ 
+@@ -413,6 +418,7 @@ int ns_mpsc_record_ring_try_pushv(
+ 
+         /* 2. 一次发布新位置并清除占用，允许后续生产者预留 */
+         ns_atomic_store_explicit(&ring->write_pos, write_pos + plan.publish_size, ns_memory_order_release);
++        ns_platform_preempt_leave(preempt_state);
+ 
+         /* 3. memcpy 数据（真实记录已保证连续，padding 无需写零） */
+         ns_mpsc_record_ring_write_parts(ring, plan.record_pos, parts, part_count);
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index 6fc4eb4..864468a 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -1,3 +1,8 @@
++if(NANOSIG_BUILD_TESTS)
++    nanosig_add_test_program(nanosig_test_mpsc_record_ring_preempt unit/test_mpsc_record_ring_preempt.c)
++    set_tests_properties(nanosig_test_mpsc_record_ring_preempt PROPERTIES TIMEOUT 10)
++endif()
++
+ if(NANOSIG_BUILD_TESTS AND NANOSIG_PLATFORM STREQUAL "host")
+     # Event broker tests — split by concern for faster parallel builds
+     nanosig_add_test_program(nanosig_test_broker_lifecycle unit/test_broker_lifecycle.c)
+diff --git a/test/freertos/test_freertos_waitset.c b/test/freertos/test_freertos_waitset.c
+index b2323a0..5cce20d 100644
+--- a/test/freertos/test_freertos_waitset.c
++++ b/test/freertos/test_freertos_waitset.c
+@@ -13,6 +13,8 @@
+  * @copyright Copyright (c) 2026 nanosig contributors
+  */
+ 
++#include <pthread.h>
++#include <signal.h>
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -631,6 +633,33 @@ static void test_thread_stack_size(void)
+     CHECK(g_thread_ran == 0);
+ }
+ 
++/* POSIX harness 的 tick 由 SIGALRM 驱动；直接检查真实 port 的嵌套保护。 */
++static void test_preempt_guard(void)
++{
++    sigset_t before;
++    sigset_t inside;
++    sigset_t after_inner;
++    sigset_t after;
++    ns_platform_preempt_state_t outer;
++    ns_platform_preempt_state_t inner;
++    int rc_inside;
++    int rc_inner;
++
++    CHECK(pthread_sigmask(SIG_SETMASK, NULL, &before) == 0);
++    outer = ns_platform_preempt_enter();
++    inner = ns_platform_preempt_enter();
++    rc_inside = pthread_sigmask(SIG_SETMASK, NULL, &inside);
++    ns_platform_preempt_leave(inner);
++    rc_inner = pthread_sigmask(SIG_SETMASK, NULL, &after_inner);
++    ns_platform_preempt_leave(outer);
++    CHECK(pthread_sigmask(SIG_SETMASK, NULL, &after) == 0);
++    CHECK(rc_inside == 0 && rc_inner == 0);
++    CHECK(sigismember(&before, SIGALRM) == 0);
++    CHECK(sigismember(&inside, SIGALRM) == 1);
++    CHECK(sigismember(&after_inner, SIGALRM) == 1);
++    CHECK(sigismember(&after, SIGALRM) == sigismember(&before, SIGALRM));
++}
++
+ static void test_clock(void)
+ {
+     ns_platform_time_us_t t0 = 0u;
+@@ -668,6 +697,7 @@ static void runner_task(void *arg)
+     test_thread_join_retries();
+     test_thread_stack_size();
+     test_clock();
++    test_preempt_guard();
+ 
+     fflush(NULL);
+     _Exit(g_failures != 0 ? 1 : 0);
+diff --git a/test/unit/test_mpsc_record_ring_stress.c b/test/unit/test_mpsc_record_ring_stress.c
+index 1953e67..a15a660 100644
+--- a/test/unit/test_mpsc_record_ring_stress.c
++++ b/test/unit/test_mpsc_record_ring_stress.c
+@@ -2,10 +2,9 @@
+  * @file test_mpsc_record_ring_stress.c
+  * @brief 8-producer / 1-consumer stress test (20 minutes by default).
+  *
+- * NOT part of the normal test suite. Run manually:
+- *   clang -I include -I . -O2 -o build/stress.exe \
+- *       test/unit/test_mpsc_record_ring_stress.c src/ds/ns_mpsc_record_ring.c
+- *   NS_MPSC_RECORD_RING_STRESS_DURATION_SEC=5 ./build/stress.exe
++ * CTest limits the run to 20 seconds. Run the configured target manually:
++ *   cmake --build build --target nanosig_test_mpsc_record_ring_stress
++ *   NS_MPSC_RECORD_RING_STRESS_DURATION_SEC=5 ./build/nanosig_test_mpsc_record_ring_stress
+  */
+ 
+ #include <stdint.h>
+diff --git a/test/unit/test_platform_contract_compile.c b/test/unit/test_platform_contract_compile.c
+index 3912bec..7dea191 100644
+--- a/test/unit/test_platform_contract_compile.c
++++ b/test/unit/test_platform_contract_compile.c
+@@ -148,9 +148,19 @@ static void platform_contract_check_waitset_types(void)
+     (void)NS_WAITABLE_EVENT_ERR;
+ }
+ 
++static void platform_contract_check_preemption(void)
++{
++    ns_platform_preempt_state_t outer = ns_platform_preempt_enter();
++    ns_platform_preempt_state_t inner = ns_platform_preempt_enter();
++
++    ns_platform_preempt_leave(inner);
++    ns_platform_preempt_leave(outer);
++}
++
+ int main(void)
+ {
+     platform_contract_accept_caller_storage();
++    platform_contract_check_preemption();
+     platform_contract_check_atomic_macros();
+     platform_contract_check_waitset_types();
+     (void)NS_PLATFORM_ABI_PROBE;
+diff --git a/test/unit/test_mpsc_record_ring_preempt.c b/test/unit/test_mpsc_record_ring_preempt.c
+new file mode 100644
+index 0000000..54999b4
+--- /dev/null
++++ b/test/unit/test_mpsc_record_ring_preempt.c
+@@ -0,0 +1,223 @@
++/**
++ * @file test_mpsc_record_ring_preempt.c
++ * @brief 预留保护边界与高优先级生产者交错的确定性回归。
++ */
++
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include <nanosig/nanosig_port.h>
++
++#define ns_mpsc_record_ring_init test_ring_init
++#define ns_mpsc_record_ring_capacity test_ring_capacity
++#define ns_mpsc_record_ring_free_capacity test_ring_free_capacity
++#define ns_mpsc_record_ring_max_record_size test_ring_max_record_size
++#define ns_mpsc_record_ring_try_push test_ring_try_push
++#define ns_mpsc_record_ring_try_pushv test_ring_try_pushv
++#define ns_mpsc_record_ring_try_acquire test_ring_try_acquire
++#define ns_mpsc_record_ring_release test_ring_release
++
++#include <nanosig/nanosig_mpsc_record_ring.h>
++
++typedef unsigned int test_preempt_state_t;
++static test_preempt_state_t test_preempt_enter(void);
++static void test_preempt_leave(test_preempt_state_t state);
++static bool test_reserve_cas(atomic_size_t *ptr, size_t *expected,
++    size_t desired, ns_memory_order_t success, ns_memory_order_t failure);
++static void *test_payload_copy(void *destination, const void *source, size_t size);
++
++/* 只拦截测试副本，生产实现不增加调度 hook。 */
++#define ns_platform_preempt_state_t test_preempt_state_t
++#define ns_platform_preempt_enter test_preempt_enter
++#define ns_platform_preempt_leave test_preempt_leave
++#undef ns_atomic_compare_exchange_weak_explicit
++#define ns_atomic_compare_exchange_weak_explicit test_reserve_cas
++#undef memcpy
++#define memcpy test_payload_copy
++#include "src/ds/ns_mpsc_record_ring.c"
++#undef memcpy
++
++static unsigned int guard_depth;
++static unsigned int caller_depth;
++static unsigned int enter_count;
++static unsigned int leave_count;
++static unsigned int reserve_count;
++static unsigned int copy_count;
++static unsigned int deferred_count;
++static unsigned int resumed_count;
++static int failures;
++static bool request_preemption;
++static bool pending_producer;
++static ns_mpsc_record_ring_t ring;
++static size_t storage[128u / sizeof(size_t)];
++static const unsigned char high_payload[] = { 0x48, 0x49 };
++
++static void expect(bool condition, const char *message)
++{
++    if(!condition){
++        fprintf(stderr, "FAIL: %s\n", message);
++        ++failures;
++    }
++}
++
++static test_preempt_state_t test_preempt_enter(void)
++{
++    test_preempt_state_t previous = guard_depth;
++    ++guard_depth;
++    ++enter_count;
++    return previous;
++}
++
++static void test_preempt_leave(test_preempt_state_t state)
++{
++    expect(guard_depth == state + 1u, "guard exits in reverse nesting order");
++    expect((ns_atomic_load_explicit(&ring.write_pos, ns_memory_order_relaxed) & 1u) == 0u,
++           "busy cleared before restoring preemption");
++    guard_depth = state;
++    ++leave_count;
++}
++
++static bool test_reserve_cas(atomic_size_t *ptr, size_t *expected,
++    size_t desired, ns_memory_order_t success, ns_memory_order_t failure)
++{
++    bool acquired = atomic_compare_exchange_strong_explicit(ptr, expected, desired,
++        (memory_order)success, (memory_order)failure);
++
++    if(acquired){
++        ++reserve_count;
++        expect(guard_depth == caller_depth + 1u, "busy owner cannot be preempted");
++        if(request_preemption){
++            request_preemption = false;
++            /* 无保护时直接报告失败，不真的递归入队并永久自旋。 */
++            if(guard_depth == 0u){
++                expect(false, "high-priority producer could preempt busy owner");
++            }else{
++                pending_producer = true;
++                ++deferred_count;
++            }
++        }
++    }
++    return acquired;
++}
++
++static void *test_payload_copy(void *destination, const void *source, size_t size)
++{
++    ++copy_count;
++    expect(guard_depth == caller_depth, "payload copied after restoring caller state");
++    expect((ns_atomic_load_explicit(&ring.write_pos, ns_memory_order_relaxed) & 1u) == 0u,
++           "payload copied after releasing busy");
++    if(pending_producer && guard_depth == 0u){
++        void *record = NULL;
++        size_t record_size = 0u;
++
++        pending_producer = false;
++        ++resumed_count;
++        /* 模拟解除保护后 H 抢占 L；L 的 payload 尚未复制。 */
++        expect(test_ring_try_push(&ring, high_payload, sizeof(high_payload)) == NS_OK,
++               "high-priority producer completes while low payload is pending");
++        expect(test_ring_try_acquire(&ring, &record, &record_size) == NS_E_EMPTY,
++               "consumer does not skip uncommitted low-priority record");
++    }
++    return memcpy(destination, source, size);
++}
++
++static void reset_ring(void)
++{
++    expect(guard_depth == 0u, "previous operation restored preemption");
++    caller_depth = 0u;
++    enter_count = 0u;
++    leave_count = 0u;
++    reserve_count = 0u;
++    copy_count = 0u;
++    deferred_count = 0u;
++    resumed_count = 0u;
++    request_preemption = false;
++    pending_producer = false;
++    expect(test_ring_init(&ring, storage, NS_CAPACITY_128) == NS_OK, "initialize ring");
++}
++
++static void expect_record(const void *expected, size_t expected_size)
++{
++    void *record = NULL;
++    size_t size = 0u;
++    int rc = test_ring_try_acquire(&ring, &record, &size);
++
++    expect(rc == NS_OK, "record available");
++    if(rc != NS_OK) return;
++    expect(size == expected_size, "record payload size");
++    if(size == expected_size) expect(memcmp(record, expected, size) == 0, "record payload bytes");
++    expect(test_ring_release(&ring, record) == NS_OK, "release record");
++}
++
++static void test_deferred_producer(void)
++{
++    const unsigned char low_payload[] = { 0x4c, 0x4f };
++
++    reset_ring();
++    request_preemption = true;
++    expect(test_ring_try_push(&ring, low_payload, sizeof(low_payload)) == NS_OK,
++           "low-priority producer succeeds");
++    expect(deferred_count == 1u && resumed_count == 1u, "preemption deferred until payload copy");
++    expect(enter_count == 2u && leave_count == 2u && reserve_count == 2u,
++           "both producers balance reservation protection");
++    expect(copy_count == 2u && guard_depth == 0u, "both payload copies outside protection");
++    expect_record(low_payload, sizeof(low_payload));
++    expect_record(high_payload, sizeof(high_payload));
++}
++
++static void test_full_and_nested(void)
++{
++    unsigned char payload[64u - sizeof(size_t)];
++    test_preempt_state_t outer;
++
++    reset_ring();
++    memset(payload, 0x42, sizeof(payload));
++    expect(test_ring_try_push(&ring, payload, sizeof(payload)) == NS_OK, "fill first half");
++    expect(test_ring_try_push(&ring, payload, sizeof(payload)) == NS_OK, "fill second half");
++    outer = test_preempt_enter();
++    caller_depth = guard_depth;
++    expect(test_ring_try_push(&ring, payload, sizeof(payload)) == NS_E_QUEUE_FULL,
++           "full ring fails without waiting");
++    expect(guard_depth == caller_depth, "queue-full exit preserves outer protection");
++    expect(enter_count == 4u && leave_count == 3u, "queue-full exit balances inner protection");
++    expect_record(payload, sizeof(payload));
++    expect(test_ring_try_push(&ring, payload, sizeof(payload)) == NS_OK,
++           "successful push nested inside caller protection");
++    expect(guard_depth == caller_depth, "success preserves outer protection");
++    test_preempt_leave(outer);
++    caller_depth = 0u;
++    expect(guard_depth == 0u && enter_count == leave_count, "outer protection restored");
++    expect_record(payload, sizeof(payload));
++    expect_record(payload, sizeof(payload));
++}
++
++static void test_invalid_and_wrap(void)
++{
++    const unsigned char payload[] = { 0x57 };
++    ns_mpsc_record_part_t invalid = { .data = NULL, .size = 1u };
++
++    reset_ring();
++    expect(test_ring_try_push(NULL, payload, sizeof(payload)) == NS_E_INVAL, "reject null ring");
++    expect(test_ring_try_push(&ring, NULL, 1u) == NS_E_INVAL, "reject null payload");
++    expect(test_ring_try_pushv(&ring, &invalid, 1u) == NS_E_INVAL, "reject invalid part");
++    expect(enter_count == 0u && leave_count == 0u, "invalid arguments do not enter protection");
++
++    /* 末尾只余一个 header，真实记录必须通过 fake record 绕回。 */
++    ns_atomic_store_explicit(&ring.write_pos, 128u - sizeof(size_t), ns_memory_order_relaxed);
++    ns_atomic_store_explicit(&ring.read_pos, 128u - sizeof(size_t), ns_memory_order_relaxed);
++    expect(test_ring_try_push(&ring, payload, sizeof(payload)) == NS_OK, "wrapped push succeeds");
++    expect_record(payload, sizeof(payload));
++    expect(test_ring_free_capacity(&ring) == ring.capacity, "wrapped ring fully reclaimed");
++    expect(enter_count == 1u && leave_count == 1u && copy_count == 1u && guard_depth == 0u,
++           "wrapped push balances protection and copies outside it");
++}
++
++int main(void)
++{
++    test_deferred_producer();
++    test_full_and_nested();
++    test_invalid_and_wrap();
++    return failures != 0;
++}
