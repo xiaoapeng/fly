@@ -1,0 +1,16 @@
+choice FLY_PROJECT_MCXN947
+    depends on ARCH_MCXN947
+
+config PROJECT_MCXN947_BAREMETAL_DEMO
+    bool "MCXN947 bare-metal button and RGB LED demo"
+    help
+        Same button and RGB LED behavior as freertos-demo, driven by a
+        nanosig polling loop without an RTOS. SysTick supplies a 1 ms clock.
+        Use the baremetal-demo defconfig to select the None scheduler model.
+    select PACKAGE_SEGGER_RTT
+
+endchoice
+
+config PROJECT
+    string
+    default "mcxn947/baremetal-demo" if PROJECT_MCXN947_BAREMETAL_DEMO

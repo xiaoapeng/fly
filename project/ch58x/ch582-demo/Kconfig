@@ -1,0 +1,15 @@
+choice FLY_PROJECT_CH58X
+    depends on ARCH_CH58X
+
+config PROJECT_CH582_DEMO
+    bool "CH582 demo project"
+    help
+        Select this option to enable Module CH582 DEMO.
+    #select PACKAGE_SCHEDULER_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
+
+endchoice
+
+config PROJECT
+    string
+    default "ch58x/ch582-demo" if PROJECT_CH582_DEMO

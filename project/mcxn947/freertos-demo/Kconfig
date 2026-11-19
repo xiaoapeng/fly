@@ -1,0 +1,19 @@
+choice FLY_PROJECT_MCXN947
+    depends on ARCH_MCXN947
+
+config PROJECT_MCXN947_FREERTOS_DEMO
+    bool "MCXN947 freertos demo project (FreeRTOS 2-task)"
+    help
+        Self-contained demo: 2 FreeRTOS tasks (RTT tick + LED), SysTick owned
+        by FreeRTOS. Selects PACKAGE_SCHEDULER_REQUIRE_FREERTOS so the
+        scheduler choice defaults to the FreeRTOS leg (a plain choice pin
+        cannot be selected from here — no-op on choice symbols).
+        Applies -Wno-conversion only to the freertos-kernel/heap/port targets.
+    select PACKAGE_SCHEDULER_REQUIRE_FREERTOS
+    select PACKAGE_SEGGER_RTT
+
+endchoice
+
+config PROJECT
+    string
+    default "mcxn947/freertos-demo" if PROJECT_MCXN947_FREERTOS_DEMO

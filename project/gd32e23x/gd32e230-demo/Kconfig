@@ -1,0 +1,14 @@
+choice FLY_PROJECT_GD32E23X
+    depends on ARCH_GD32E23X
+
+config PROJECT_GD32E230_DEMO
+    bool "GD32E230 demo project"
+    help
+        Select this option to enable Module GD32E230 DEMO.
+    select PACKAGE_SEGGER_RTT
+
+endchoice
+
+config PROJECT
+    string
+    default "gd32e23x/gd32e230-demo" if PROJECT_GD32E230_DEMO

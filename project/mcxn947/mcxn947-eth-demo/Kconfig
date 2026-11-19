@@ -1,0 +1,16 @@
+choice FLY_PROJECT_MCXN947
+    depends on ARCH_MCXN947
+
+config PROJECT_MCXN947_ETH_DEMO
+    bool "MCXN947 eth demo project"
+    help
+        Select this option to enable Module MCXN947 eth DEMO.
+    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
+    select PACKAGE_SEGGER_RTT
+    select PACKAGE_EHIP
+
+endchoice
+
+config PROJECT
+    string
+    default "mcxn947/mcxn947-eth-demo" if PROJECT_MCXN947_ETH_DEMO

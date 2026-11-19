@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Repository-local Kconfig hygiene check (CI gate).
 
-Two tree-wide checks, no hardcoded project list:
+Tree-wide checks, no hardcoded project list:
 
 1. No choice member may be targeted by `select` / `imply`.
    kconfiglib derives a choice member's value from `choice.selection` and
@@ -11,7 +11,10 @@ Two tree-wide checks, no hardcoded project list:
 
 2. Every `project/*/*/defconfig` must load with zero kconfiglib warnings.
 
-Rule reference: docs/reference/kconfig-rules.md R1 / R2.
+3. Every defconfig must select its own project path and exactly one project
+   option belonging to a choice.
+
+Rule reference: docs/reference/kconfig-rules.md R1 / R2 / R8.
 """
 
 from __future__ import annotations
@@ -59,13 +62,27 @@ def check_no_choice_selects(k: kconfiglib.Kconfig) -> list[str]:
     return failures
 
 
-def check_defconfig_warnings(ctx: TestContext, defconfig_rel: str) -> list[str]:
-    """Each defconfig must load without emitting kconfig warnings."""
-    try:
-        _, warnings = _load_capturing(ctx, defconfig_rel)
-    except Exception as e:  # noqa: BLE001 - report as a check failure
-        return [f"{defconfig_rel}: exception: {e!r}"]
-    return warnings
+def check_project_selection(k: kconfiglib.Kconfig, defconfig_rel: str) -> list[str]:
+    """Keep project paths and mutually exclusive project selection consistent."""
+    failures = []
+    expected = Path(defconfig_rel).parent.relative_to("project").as_posix()
+    project = k.syms.get("PROJECT")
+    actual = project.str_value if project is not None else None
+    if actual != expected:
+        failures.append(f"PROJECT: got {actual!r}, expected {expected!r}")
+
+    selected = [
+        sym for sym in k.unique_defined_syms
+        if sym.name.startswith("PROJECT_") and not sym.name.endswith("_NONE")
+        and sym.type == kconfiglib.BOOL and sym.str_value == "y"
+    ]
+    if len(selected) != 1:
+        failures.append(
+            f"expected one selected project, got {[sym.name for sym in selected]}"
+        )
+    elif selected[0].choice is None:
+        failures.append(f"{selected[0].name}: selected project is not a choice member")
+    return failures
 
 
 def main(argv: list[str]) -> int:
@@ -102,7 +119,15 @@ def main(argv: list[str]) -> int:
     # loads it, so group identical warning text instead of repeating it N times.
     seen: dict[str, list[str]] = {}
     for rel in defconfigs:
-        for w in check_defconfig_warnings(ctx, rel):
+        try:
+            k, warnings = _load_capturing(ctx, rel)
+        except Exception as e:  # noqa: BLE001 - report as a check failure
+            warnings = [f"{rel}: exception: {e!r}"]
+        else:
+            f = check_project_selection(k, rel)
+            if f:
+                failures.append((f"project-selection:{rel}", f))
+        for w in warnings:
             seen.setdefault(w, []).append(rel)
     for warning, files in seen.items():
         where = files[0] if len(files) == 1 else f"{files[0]} (+{len(files) - 1} more defconfigs)"

@@ -1,6 +1,4 @@
-
-
-choice
+choice FLY_PROJECT_MACOS
     prompt "Select a macos platform project"
     default PROJECT_MACOS_NONE
     depends on ARCH_ARM64_MACOS
@@ -10,19 +8,6 @@ config PROJECT_MACOS_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_MACOS_EHIP_TEST
-    bool "EHIP test project"
-    help
-        Select this option to enable Module EHIP TEST.
-    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
-    select PACKAGE_EHIP
-    select PACKAGE_EHSHELL
-    select PACKAGE_ARGUMENT_PARSER
-
 endchoice
 
-
-config PROJECT
-    string
-    default "macos/ehip-test" if PROJECT_MACOS_EHIP_TEST
-
+rsource "*/Kconfig"

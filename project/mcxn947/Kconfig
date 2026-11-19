@@ -1,6 +1,4 @@
-
-
-choice
+choice FLY_PROJECT_MCXN947
     prompt "Select a mcxn947 platform project"
     default PROJECT_MCXN947_NONE
     depends on ARCH_MCXN947
@@ -10,47 +8,6 @@ config PROJECT_MCXN947_NONE
     help
       Select this if you do not want to set any project.
 
-config PROJECT_MCXN947_DEMO
-    bool "MCXN947 demo project"
-    help
-        Select this option to enable Module MCXN947 DEMO.
-    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
-    select PACKAGE_SEGGER_RTT
-
-config PROJECT_MCXN947_ETH_DEMO
-    bool "MCXN947 eth demo project"
-    help
-        Select this option to enable Module MCXN947 eth DEMO.
-    select PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS
-    select PACKAGE_SEGGER_RTT
-    select PACKAGE_EHIP
-
-config PROJECT_MCXN947_FREERTOS_DEMO
-    bool "MCXN947 freertos demo project (FreeRTOS 2-task)"
-    help
-        Self-contained demo: 2 FreeRTOS tasks (RTT tick + LED), SysTick owned
-        by FreeRTOS. Selects PACKAGE_SCHEDULER_REQUIRE_FREERTOS so the
-        scheduler choice defaults to the FreeRTOS leg (a plain choice pin
-        cannot be selected from here — no-op on choice symbols).
-        Applies -Wno-conversion only to the freertos-kernel/heap/port targets.
-    select PACKAGE_SCHEDULER_REQUIRE_FREERTOS
-    select PACKAGE_SEGGER_RTT
-
-config PROJECT_MCXN947_BAREMETAL_DEMO
-    bool "MCXN947 bare-metal button and RGB LED demo"
-    help
-        Same button and RGB LED behavior as freertos-demo, driven by a
-        nanosig polling loop without an RTOS. SysTick supplies a 1 ms clock.
-        Use the baremetal-demo defconfig to select the None scheduler model.
-    select PACKAGE_SEGGER_RTT
-
 endchoice
 
-
-config PROJECT
-    string
-    default "mcxn947/mcxn947-demo" if PROJECT_MCXN947_DEMO
-    default "mcxn947/mcxn947-eth-demo" if PROJECT_MCXN947_ETH_DEMO
-    default "mcxn947/freertos-demo" if PROJECT_MCXN947_FREERTOS_DEMO
-    default "mcxn947/baremetal-demo" if PROJECT_MCXN947_BAREMETAL_DEMO
-
+rsource "*/Kconfig"
