@@ -158,14 +158,14 @@ entry file in `board/board.cmake`.
 | Source | Public header | Purpose |
 | --- | --- | --- |
 | `app/runtime.c` | `app/include/runtime.h` | Runtime for the two nanosig templates |
-| `app/biz/app_demo.c` | `app/include/biz/app_demo.h` | Timer demo for the two nanosig templates |
+| `app/biz/heartbeat.c` | `app/include/biz/heartbeat.h` | Periodic heartbeat for the two nanosig templates |
 | `app/mid/firmware_info.c` | `app/include/mid/firmware_info.h` | Firmware trailer logging shared by the templates |
 
 Place single-source business modules directly in `app/biz/` and middleware
 modules in `app/mid/`. Give larger modules a subdirectory and keep their
 private headers next to their sources. `app/CMakeLists.txt` registers
 `app/include/` as the application's public header search path. Include
-headers as `"biz/app_demo.h"`, `"mid/firmware_info.h"`, or `"runtime.h"`.
+headers as `"biz/heartbeat.h"`, `"mid/firmware_info.h"`, or `"runtime.h"`.
 The bare-metal template uses `.gitkeep` to keep `app/biz/` and
 `app/include/biz/` ready for business modules.
 
@@ -175,8 +175,10 @@ linker scripts live in `board/`.
 
 In the nanosig templates, the bare-metal entry point or the FreeRTOS application
 task calls `app_runtime_init()` and passes the loop from `app_runtime_get_loop()`
-to `app_demo_init()`. After `app_runtime_run()` returns, the entry point calls
-`app_demo_deinit()` before `app_runtime_deinit()`. Each module manages its own
+to `heartbeat_init()`. While the event loop runs, a nanosig periodic timer
+logs `heartbeat` once per second through RTT channel 0 at System level.
+After `app_runtime_run()` returns, the entry point calls `heartbeat_deinit()`
+to release the timer before `app_runtime_deinit()`. Each module manages its own
 resources. The entry point releases modules in reverse initialization order
 before shutting down the runtime. If a module needs separate start and stop
 operations, define them in the module and call them around the run step.

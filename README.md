@@ -239,8 +239,8 @@ cd ../fly-project/sensor-node
 | 模板 | FRDM-MCXN947 Core 0 的启动验收信号 |
 |---|---|
 | `baremetal` | 板级初始化完成后 RTT 输出 `boot ok` |
-| `baremetal-nanosig` | 裸机定时器回调输出 `nanosig ready`，回收后输出 `nanosig stopped` |
-| `freertos-nanosig` | 应用任务输出 `nanosig ready`，回收后输出 `nanosig stopped` |
+| `baremetal-nanosig` | 裸机事件循环每秒通过 RTT 输出 `heartbeat` |
+| `freertos-nanosig` | FreeRTOS 应用任务每秒通过 RTT 输出 `heartbeat` |
 
 工程默认生成到 FLY 同级的 `fly-project/`，自带独立 Git 仓库。用 `--output <目录>` 可指定工程位置。第一次构建加载工程自己的 `defconfig`，后续可用 `menuconfig` 和 `saveconfig` 更新配置。
 
@@ -401,7 +401,7 @@ app_add_vscode_debug(fly_app)
 
 三个嵌入式模板默认启用 `CONFIG_FACTORY_DATA_SUPPORTED`。烧录打包后的 BIN 后，启动时会校验 Flash 中的尾部，并在 RTT 通道 0 打印固件名、版本、分区和烧录地址、对齐后的镜像长度、尾部长度、CRC32，以及打包时记录的 Git 版本和时间。找不到有效尾部时（例如普通 ELF 调试只下载了程序），会打印一次 `Firmware info unavailable`，随后继续启动。在 `menuconfig` 中关闭该选项即可跳过这项检查和日志。
 
-FRDM-MCXN947 裸机模板随后输出 `boot ok`。两个 nanosig 模板在定时器回调后退出循环，并在完成资源回收后输出 `nanosig stopped`。可在 [nanosig 应用运行时](templates/README.md#nanosig-应用运行时) 查看接口和示例。
+FRDM-MCXN947 裸机模板随后输出 `boot ok`。两个 nanosig 模板继续运行事件循环，每秒在 RTT 通道 0 输出一次 `heartbeat`。接口和示例见 [nanosig 应用运行时](templates/README.md#nanosig-应用运行时)。
 
 ### 13. clangd 代码补全
 

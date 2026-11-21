@@ -34,7 +34,7 @@ queue set 里可能仍有已注销成员的就绪通知。后端在等待时跳�
 
 - FLY 的 [FreeRTOS 配置](../../package/scheduler/freertos/inc/FreeRTOSConfig.h) 默认启用 queue set、动态分配和互斥量，满足 nanosig FreeRTOS 后端的编译要求。
 - nanosig 模板在 [应用运行时](../../templates/apps/common/nanosig/app/runtime.c) 把日志输出接到 RTT 通道 0。FreeRTOS 使用 `platform_stdout_write()`。默认日志级别由 [nanosig 的 Kconfig](../../package/nanosig/Kconfig) 控制，也可在运行时用 `ns_dbg_set_level()` 调整。单模块的编译期日志等级用 `NS_DBG_MODULE_LEVEL_<MOD>` 设置。
-- [FLY 回归](../CI.md) 验证从模板生成、编译和打包固件。模板的 [业务示例](../../templates/apps/common/nanosig/app/biz/app_demo.c) 演示单次定时器。应用接入自定义 watcher 时，应单独验证队列满载、停止生产后排空和注销。目标板上的 ISR 触发和时序需要在相应板卡上验证。
+- [FLY 回归](../CI.md) 验证从模板生成、编译和打包固件。模板的 [心跳业务](../../templates/apps/common/nanosig/app/biz/heartbeat.c) 演示周期定时器。应用接入自定义 watcher 时，应单独验证队列满载、停止生产后排空和注销。目标板上的 ISR 触发和时序需要在相应板卡上验证。
 
 ## 迁移背景
 

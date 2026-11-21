@@ -1,4 +1,4 @@
-#include "biz/app_demo.h"
+#include "biz/heartbeat.h"
 #include "board.h"
 #include "mid/firmware_info.h"
 #include "runtime.h"
@@ -23,16 +23,16 @@ static void run_app(void *argument)
     if (app_runtime_init() != NS_OK) {
         stop("nanosig runtime initialization failed\n");
     }
-    if (app_demo_init(app_runtime_get_loop()) != NS_OK) {
+    if (heartbeat_init(app_runtime_get_loop()) != NS_OK) {
         (void)app_runtime_deinit();
-        stop("nanosig demo initialization failed\n");
+        stop("heartbeat initialization failed\n");
     }
 
     const int run_status = app_runtime_run();
-    const int demo_status = app_demo_deinit();
+    const int heartbeat_status = heartbeat_deinit();
     const int runtime_status = app_runtime_deinit();
-    if (run_status != NS_OK || demo_status != NS_OK || runtime_status != NS_OK) {
-        stop("nanosig demo failed\n");
+    if (run_status != NS_OK || heartbeat_status != NS_OK || runtime_status != NS_OK) {
+        stop("nanosig application failed\n");
     }
     board_log("nanosig stopped\n");
     vTaskDelete(NULL);
