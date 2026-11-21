@@ -57,15 +57,15 @@ OpenOCD 的 RTT 搜索范围由板卡或应用通过 `RTT_ADDR_AND_SIZE` 传给�
 | --- | --- | --- |
 | `app/main.c` | | 嵌入式应用入口，按顺序调用各模块的生命周期函数 |
 | `app/runtime.c` | `app/include/runtime.h` | nanosig 运行时，仅在 nanosig 模板生成 |
-| `app/biz/app_demo.c` | `app/include/biz/app_demo.h` | nanosig 定时器业务示例 |
+| `app/biz/heartbeat.c` | `app/include/biz/heartbeat.h` | nanosig 心跳业务 |
 | `app/mid/firmware_info.c` | `app/include/mid/firmware_info.h` | 读取并记录固件尾部信息，各模板共用 |
 
-单文件业务和中间件直接放到 `app/biz/` 或 `app/mid/`。模块需要多个源文件时，再建模块子目录，私有头文件跟实现放在一起。应用的公开头文件统一从 `app/include/` 搜索，例如 `#include "biz/app_demo.h"` 和 `#include "mid/firmware_info.h"`。裸机模板用 `.gitkeep` 保留 `app/biz/` 和 `app/include/biz/`，便于直接添加业务。
+单文件业务和中间件直接放到 `app/biz/` 或 `app/mid/`。模块需要多个源文件时，再建模块子目录，私有头文件跟实现放在一起。应用的公开头文件统一从 `app/include/` 搜索，例如 `#include "biz/heartbeat.h"` 和 `#include "mid/firmware_info.h"`。裸机模板用 `.gitkeep` 保留 `app/biz/` 和 `app/include/biz/`，便于直接添加业务。
 
 ## nanosig 应用运行时
 
-`app/main.c` 中的裸机入口或 FreeRTOS 应用任务直接调用 `app_runtime_init()`，然后把 `app_runtime_get_loop()` 返回的原生 `ns_loop_t *` 传给 `app_demo_init()`。初始化成功后，`app_runtime_run()` 在裸机上轮询事件循环，在 FreeRTOS 应用任务中运行阻塞的事件循环。
+`app/main.c` 中的裸机入口或 FreeRTOS 应用任务直接调用 `app_runtime_init()`，然后把 `app_runtime_get_loop()` 返回的原生 `ns_loop_t *` 传给 `heartbeat_init()`。初始化成功后，`app_runtime_run()` 在裸机上轮询事件循环，在 FreeRTOS 应用任务中运行阻塞的事件循环。
 
-循环退出后，入口依次调用 `app_demo_deinit()` 和 `app_runtime_deinit()`。业务模块负责创建和释放自己的定时器、信号连接等资源。增加业务时依次初始化各模块，退出时按相反顺序释放，最后销毁运行时。业务需要独立启停时，由业务模块提供 `start` 和 `stop`，由入口在运行前后调用。示例 `app/biz/app_demo.c` 在定时器回调中打印 `nanosig ready` 并请求退出，运行和清理均成功后打印 `nanosig stopped`。
+事件循环运行期间，`app/biz/heartbeat.c` 用 nanosig 周期定时器每秒调用一次 `ns_sysln("heartbeat")`。模板将 nanosig 的原生日志接到 RTT 通道 0，默认日志等级为 System，可在 `menuconfig` 的 nanosig 菜单调整。
 
-模板将 nanosig 的原生调试输出接到 RTT 通道 0，示例用 `ns_sysln()` 打印 `nanosig ready`。默认日志等级是 System，可在 `menuconfig` 的 nanosig 菜单调整。回收完成的提示由板级日志输出。
+循环退出时，入口先调用 `heartbeat_deinit()` 释放心跳定时器，再调用 `app_runtime_deinit()`。新增业务时，由各模块管理自己的定时器、信号连接等资源，入口按初始化的相反顺序释放模块。业务需要独立启停时，由模块提供 `start` 和 `stop`，入口在运行前后调用。

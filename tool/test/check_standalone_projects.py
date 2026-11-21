@@ -117,12 +117,10 @@ def check_frdm_layout(project, template):
             raise RuntimeError(f"{project.name} is missing {relative_path}")
         if not needs_runtime and set(business_dir.iterdir()) != {business_dir / ".gitkeep"}:
             raise RuntimeError(f"{project.name} should only contain .gitkeep in {relative_path}")
-    for relative_path in ("runtime.c", "include/runtime.h", "biz/app_demo.c", "include/biz/app_demo.h"):
-        source = app / relative_path
-        if needs_runtime and not source.is_file():
-            raise RuntimeError(f"{project.name} is missing app/{relative_path}")
-        if not needs_runtime and source.exists():
-            raise RuntimeError(f"{project.name} unexpectedly contains app/{relative_path}")
+    if not needs_runtime:
+        for relative_path in ("runtime.c", "include/runtime.h"):
+            if (app / relative_path).exists():
+                raise RuntimeError(f"{project.name} unexpectedly contains app/{relative_path}")
 
 
 def check_sdk_pin_mismatch(command, project, env, *, expected, actual, source=None):
@@ -821,11 +819,12 @@ def check_frdm_project(sdk, workspace, template, build_type):
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
     cmake_cache = check_build_outputs(sdk, project)
     check_firmware_info_messages(project, enabled=True)
-    if template in FRDM_NANOSIG_SMOKES:
+    expected_log = template_manifest(sdk, template).get("expected_log")
+    if expected_log:
         binary = (project / "build/cmake/fly_app.bin").read_bytes()
-        for message in (b"nanosig ready", b"nanosig stopped"):
-            if message not in binary:
-                raise RuntimeError(f"{project.name} did not link the nanosig demo message {message!r}")
+        message = expected_log.encode("utf-8")
+        if all(message + ending not in binary for ending in (b"\0", b"\n\0")):
+            raise RuntimeError(f"{project.name} did not link the expected log {expected_log!r}")
     make_img = entrypoint(project, "build", "make_img")
     run(make_img, project)
 
