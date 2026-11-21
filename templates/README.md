@@ -8,6 +8,7 @@
 | `apps/<模板>/` | 应用入口、默认配置和 `template.json` 清单 | `app/` 和 `defconfig` |
 | `apps/common/nanosig/` | 两个 nanosig 模板共用的运行时和定时器示例 | `app/` |
 | `boards/<板卡>/` | 板卡信息、初始化、链接脚本和烧录配置 | `board/` |
+| `boards/common/stm32/` | STM32 板卡共用的初始化、日志适配和默认链接脚本 | `board/` |
 
 新增模板时，在 `apps/<模板>/` 放置默认配置、应用源码和 `template.json`。生成器发现清单，使用目录名作为模板 ID。
 
@@ -17,9 +18,15 @@
 
 新增板卡时，在 `boards/` 提供 `board.json`、`board.cmake` 和应用使用的板级接口。用 `board.json` 的 `templates` 声明已验证的模板组合。宿主板卡还通过 `host_platform` 指定对应的 CI 平台。
 
+板卡清单的可选 `overlays` 字段按顺序列出相对 `boards/` 的共享目录。生成器先把这些目录复制到应用的 `board/`，再复制具体板卡的目录。同名文件以最后复制的为准。STM32 板卡通过 `"overlays": ["common/stm32"]` 复用同一份板级源码和脚本。
+
 生成后的应用以根目录 `CMakeLists.txt` 为入口，调用 SDK 的 CMake 模块准备 Kconfig、工具链和依赖包。根目录的 CMake 文件定义固件、调试和打包目标。`app/CMakeLists.txt` 登记应用源码、公开头文件的搜索路径 `app/include/` 和可选的应用配置。
 
 板级头文件放在 `board/include/`。板卡清单 `board.json`、构建配置 `board.cmake` 和板卡自带的链接脚本放在 `board/`。板卡可以提供 `board/defconfig` 作为默认硬件配置，例如启用 RTT。
+
+STM32 的 `board/board.cmake` 声明芯片目标和 Flash/RAM 布局，`board/flash.ld.in` 使用这些参数生成链接脚本。日志的实现位于应用的 `board/log.c`，默认用 RTT，关闭 `CONFIG_PACKAGE_SEGGER_RTT` 时日志调用为空。需要串口日志时，可在应用仓实现自己的 `board_log()`。CMSIS、HAL 和芯片启动代码由 SDK 提供。
+
+已有 STM32 工程升级 SDK 时，先用同款板卡的新模板更新 `board/`，合回应用自定义的内存布局和板级配置，再更新 `fly.lock`。
 
 使用应用构建脚本时，嵌入式 ELF 和 BIN 分别位于 `build/cmake/fly_app` 和 `build/cmake/fly_app.bin`。打包产物位于应用根目录的 `image/`，当前固件包通过 `image/CURRENT/` 访问。清理 `build/` 后仍可访问已打包的固件。
 

@@ -7,5 +7,6 @@
   "arch_config": "CONFIG_ARCH_STM32F0XX",
   "toolchain": "Arm GNU Toolchain (arm-none-eabi)",
   "probe": "J-Link over SWD",
-  "templates": ["baremetal"]
+  "templates": ["baremetal"],
+  "overlays": ["common/stm32"]
 }
