@@ -3,6 +3,12 @@ function(add_target_make_bin ELF_FILE)
     add_custom_command(
         TARGET ${ELF_FILE}
         POST_BUILD
+        BYPRODUCTS
+            "${CMAKE_CURRENT_BINARY_DIR}/${ELF_FILE}.list"
+            "${CMAKE_CURRENT_BINARY_DIR}/${ELF_FILE}.S"
+            "${CMAKE_CURRENT_BINARY_DIR}/${ELF_FILE}.debug"
+            "${CMAKE_CURRENT_BINARY_DIR}/${ELF_FILE}.hex"
+            "${CMAKE_CURRENT_BINARY_DIR}/${ELF_FILE}.bin"
         COMMAND ${CMAKE_SIZE} --format=berkeley $<TARGET_FILE:${ELF_FILE}>
         COMMAND ${CMAKE_OBJDUMP} --all-headers --demangle --disassemble $<TARGET_FILE:${ELF_FILE}> > ${ELF_FILE}.list
         COMMAND ${CMAKE_OBJDUMP} -d -S -s $<TARGET_FILE:${ELF_FILE}> > ${ELF_FILE}.S

@@ -1,0 +1,4 @@
+mainmenu "FLY Project Configuration"
+
+source "$(FLY_SDK_DIR)/arch/Kconfig"
+source "$(FLY_SDK_DIR)/package/Kconfig"

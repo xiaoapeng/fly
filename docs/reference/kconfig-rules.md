@@ -1,6 +1,6 @@
 # Kconfig 规则（硬性）
 
-适用：`arch/**/Kconfig`、`package/**/Kconfig`、`project/**/Kconfig`。违反即回归，PR 不予合并。
+适用范围包括 SDK 的 `arch/**/Kconfig`、`package/**/Kconfig` 和独立应用的 `Kconfig`。
 
 ## R1 choice 成员禁止被 `select` / `imply`
 
@@ -40,8 +40,8 @@ choice PACKAGE_SCHEDULER
 
 ```kconfig
 # 工程侧：select 打在普通 bool 上，生效
-config PROJECT_MCXN947_FREERTOS_DEMO
-    bool "..."
+config APP_USE_FREERTOS
+    bool "Use FreeRTOS in this application"
     select PACKAGE_SCHEDULER_REQUIRE_FREERTOS
 ```
 
@@ -52,7 +52,7 @@ config PROJECT_MCXN947_FREERTOS_DEMO
 正确方向：
 
 ```
-project/<x>/Kconfig   --select-->   package/<p>/Kconfig (普通 bool 请求位)
+应用 Kconfig   --select-->   package/<p>/Kconfig (普通 bool 请求位)
 ```
 
 `select` 的正确用途就是「我确定需要这个普通符号」，不要用它去动别人的 choice。
@@ -67,25 +67,19 @@ project/<x>/Kconfig   --select-->   package/<p>/Kconfig (普通 bool 请求位)
 
 成员取值的第一来源是 `user_selection`（`.config` / `menuconfig` 里的赋值），条件 default 只在其后。
 
-- 新增工程**不需要**在 defconfig 里 pin scheduler 支路，条件 default 会选出正确支路
+- 生成的应用可在自己的 defconfig 明确指定运行方式。应用 Kconfig 有请求位时，对应的 default 会为未显式选择的配置提供默认值。
 - `./build.sh saveconfig` 会把解析后的 `CONFIG_PACKAGE_SCHEDULER_*=y` 写回 defconfig，这是冗余但无害的
 - 矛盾 pin **不会**报错：dual-pin 被归一为声明靠后的成员；「工程要求 A、defconfig 显式 pin B」会在下游 CMake 阶段炸（例如 freertos-demo + eventhub pin 找不到 freertos target）。不要写矛盾 pin
 
-## R6 新增 project 的检查清单
+## R6 新增应用配置
 
-1. 工程 Kconfig：`select PACKAGE_SCHEDULER_REQUIRE_<leg>`；无 OS 需求的工程什么都不写（落到 `NONE`）
-2. 不要 `select` choice 成员，不要在包里引用 `PROJECT_*`
-3. 不写调度器 defconfig pin
-4. 用一个只含 `CONFIG_PROJECT_<X>=y` 的极简 defconfig 验证解析：
+在应用目录加载 `defconfig` 并检查最终生效的调度器。SDK 包改动还需要执行 `python3 tool/test/check_standalone_projects.py --matrix config`。
 
 ```sh
-printf 'CONFIG_PROJECT_<X>=y\n' > ~/tmp/defc-min
-./build.sh loadconfig ~/tmp/defc-min      # 不得出现 warning
-grep '^CONFIG_PACKAGE_SCHEDULER_' .config # 必须是期望的那一支
+./build.sh loadconfig defconfig
+grep '^CONFIG_PACKAGE_SCHEDULER_.*=y$' build/config/.config
 ./build.sh build
 ```
-
-5. 改动 defconfig / scheduler Kconfig 后跑回归：`python3 tool/test/check_freertos_config.py`
 
 ## R7 改 Kconfig 时沿用原块既有字段顺序
 

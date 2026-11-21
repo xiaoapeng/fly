@@ -1,8 +1,6 @@
 name: nightly
 
-# Slow / low-signal-per-minute checks kept off the PR path:
-#   * Release builds of every ARM project (ci.yml builds Debug only)
-#   * firmware image packaging smoke test (jlink image target)
+# Exercise the generated Cortex-M projects and firmware packages in Release mode.
 on:
   schedule:
     - cron: "17 2 * * *"
@@ -20,7 +18,7 @@ jobs:
           python-version: "3.12"
       - name: Install cross toolchain and build tools
         run: |
-          # The EC2 Ubuntu mirror stalled on toolchain downloads; Azure runners use this mirror.
+          # Azure runners can use the Azure Ubuntu package mirror.
           if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
             sudo sed -i 's|http://[^ /]*ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
           fi
@@ -28,56 +26,9 @@ jobs:
           sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
             gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
             gdb-multiarch ninja-build cmake git
-          python3 -m pip install kconfiglib requests
       - name: Bootstrap Python venv
-        # Match ci.yml: CMake and build.sh must use the same interpreter.
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
-      - name: Build every ARM project (Release)
-        run: |
-          set -eu
-          for dc in project/*/*/defconfig; do
-            case "$dc" in
-              project/linux/*|project/macos/*|project/windows/*) continue ;;
-            esac
-            # RISC-V projects need the xPack / MounRiver toolchains; see docs/CI.md.
-            case "$dc" in
-              project/ch58x/*|project/gd32vf103x/*) continue ;;
-            esac
-            echo "=== $dc"
-            ./build.sh loadconfig "$dc"
-            ./build.sh build
-          done
-
-  packaging:
-    name: packaging
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install cross toolchain and build tools
-        run: |
-          # The EC2 Ubuntu mirror stalled on toolchain downloads; Azure runners use this mirror.
-          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-            sudo sed -i 's|http://[^ /]*ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
-          fi
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
-            gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
-            gdb-multiarch ninja-build cmake git
-          python3 -m pip install kconfiglib requests
-      - name: Bootstrap Python venv
-        # Match ci.yml: CMake and build.sh must use the same interpreter.
-        run: |
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
-      - name: Build + package mcxn947/freertos-demo
-        run: |
-          ./build.sh loadconfig project/mcxn947/freertos-demo/defconfig
-          ./build.sh build
-          ./build.sh make_img
-          test -e image/CURRENT
+          .venv/bin/python -m pip install kconfiglib requests
+      - name: Build generated ARM projects and package FRDM templates
+        run: .venv/bin/python tool/test/check_standalone_projects.py --matrix arm --build-type Release

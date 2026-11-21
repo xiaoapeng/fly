@@ -1,5 +1,7 @@
 # FreeRTOS v1 设计（mcxn947）
 
+> 历史记录。本文保留首次移植时的目录、脚本和验证方案。当前工程生成和回归入口见 [RTOS 选择参考](../reference/rtos-choice.md) 与 [CI 流程](../CI.md)。
+
 ## 1. 目标
 
 把 FreeRTOS-Kernel 以 `package/scheduler/freertos/` 形式接入 FLY，v1 仅支持 mcxn947；通过集中式 scheduler choice 与 eventhub-os 互斥；新增自包含 demo 跑 2 个任务并通过硬件 RTT + LED 验证；既有项目零回归、可回滚。

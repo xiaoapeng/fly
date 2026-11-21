@@ -1,276 +1,255 @@
-import shutil
 import argparse
+import json
 import os
+import platform
+import shutil
 import subprocess
 import sys
-import kconfiglib
-import platform
-import json
-import fetch_git_project
-import check_git_status
+from dataclasses import dataclass
+from hashlib import sha256
+from pathlib import Path
 
-K_CONFIG_FILE_PATH = 'Kconfig'
-DOT_CONFIG_FILE_PATH = '.config'
-CMAKE_BUILD_DIR_PATH = 'build'
-AUTO_GENERATE_DIR_PATH = 'auto-generate'
-AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/.config.cmake'
-AUTO_GENERATE_C_HEADER_FILE_PATH = f'{AUTO_GENERATE_DIR_PATH}/autoconf.h'
-CURRENT_IMAGE_DIR_PATH = 'image/CURRENT'
+from build_environment import prepare_python
+
 ENV_PATH_CONFIG_JSON_FILE_PATH = '.PATH.env.json'
 GIT_MIRROR_SOURCE_JSON_FILE_PATH = '.git.mirror-source.json'
 GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT = 'resource/git.mirror-source.json'
 
-def check_tool_installed(tool_name):
-    # Check if the tool is in PATH
-    tool_path = shutil.which(tool_name)
-    if tool_path:
-        return True
-    else:
-        return False
 
-def get_file_modification_time(file_path):
-    # Return the last modification timestamp of a file.
-    if not os.path.exists(file_path):
-        return 0
-    return os.path.getmtime(file_path)
+@dataclass(frozen=True)
+class BuildPaths:
+    sdk: Path
+    project: Path
+
+    @property
+    def output(self):
+        return self.project / 'build'
+
+    @property
+    def cmake(self):
+        return self.output / 'cmake'
+
+    @property
+    def generated(self):
+        return self.output / 'config'
+
+    @property
+    def config(self):
+        return self.generated / '.config'
+
+    @property
+    def images(self):
+        return self.output / 'image'
+
+    @property
+    def mirror(self):
+        return self.output / GIT_MIRROR_SOURCE_JSON_FILE_PATH
+
+    def kconfig(self):
+        import kconfiglib
+
+        return kconfiglib.Kconfig(str(self.project / 'Kconfig'))
+
 
 def get_cmake_cache_value(build_dir, key):
-    if os.path.exists(f"{build_dir}/CMakeCache.txt"):
-        with open(f"{build_dir}/CMakeCache.txt", "r") as cache_file:
-            for line in cache_file:
+    cache = build_dir / 'CMakeCache.txt'
+    if cache.is_file():
+        with cache.open(encoding='utf-8') as f:
+            for line in f:
                 if line.startswith(f'{key}:'):
-                    _, value = line.split("=", 1)
+                    _, value = line.split('=', 1)
                     return value.strip()
     return None
 
-def convert_config_to_cmake(config_file, cmake_file):
-    with open(config_file, 'r') as f:
-        lines = f.readlines()
-    
-    cmake_lines = []
-    for line in lines:
+
+def write_generated_config(paths, kconf):
+    paths.generated.mkdir(parents=True, exist_ok=True)
+    kconf.write_autoconf(str(paths.generated / 'autoconf.h'))
+    config = paths.generated / '.config.cmake'
+    lines = ['# CMake config generated from Kconfig']
+    for line in paths.config.read_text(encoding='utf-8').splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        
-        key, value = line.split('=', 1)
-        key = key.strip()
-        value = value.strip()
-        
-        # Handle the case where 'm' or 'y' are not treated as booleans but as strings
-        cmake_line = f"set({key} {value})"
-        
-        cmake_lines.append(cmake_line)
-    
-    with open(cmake_file, 'w') as f:
-        f.write("# CMakeLists.txt generated from .config file\n")
-        f.write("\n".join(cmake_lines) + "\n")
-    
-    print(f"Conversion complete. CMake file written to: {cmake_file}")
-
-def try_update_cmake_config(source_dir):
-    if get_file_modification_time(f"{source_dir}/{DOT_CONFIG_FILE_PATH}") > get_file_modification_time(f"{source_dir}/{AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH}"):
-        convert_config_to_cmake(f"{source_dir}/{DOT_CONFIG_FILE_PATH}", f"{source_dir}/{AUTO_GENERATE_CMAKE_CONFIG_FILE_PATH}")
-
-def parse_config_file(file_path):
-    config_dict = {}
-    with open(file_path, 'r') as file:
-        for line in file:
-            line = line.strip()
-            # Skip comments and empty lines
-            if not line or line.startswith('#'):
-                continue
-            # Handle the CONFIG_OPTION=value format
-            if '=' in line:
-                key, value = line.split('=', 1)
-                config_dict[key.strip()] = value.strip()
-            else:
-                # Handle the CONFIG_OPTION is not set format
-                key = line
-                config_dict[key] = None
-    return config_dict
-
-def run_command(command):
-    """Run a shell command and return its real exit code.
-
-    os.system() returns a wait status (exit code 2 -> 512), and the shell
-    truncates sys.exit(>255) back to 0, so build failures used to be
-    invisible to scripts and CI. Keep every configure/build step going
-    through here.
-    """
-    return subprocess.call(command, shell=True)
-
-def run_loadconfig(source_dir, input_file):
-    """Load a config file."""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
-    kconf.load_config(input_file)
-    kconf.write_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
-    if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
-        os.mkdir(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
-    kconf.write_autoconf(f"{source_dir}/{AUTO_GENERATE_C_HEADER_FILE_PATH}")
-    try_update_cmake_config(f"{source_dir}")
+        if line and not line.startswith('#'):
+            key, value = line.split('=', 1)
+            lines.append(f'set({key.strip()} {value.strip()})')
+    content = '\n'.join(lines) + '\n'
+    if not config.is_file() or config.read_text(encoding='utf-8') != content:
+        config.write_text(content, encoding='utf-8')
 
 
-def run_menuconfig(source_dir):
-    """Launch the menuconfig UI."""
-    # Imported lazily: menuconfig needs curses, and on Windows that means the
-    # optional windows-curses wheel. loadconfig / build must not require it.
+def run_loadconfig(paths, input_file):
+    kconf = paths.kconfig()
+    kconf.load_config(str(input_file))
+    paths.config.parent.mkdir(parents=True, exist_ok=True)
+    kconf.write_config(str(paths.config))
+    write_generated_config(paths, kconf)
+
+
+def refresh_config(paths):
+    selected = paths.config if paths.config.is_file() else paths.project / 'defconfig'
+    run_loadconfig(paths, selected)
+
+
+def check_managed_sdk(paths):
+    installed = paths.project / 'fly'
+    if (not installed.is_symlink() and (installed / '.git/fly-managed').is_file()
+            and installed.resolve() == paths.sdk):
+        subprocess.run([
+            sys.executable, '-B', str(paths.project / 'tool/python/setup_fly.py'), '--check',
+        ], cwd=paths.project, check=True)
+
+
+def run_menuconfig(paths):
+    # Windows only needs the optional windows-curses wheel for menuconfig.
     try:
         import menuconfig
-    except ImportError as e:
-        print(f"menuconfig UI unavailable ({e}). On Windows run: "
-              f"pip install windows-curses")
-        sys.exit(1)
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
+    except ImportError as error:
+        raise ValueError(
+            f"menuconfig UI unavailable ({error}). On Windows run: pip install windows-curses"
+        ) from error
+
+    refresh_config(paths)
+    os.environ['KCONFIG_CONFIG'] = str(paths.config)
+    kconf = paths.kconfig()
     menuconfig.menuconfig(kconf)
-    
-    if not os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
-        os.mkdir(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
-    kconf.write_autoconf(f"{source_dir}/{AUTO_GENERATE_C_HEADER_FILE_PATH}")
-    try_update_cmake_config(f"{source_dir}")
+    # Use the saved .config, including when the user exits without saving.
+    if paths.config.is_file():
+        kconf.load_config(str(paths.config))
+        write_generated_config(paths, kconf)
 
 
-def run_saveconfig(source_dir, output_file='defconfig'):
-    """Save minimal config to the target defconfig path."""
-    kconf = kconfiglib.Kconfig(f"{source_dir}/{K_CONFIG_FILE_PATH}")
-    kconf.load_config(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
-    config = parse_config_file(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
+def run_saveconfig(paths, output_file):
+    if Path(output_file).is_absolute():
+        raise ValueError('Use a path relative to the project for saveconfig.')
+    if not paths.config.is_file():
+        refresh_config(paths)
+    kconf = paths.kconfig()
+    kconf.load_config(str(paths.config))
+    config_file = paths.project / output_file
+    kconf.write_min_config(str(config_file))
+    print(f'Defconfig saved to: {config_file}')
 
-    # Resolve CONFIG_PROJECT path from .config.
-    try:
-        
-        defconfig_path = f"{source_dir}/project/" + config['CONFIG_PROJECT'].strip('"')
-    except Exception as e:
-        print(f"Failed to read CONFIG_PROJECT from .config: {e}")
-        sys.exit(1)
-    
-    if not os.path.exists(defconfig_path):
-        print(f"Project config directory does not exist: {defconfig_path}")
-        sys.exit(1)
-    defconfig_file = f"{defconfig_path}/{output_file}"
-    # Save current config as minimal defconfig.
-    kconf.write_min_config(defconfig_file)
-    print(f"Defconfig saved to: {defconfig_file}")
 
-def run_clean(source_dir):
-    """Clean build outputs."""
-    if not check_tool_installed('cmake'):
-        print("cmake not installed. Please install cmake first.")
-        sys.exit(1)
-    
-    if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        rc = run_command(f"cmake --build {source_dir}/build --target clean")
-        if rc != 0:
-            print(f'Clean failed, exit code: {rc}')
-            sys.exit(1)
+def run_distclean(paths):
+    if paths.output.exists():
+        shutil.rmtree(paths.output)
 
-def run_distclean(source_dir):
-    """Remove build directory and generated config outputs."""
-    if os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        shutil.rmtree(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
-    if os.path.exists(f"{source_dir}/{DOT_CONFIG_FILE_PATH}"):
-        os.remove(f"{source_dir}/{DOT_CONFIG_FILE_PATH}")
-    if os.path.exists(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}"):
-        shutil.rmtree(f"{source_dir}/{AUTO_GENERATE_DIR_PATH}")
 
-def run_build(source_dir, build_type=None, jobs=None):
-    """Build project."""
-    if not check_tool_installed('cmake'):
-        print("cmake not installed. Please install cmake first.")
-        sys.exit(1)
-    
-    if jobs == None:
-        jobs = os.cpu_count()
-    
-    rebuild = False
+def require_cmake():
+    if not shutil.which('cmake'):
+        raise ValueError('cmake not installed. Please install cmake first.')
 
-    build_program = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_MAKE_PROGRAM")
-    build_program = os.path.basename(build_program) if build_program else  build_program
-    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        rebuild = True
-    elif build_program == None:
-        rebuild = True
-    elif 'ninja' == build_program and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/build.ninja"):
-        rebuild = True
-    elif ('make' == build_program or 'gmake' == build_program) and not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}/Makefile"):
-        rebuild = True
 
-    generator_args = ''
+def project_rules_changed(paths):
+    configured = get_cmake_cache_value(paths.cmake, 'FLY_PROJECT_RULES_HASH')
+    files = ('CMakeLists.txt', 'app/CMakeLists.txt', 'board/board.cmake')
+    rule_hashes = ''.join(sha256(path.read_bytes()).hexdigest()
+                          for path in (paths.project / name for name in files) if path.is_file())
+    return configured != rule_hashes
 
-    if platform.system() == 'Windows' and build_program == None :
-        if shutil.which("ninja") is not None:
-            generator_args = '-G Ninja'
-        elif shutil.which("make") is not None:
-            generator_args = '-G "Unix Makefiles"'
-        else:
-            print("No build tool found. Please install ninja or make.")
-            sys.exit(1)
-        
-    if build_type == None:
-        build_type = get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE")
-        if build_type == None:
-            build_type = "Release"
 
-    if rebuild or get_cmake_cache_value(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}", "CMAKE_BUILD_TYPE") != build_type:
-        configure_ret = run_command(
-            f'cmake '
-            f'-DCMAKE_BUILD_TYPE:STRING={build_type} '
-            f'-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE '
-            f'--no-warn-unused-cli '
-            f'-S{source_dir} '
-            f'-B{source_dir}/build '
-            f'{generator_args}'
-        )
-        if configure_ret != 0:
-            print(f'Configure failed, exit code: {configure_ret}')
-            sys.exit(1)
+def configure_project(paths, build_type=None, *, force=False):
+    require_cmake()
+    refresh_config(paths)
 
-    cmake_ret = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target all -j{jobs} --")
-    if cmake_ret != 0:
-        print(f'Build failed, exit code: {cmake_ret}')
-        sys.exit(1)
-    
-def run_target(source_dir, target):
-    if not check_tool_installed('cmake'):
-        print("cmake not installed. Please install cmake first.")
-        sys.exit(1)
-    
-    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("Build directory does not exist. Run build first.")
-        sys.exit(1)
-    rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {target}")
-    if rc != 0:
-        print(f'Target {target} failed, exit code: {rc}')
-        sys.exit(1)
+    previous_source = get_cmake_cache_value(paths.cmake, 'CMAKE_HOME_DIRECTORY')
+    previous_type = get_cmake_cache_value(paths.cmake, 'CMAKE_BUILD_TYPE')
+    previous_sdk = get_cmake_cache_value(paths.cmake, 'FLY_SDK_DIR')
+    if previous_source and (
+        Path(previous_source).resolve() != paths.project
+        or not previous_sdk or Path(previous_sdk).resolve() != paths.sdk
+    ):
+        # The CMake cache stores absolute source directories.
+        (paths.cmake / 'CMakeCache.txt').unlink()
+        cmake_files = paths.cmake / 'CMakeFiles'
+        if cmake_files.is_dir():
+            shutil.rmtree(cmake_files)
 
-def run_flash(source_dir, flash_target='default'):
-    run_target(source_dir, f'{flash_target}_flash')
+    build_tool = get_cmake_cache_value(paths.cmake, 'CMAKE_MAKE_PROGRAM')
+    build_program = Path(build_tool).stem if build_tool else ''
+    build_type = build_type or previous_type or 'Release'
+    configure = (
+        force or not build_tool or previous_type != build_type
+        or (build_program == 'ninja' and not (paths.cmake / 'build.ninja').is_file())
+        or (build_program in ('make', 'gmake') and not (paths.cmake / 'Makefile').is_file())
+        or not (paths.cmake / 'compile_commands.json').is_file()
+        or get_cmake_cache_value(paths.cmake, 'Python3_EXECUTABLE') != Path(sys.executable).as_posix()
+        or project_rules_changed(paths)
+    )
 
-def run_make_img(source_dir, flash_target='default'):
-    if not check_tool_installed('cmake'):
-        print("cmake not installed. Please install cmake first.")
-        sys.exit(1)
-    
-    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("Build directory does not exist. Run build first.")
-        sys.exit(1)
-    
-    # Generate build timestamp file.
-    check_git_status.generate_timestamp(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}")
-    rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target {flash_target}_make_img")
-    if rc != 0:
-        print(f'Make image ({flash_target}) failed, exit code: {rc}')
-        sys.exit(1)
+    if configure:
+        command = [
+            'cmake', '-S', str(paths.project), '-B', str(paths.cmake),
+            f'-DCMAKE_BUILD_TYPE:STRING={build_type}',
+            '-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE',
+            f'-DFLY_SDK_DIR:PATH={paths.sdk}',
+            f'-DPython3_EXECUTABLE:FILEPATH={sys.executable}',
+        ]
+        if platform.system() == 'Windows' and not build_tool:
+            if shutil.which('ninja'):
+                command.extend(['-G', 'Ninja'])
+            elif shutil.which('make'):
+                command.extend(['-G', 'Unix Makefiles'])
+            else:
+                raise ValueError('No build tool found. Please install ninja or make.')
+        subprocess.run(command, cwd=paths.project, check=True)
 
-def run_rttlog(source_dir):
-    if not os.path.exists(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/"):
-        print("Image directory not found. Run make_img first.")
-        sys.exit(1)
-    # Dispatch to platform-specific log script.
+
+def update_vscode(paths, tool_paths):
+    from vscode_project import write_vscode_project
+
+    keys = (
+        'CMAKE_GENERATOR', 'CMAKE_C_COMPILER', 'CMAKE_CXX_COMPILER',
+        'CMAKE_ASM_COMPILER', 'CMAKE_MAKE_PROGRAM', 'CMAKE_GDB',
+        'Python3_EXECUTABLE', 'CMAKE_COMMAND',
+    )
+    cache = {key: get_cmake_cache_value(paths.cmake, key) for key in keys}
+    write_vscode_project(paths.project, paths.sdk, paths.cmake, cache, tool_paths)
+
+
+def run_build(paths, build_type=None, jobs=None, tool_paths=()):
+    configure_project(paths, build_type)
+    if (paths.project / 'build.sh').is_file() or (paths.project / 'build.bat').is_file():
+        try:
+            update_vscode(paths, tool_paths)
+        except (OSError, ValueError) as error:
+            print(f'Could not update VS Code configuration: {error}', file=sys.stderr)
+    jobs = jobs if jobs is not None else (os.cpu_count() or 1)
+    subprocess.run([
+        'cmake', '--build', str(paths.cmake), '--target', 'all', f'-j{jobs}', '--',
+    ], cwd=paths.project, check=True)
+
+
+def run_target(paths, target):
+    require_cmake()
+    if not (paths.cmake / 'CMakeCache.txt').is_file():
+        raise ValueError('Build directory is not configured. Run build first.')
+    configured_sdk = get_cmake_cache_value(paths.cmake, 'FLY_SDK_DIR')
+    configured_project = get_cmake_cache_value(paths.cmake, 'CMAKE_HOME_DIRECTORY')
+    if not configured_sdk or Path(configured_sdk).resolve() != paths.sdk:
+        raise ValueError('The FLY SDK location changed. Run build first.')
+    if not configured_project or Path(configured_project).resolve() != paths.project:
+        raise ValueError('The project location changed. Run build first.')
+    # Older Make versions can miss same-second edits to app packaging settings.
+    if target.endswith(('_make_img', '_flash')) and project_rules_changed(paths):
+        subprocess.run(['cmake', '-S', str(paths.project), '-B', str(paths.cmake)],
+                       cwd=paths.project, check=True)
+    subprocess.run(['cmake', '--build', str(paths.cmake), '--target', target],
+                   cwd=paths.project, check=True)
+
+
+def run_rttlog(paths):
+    current = paths.images / 'CURRENT'
     if platform.system() == 'Windows':
-        os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.bat")
-    else :
-        os.system(f"{source_dir}/{CURRENT_IMAGE_DIR_PATH}/log.sh")
+        script = current / 'log.bat'
+        command = [str(script)]
+    else:
+        script = current / 'log.sh'
+        command = ['bash', str(script)]
+    if not script.is_file():
+        raise ValueError('Image log script not found. Run make_img first.')
+    subprocess.run(command, cwd=paths.project, check=True)
+
 
 def run_append_path_env(source_dir, env_path):
     env_PATH_data = []
@@ -286,72 +265,52 @@ def run_append_path_env(source_dir, env_path):
     with open(env_path_config_json_path, 'w') as f:
         json.dump(env_PATH_data, f, indent=4)
 
-def run_package_update(source_dir, pack_name, list=False):
-    if not check_tool_installed('cmake'):
-        print("cmake not installed. Please install cmake first.")
-        sys.exit(1)
-    
-    if not os.path.exists(f"{source_dir}/{CMAKE_BUILD_DIR_PATH}"):
-        print("Build directory does not exist. Run build first.")
-        sys.exit(1)
-    
-    if list:
-        rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_show_list")
-    else:
-        rc = run_command(f"cmake --build {source_dir}/{CMAKE_BUILD_DIR_PATH} --target package_update_{pack_name}")
-    if rc != 0:
-        print(f'Package update failed, exit code: {rc}')
-        sys.exit(1)
+def run_package_mirror(paths, list=False, enable=None, disable=None, update=False):
+    if not paths.mirror.is_file():
+        paths.mirror.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(paths.sdk / GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT, paths.mirror)
+        print(f"Mirror source config initialized: {paths.mirror}")
 
+    with paths.mirror.open(encoding='utf-8') as f:
+        mirror_sources = json.load(f)
 
-def run_package_mirror(source_dir, list=False, enable=None, disable=None, update=False):
-    # Initialize mirror source file if missing.
-    if not os.path.exists(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}"):
-        # Copy default mirror source list.
-        shutil.copy(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH_INIT}", f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
-        print(f"Mirror source config initialized: {source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
-    
-    # Load mirror source config.
-    git_mirror_source_data = []
-    with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'r') as f:
-        git_mirror_source_data = json.load(f)
-    
-    for item in git_mirror_source_data:
-        is_list = list
+    for item in mirror_sources:
+        show = list
         if item['name'] == enable:
             item['enable'] = True
-            is_list = True
-        
+            show = True
         if item['name'] == disable:
             item['enable'] = False
-            is_list = True
+            show = True
+        if show:
+            state = 'enable' if item['enable'] else 'disable'
+            print(f"{item['name']:<40} [{state:<7}]")
 
-        if is_list:
-            print(f"{item['name']:<40} [{'ENABLE' if item['enable'] else 'DISABLE':<7}]")
-    # Save mirror source config.
-    with open(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}", 'w') as f:
-        json.dump(git_mirror_source_data, f, indent=4)
-    
+    with paths.mirror.open('w', encoding='utf-8') as f:
+        json.dump(mirror_sources, f, indent=4)
+
     if update:
-        mirror_source_manager = fetch_git_project.MirrorSourceManager(f"{source_dir}/{GIT_MIRROR_SOURCE_JSON_FILE_PATH}")
-        mirror_source_manager.find_best_mirror_source(force_update=True)
+        import fetch_git_project
+
+        manager = fetch_git_project.MirrorSourceManager(paths.mirror)
+        manager.find_best_mirror_source(force_update=True)
+
 
 def load_env(source_dir):
-    if not os.path.exists(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}"):
-        return None
-    with open(f"{source_dir}/{ENV_PATH_CONFIG_JSON_FILE_PATH}", 'r') as f:
-        env_PATH_data = json.load(f)
-    path = os.environ.get('PATH', '')
-    for path_item in reversed(env_PATH_data):
-        path =  path_item + os.pathsep + path
-    os.environ['PATH'] = path
+    path_config = source_dir / ENV_PATH_CONFIG_JSON_FILE_PATH
+    if not path_config.is_file():
+        return []
+    tool_paths = json.loads(path_config.read_text(encoding='utf-8'))
+    os.environ['PATH'] = os.pathsep.join([*tool_paths, os.environ.get('PATH', '')])
+    return tool_paths
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='FLY build script.')
-    #parser.add_argument('source_dir', type=str, help='Directory containing Kconfig.')
+def main():
+    parser = argparse.ArgumentParser(description='Build a FLY application.')
+    parser.add_argument('--project-dir', type=Path, required=True, help='Path to the application repository.')
     
     subparsers = parser.add_subparsers(dest='command', help='Command to execute.', required=False)
+    subparsers.add_parser('prepare', help='Generate Kconfig output and report the build interpreter.')
 
     # Subparser for menuconfig
     parser_menuconfig = subparsers.add_parser('menuconfig', help='Open menuconfig UI.')
@@ -381,8 +340,11 @@ if __name__ == "__main__":
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build project.')
     parser_build.add_argument('build_type', type=str, nargs='?', default=None, help='Build type (e.g. Debug/Release/MinSizeRel).')
-    parser_build.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of parallel jobs.')
+    parser_build.add_argument('-j', '--jobs', type=int, default=argparse.SUPPRESS, help='Number of parallel jobs.')
     parser.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='Number of parallel jobs.')
+
+    parser_vscode = subparsers.add_parser('vscode', help='Configure the project and generate VS Code settings.')
+    parser_vscode.add_argument('build_type', nargs='?', help='CMake build type, for example Debug or Release.')
     
     # Subparser for rttlog
     parser_log = subparsers.add_parser('rttlog', help='Capture RTT logs.')
@@ -403,38 +365,78 @@ if __name__ == "__main__":
     parser_add_path = subparsers.add_parser('add_path_env', help='Append path to FLY PATH config.')
     parser_add_path.add_argument('env_path', type=str, help='Path to append.')
 
-    all_args = sys.argv[1:]
-    source_dir = all_args[0]
+    args = parser.parse_args()
+    sdk = Path(__file__).resolve().parents[2]
+    paths = BuildPaths(sdk, args.project_dir.resolve())
+    if paths.project == sdk:
+        parser.error('Specify an application directory. Use fly.sh or fly.bat new to create one.')
+    if not (paths.project / 'Kconfig').is_file() or not (paths.project / 'CMakeLists.txt').is_file():
+        parser.error(f'A FLY application requires Kconfig and CMakeLists.txt in {paths.project}')
 
-    args = parser.parse_args(all_args[1:])
-    
-    os.chdir(source_dir)
+    os.environ['FLY_SDK_DIR'] = sdk.as_posix()
+    os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
-    load_env(source_dir)
+    try:
+        if args.command in ('distclean', 'add_path_env'):
+            os.chdir(paths.project)
+            if args.command == 'distclean':
+                run_distclean(paths)
+            else:
+                run_append_path_env(sdk, args.env_path)
+            return 0
 
-    if args.command == 'menuconfig':
-        run_menuconfig(source_dir)
+        if args.command == 'prepare':
+            check_managed_sdk(paths)
+        interpreter = prepare_python(paths.output, output=sys.stderr if args.command == 'prepare' else None)
+        if interpreter is not None:
+            return subprocess.call([str(interpreter), '-B', str(Path(__file__).resolve()), *sys.argv[1:]])
+
+        import kconfiglib
+
+        os.chdir(paths.project)
+        tool_paths = load_env(paths.sdk)
+        try:
+            run_command(paths, args, tool_paths)
+        except kconfiglib.KconfigError as error:
+            raise ValueError(str(error)) from error
+    except (OSError, ValueError) as error:
+        print(f'Error: {error}', file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as error:
+        print(f'Build command failed with exit code {error.returncode}', file=sys.stderr)
+        return error.returncode
+    return 0
+
+
+def run_command(paths, args, tool_paths):
+    if args.command == 'prepare':
+        refresh_config(paths)
+        print(Path(sys.executable).as_posix())
+    elif args.command == 'menuconfig':
+        run_menuconfig(paths)
     elif args.command == 'saveconfig':
-        run_saveconfig(source_dir, args.savefile_name)
+        run_saveconfig(paths, args.savefile_name)
     elif args.command == 'loadconfig':
-        run_loadconfig(source_dir, args.loadfile_name)
+        run_loadconfig(paths, args.loadfile_name)
     elif args.command == 'clean':
-        run_clean(source_dir)
-    elif args.command == 'distclean':
-        run_distclean(source_dir)
-    elif args.command == 'build':
-        run_build(source_dir, args.build_type, args.jobs)
-    elif args.command == 'flash':
-        run_flash(source_dir, args.flash_target)
-    elif args.command == 'make_img':
-        run_make_img(source_dir, args.flash_target)    
+        require_cmake()
+        if (paths.cmake / 'CMakeCache.txt').is_file():
+            run_target(paths, 'clean')
+    elif args.command in ('flash', 'make_img'):
+        run_target(paths, f'{args.flash_target}_{args.command}')
     elif args.command == 'rttlog':
-        run_rttlog(source_dir)
-    elif args.command == 'add_path_env':
-        run_append_path_env(source_dir, args.env_path)
+        run_rttlog(paths)
     elif args.command == 'package_update':
-        run_package_update(source_dir, args.pack_name, args.list)
+        target = 'show_list' if args.list else args.pack_name
+        run_target(paths, f'package_update_{target}')
     elif args.command == 'package_mirror':
-        run_package_mirror(source_dir, args.list, args.enable, args.disable, args.update)
+        run_package_mirror(paths, args.list, args.enable, args.disable, args.update)
+    elif args.command == 'vscode':
+        configure_project(paths, args.build_type, force=True)
+        update_vscode(paths, tool_paths)
     else:
-        run_build(source_dir, jobs = args.jobs)
+        run_build(paths, getattr(args, 'build_type', None), args.jobs, tool_paths)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

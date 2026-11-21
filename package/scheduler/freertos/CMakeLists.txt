@@ -122,20 +122,4 @@ package_lib_add(freertos-kernel)
 package_lib_add(freertos-port)
 package_lib_add(freertos-assert)
 
-# Refresh auto-generate/autoconf.h from the current .config via inline
-# kconfiglib (no standalone Python script). build.py's menuconfig /
-# saveconfig / loadconfig also writes it, so this is a no-op when those
-# already ran. FreeRTOSConfig.h bridges CONFIG_PACKAGE_FREERTOS_* from
-# autoconf.h; autoconf.h itself is on the global include path
-# (CMakeLists.txt:33). Any autoconf.h key not present falls back to the
-# curated defaults in inc/FreeRTOSConfig.h.
-execute_process(
-    COMMAND "${Python3_EXECUTABLE}" -c "import kconfiglib\nk=kconfiglib.Kconfig('${FLY_TOP_DIR}/Kconfig')\nk.load_config('${FLY_TOP_DIR}/.config')\nk.write_autoconf('${FLY_TOP_DIR}/auto-generate/autoconf.h')"
-    WORKING_DIRECTORY "${FLY_TOP_DIR}"
-    RESULT_VARIABLE AUTOCONF_REFRESH_RET
-)
-if(NOT AUTOCONF_REFRESH_RET EQUAL 0)
-    message(FATAL_ERROR "autoconf.h refresh failed")
-endif()
-
 endif()

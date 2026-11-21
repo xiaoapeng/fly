@@ -24,43 +24,50 @@ function(add_jlink_image CMAKE_TARGET)
     if(NOT CUSTOM_FUNC_JTAGCONF)
         set(CUSTOM_FUNC_JTAGCONF "-1,-1")
     endif()
-    
-    add_custom_command(
-        OUTPUT ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
-        COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/mk_jlink_img.py 
-            --firmware-name ${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --interface-name ${CUSTOM_FUNC_INTERFACE}
-            --jlink-path  ${FLY_TOP_DIR}/tool/jlink/  --output-dir ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/ --jtagconf=${CUSTOM_FUNC_JTAGCONF}
-            --speed ${CUSTOM_FUNC_SPEED} --symlink-name ${CMAKE_TARGET}_jlink_CURRENT --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST}
-            --nm "${CMAKE_NM}"
-        COMMAND ${CMAKE_COMMAND} -E touch ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_jlink_CURRENT ${FLY_TOP_DIR}/image/CURRENT
-        DEPENDS ${CUSTOM_FUNC_DEPENDS} ${CMAKE_BINARY_DIR}/.gitstatus.timestamp 
-        COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Make a jlink burn package"
-    )
 
-    # 添加自定义目标来生成 img 文件
+    set(image_dir "${FLY_IMAGE_DIR}/${CUSTOM_FUNC_IMAGE_NAME}")
+    set(current_name "${CMAKE_TARGET}_jlink_CURRENT")
+    set(image_cache "${image_dir}/.${CMAKE_TARGET}_package_key")
+    set(packager "${FLY_TOP_DIR}/tool/python/mk_jlink_img.py")
+    set(link_helper "${FLY_TOP_DIR}/tool/python/image_directory_link.py")
+    set(image_args
+        --firmware-name "${CUSTOM_FUNC_IMAGE_NAME}_${CMAKE_BUILD_TYPE}"
+        --chip-name "${CUSTOM_FUNC_CHIP_NAME}" --interface-name "${CUSTOM_FUNC_INTERFACE}"
+        --jlink-path "${FLY_TOP_DIR}/tool/jlink" --output-dir "${image_dir}"
+        "--jtagconf=${CUSTOM_FUNC_JTAGCONF}" --speed "${CUSTOM_FUNC_SPEED}"
+        --symlink-name "${current_name}" --firmware-parts ${CUSTOM_FUNC_FIRMWARE_LIST}
+        --nm "${CMAKE_NM}"
+    )
+    # Packaging checks its input contents before reusing an image.
     add_custom_target(${CMAKE_TARGET}_make_img
-        DEPENDS check_git_status ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/.${CMAKE_TARGET}_make_img.timestamp
+        COMMAND "${Python3_EXECUTABLE}" "${packager}" ${image_args} --cache-file "${image_cache}"
+        COMMAND "${Python3_EXECUTABLE}" "${link_helper}" "${FLY_IMAGE_DIR}/CURRENT" "${image_dir}/${current_name}"
+        DEPENDS ${CUSTOM_FUNC_DEPENDS}
+        VERBATIM
+        COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Make a burn package"
     )
 
     if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
         # 添加自定义目标 自动烧写
         add_custom_target(${CMAKE_TARGET}_flash
-            COMMAND ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_jlink_CURRENT/burn.bat --nowait
+            COMMAND "${image_dir}/${current_name}/burn.bat" --nowait
             DEPENDS ${CMAKE_TARGET}_make_img
+            VERBATIM
             COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Flashing the device with JLink"
         )
     else()
         # 添加自定义目标 自动烧写
         add_custom_target(${CMAKE_TARGET}_flash
-            COMMAND ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/${CMAKE_TARGET}_jlink_CURRENT/burn.sh
+            COMMAND "${image_dir}/${current_name}/burn.sh"
             DEPENDS ${CMAKE_TARGET}_make_img
+            VERBATIM
             COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:Flashing the device with JLink"
         )
     endif()
 
     add_custom_target(${CMAKE_TARGET}_clean_img
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${FLY_TOP_DIR}/image/${CUSTOM_FUNC_IMAGE_NAME}/
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${image_dir}"
+        VERBATIM
         COMMENT "${CUSTOM_FUNC_IMAGE_NAME}:clean img"
     )
 

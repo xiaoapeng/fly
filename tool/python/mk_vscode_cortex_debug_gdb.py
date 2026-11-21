@@ -1,27 +1,30 @@
 import argparse
-import os
-import platform
 import json
+import os
+from pathlib import Path
+import sys
 
-def launch_json_read_or_init(top_path, config_name):
-    launch_json_path = f'{top_path}/.vscode/launch.json'
-    launch_json = {
-        "version": "0.2.0",
-        "configurations": [
-        ]
-    }
-    if not os.path.exists(launch_json_path):
-        return launch_json
 
+def launch_json_read_or_init(launch_path):
     try:
-        with open(launch_json_path, 'r') as file:
-            launch_json = json.load(file)
-    except:
-        return launch_json
+        launch_json = json.loads(launch_path.read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        return {"version": "0.2.0", "configurations": []}
 
+    if not isinstance(launch_json, dict) or not isinstance(launch_json.get('configurations'), list):
+        raise ValueError('Expected a JSON object with a configurations array')
     return launch_json
 
-def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, objdump_path, 
+
+def update_configuration(configurations, new_config):
+    for index, configuration in enumerate(configurations):
+        if isinstance(configuration, dict) and configuration.get('name') == new_config['name']:
+            configurations[index] = new_config
+            return
+    configurations.append(new_config)
+
+
+def launch_json_append(launch_json, config_name, chip_name, gdb_path, objdump_path,
     elf_path_list, server_type, openocd_config_file_list, rtt_enabled, interface, ext_config_json):
     
 
@@ -30,10 +33,6 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
         attach_all_config_name = f'{config_name}-{file_name} (attach)'
         all_config_name = f'{config_name}-{file_name}'
 
-        # 如果 launch_json 中已经有 attach_config_name了就将那一项删除掉
-        for i in range(len(launch_json['configurations']) - 1, -1, -1):
-            if launch_json['configurations'][i]['name'] == attach_all_config_name or launch_json['configurations'][i]['name'] == all_config_name:
-                del launch_json['configurations'][i]
         attach_all_config = {
             "name": attach_all_config_name,
             "cwd": "${workspaceFolder}",
@@ -99,19 +98,8 @@ def launch_json_append(launch_json, top_path, config_name, chip_name, gdb_path, 
                     attach_all_config.update(ext_attach_config)
 
 
-        launch_json['configurations'].append(attach_all_config)
-        launch_json['configurations'].append(launch_all_config)
-        
-
-def launch_json_save(launch_json, top_path):
-    vscode_dir = f'{top_path}/.vscode'
-    if not os.path.exists(vscode_dir):
-        os.mkdir(vscode_dir)
-
-    launch_json_path = f'{top_path}/.vscode/launch.json'
-    with open(launch_json_path, 'w') as file:
-        json.dump(launch_json, file, indent=4)
-
+        update_configuration(launch_json['configurations'], attach_all_config)
+        update_configuration(launch_json['configurations'], launch_all_config)
 
 
 if __name__ == '__main__':
@@ -131,12 +119,22 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    launch_json = launch_json_read_or_init(args.top_path, args.config_name)
-    launch_json_append(launch_json, args.top_path, args.config_name, args.chip_name, 
-                        args.gdb_path, args.objdump_path, args.elf_path_list, args.server_type, 
-                        args.openocd_config_file_list, args.rtt_enabled, args.interface, args.ext_config_json)
-    
-    launch_json_save(launch_json, args.top_path)
+    launch_path = Path(args.top_path) / '.vscode' / 'launch.json'
+    try:
+        launch_json = launch_json_read_or_init(launch_path)
+    except ValueError as error:
+        print(f'Keeping existing VS Code configuration at {launch_path}: {error}', file=sys.stderr)
+        sys.exit(0)
+
+    previous_content = json.dumps(launch_json, indent=4)
+    launch_json_append(launch_json, args.config_name, args.chip_name, args.gdb_path, args.objdump_path,
+                       args.elf_path_list, args.server_type, args.openocd_config_file_list,
+                       args.rtt_enabled, args.interface, args.ext_config_json)
+
+    content = json.dumps(launch_json, indent=4)
+    if content != previous_content or not launch_path.is_file():
+        launch_path.parent.mkdir(parents=True, exist_ok=True)
+        launch_path.write_text(content + '\n', encoding='utf-8')
 
 
 

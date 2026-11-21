@@ -13,28 +13,42 @@ choice PACKAGE_SCHEDULER
                                        FreeRTOS（preemptive kernel）
 ```
 
-- choice 是**唯一**互斥 authority；OS 子包按 `if PACKAGE_SCHEDULER_*` rsource 进入。
-- 默认 `NONE`：未 pin 的项目不会自动启用 scheduler。
-- kconfiglib 对 choice member 的 `select` 是 no-op → 项目 Kconfig **不得** select 成员，改为 select `PACKAGE_SCHEDULER_REQUIRE_<leg>`（普通 bool），由上面的条件 default 转成支路。规则见 [kconfig-rules.md](kconfig-rules.md) R1/R2。
+- `PACKAGE_SCHEDULER` 负责互斥选择。没有显式选择或请求时，默认使用 `NONE`。
+- 自定义应用在 Kconfig 中可 `select PACKAGE_SCHEDULER_REQUIRE_<leg>`，由条件 `default` 选择对应支路。显式写入 `defconfig` 的选择优先于请求位。 [Kconfig 规则](kconfig-rules.md)
 - 手工 dual-pin 时（`CONFIG_PACKAGE_SCHEDULER_EVENTHUB_OS=y` + `CONFIG_PACKAGE_SCHEDULER_FREERTOS=y`），kconfiglib 归一为 `scheduler/Kconfig` 中声明顺序靠后的 leg（FreeRTOS）。
 
-## 2. 子包 Kconfig 与 CMake
+## 2. 生成模板的配置
 
-子包 Kconfig 用 `if PACKAGE_SCHEDULER_*` 双重 gate：
+工程生成器把对应模板的 `defconfig` 与板卡的架构标识写入应用。应用根目录的 `Kconfig` 引入 SDK 的架构和组件配置。构建从应用的 `CMakeLists.txt` 进入，生成的 Kconfig 文件位于 `build/config/`。
+
+| 模板 | 调度器 | 组件 |
+|---|---|---|
+| `baremetal` | `CONFIG_PACKAGE_SCHEDULER_NONE=y` | 依板卡配置 |
+| `baremetal-nanosig` | `CONFIG_PACKAGE_SCHEDULER_NONE=y` | `CONFIG_PACKAGE_NANOSIG=y` |
+| `freertos-nanosig` | `CONFIG_PACKAGE_SCHEDULER_FREERTOS=y` | `CONFIG_PACKAGE_NANOSIG=y` |
+
+从 SDK 根目录执行 `python3 tool/test/check_standalone_projects.py --matrix config`，可验证 CI 覆盖的板卡模板组合均选中对应架构和调度器，并且没有 Kconfig 警告。 [模板说明](../../templates/README.md) · [CI 流程](../CI.md)
+
+## 3. 子包 Kconfig 与 CMake
+
+调度器 Kconfig 按以下条件加载子包，子包内部也用所选调度器限制选项可见性。
 
 - `package/scheduler/eventhub-os/Kconfig` → `if PACKAGE_SCHEDULER_EVENTHUB_OS`
 - `package/scheduler/freertos/Kconfig` → `if PACKAGE_SCHEDULER_FREERTOS`
 
-子包 CMakeLists 用 `if(CONFIG_PACKAGE_SCHEDULER_*)` 自 gate，无 OS 选中时不 fetch、不注册 target。
+组件的 `CMakeLists.txt` 按 `CONFIG_PACKAGE_SCHEDULER_*` 决定拉取源码和注册目标。裸机应用使用 `NONE` 时，这两种调度器组件均保持禁用。
 
-## 3. 项目迁移名册
+## 4. FreeRTOS 链接与中断
 
-> 历史记录：本节描述当时的两步迁移（Kconfig 里 select 成员 + defconfig pin）。
-> 该做法已被 [kconfig-rules.md](kconfig-rules.md) R2 取代：工程 Kconfig 现在 select
-> `PACKAGE_SCHEDULER_REQUIRE_<leg>`，defconfig 不再需要 scheduler pin。下表的
-> 「defconfig 改动」一列按 R5 仍有效但已冗余。
+`freertos-config` 是 `INTERFACE` 目标，提供配置头文件、内核头文件和编译定义。`freertos-heap`、`freertos-kernel`、`freertos-port` 和 `freertos-assert` 是通过 `package_lib_add()` 注册的 `OBJECT` 目标。应用调用 `target_link_package_lib()` 加入这些目标，并沿 `PUBLIC` 依赖获得配置。 [FreeRTOS 构建定义](../../package/scheduler/freertos/CMakeLists.txt)
 
-### Legacy 两步迁移（12 active 项目）
+FRDM-MCXN947 的裸机 nanosig 模板把板卡的 SysTick 时基加入构建。FreeRTOS 模板由 FreeRTOS port 接管 SysTick。 [裸机时基配置](../../templates/apps/baremetal-nanosig/app/configure.cmake)
+
+## 5. 历史迁移名册
+
+> 本节记录 SDK 仍包含 `project/` 目录时的迁移。当前模板和测试入口见上文。
+
+### 当时的两步迁移
 
 注：`gd32f103-demo` 与 `gd32e230-demo` 未启用任何 OS 包，依赖 choice 默认值 `NONE`，defconfig 无需 pin。
 
@@ -59,43 +73,11 @@ Kconfig 改动：`select PACKAGE_EVENTHUB_OS` → `select PACKAGE_SCHEDULER_EVEN
 
 `ehip` / `ehshell` / `argparse` / `ehip-tools` 四个 Kconfig 把 `depends on PACKAGE_EVENTHUB_OS` 改为 `depends on PACKAGE_SCHEDULER_EVENTHUB_OS`。等价变换，但语义更清晰。
 
-### 新项目
+### 当时新增的 FreeRTOS 示例
 
 - `project/mcxn947/freertos-demo/`：`select PACKAGE_SCHEDULER_REQUIRE_FREERTOS`（项目 Kconfig select 的是请求位，不是 choice 成员）。
 
-## 4. 自动验证
-
-`tool/test/check_freertos_config.py` 在每次 defconfig 迁移后 sweep 14 个 defconfig（12 legacy + freertos-demo + ch582-demo），外加 1 个 synthetic dual-leg 安全网用例，断言：
-
-- legacy 项目 → `SCHEDULER_EVENTHUB_OS=y` 且其他 leg `n`
-- freertos-demo → `SCHEDULER_FREERTOS=y` 且其他 leg `n`，架构事实齐备
-- ch582-demo → `SCHEDULER_NONE=y` 且其他 leg `n`
-- malformed dual-leg → scheduler 归一为 `SCHEDULER_FREERTOS=y`，eventhub 子菜单不可见
-
-非零退出并指出失败项与项目路径。
-
-## 5. FreeRTOS 子包内 4-lib 链接链
-
-```
-freertos-config (INTERFACE, 不注册)
-   ↑ PUBLIC
-freertos-heap (OBJECT)
-   ↑ PUBLIC
-freertos-kernel (OBJECT)
-   ↑ PUBLIC
-freertos-port (OBJECT)
-```
-
-Executable 通过 `target_link_package_lib` 经 PUBLIC 链拉到 `freertos-config` 的 include dirs；只注册 3 个 OBJECT（`freertos-config` 不能 `package_lib_add`，INTERFACE 上 `target_compile_options PRIVATE` 是 CMake 硬错误）。四个 target 现在注册于 `package/scheduler/freertos/CMakeLists.txt`。
-
-## 6. Kconfig 互斥规则
-
-- 正常路径：freertos-demo 由 `PACKAGE_SCHEDULER_REQUIRE_FREERTOS` 的请求位选出 `SCHEDULER_FREERTOS=y`；eventhub 工程同理走 `PACKAGE_SCHEDULER_REQUIRE_EVENTHUB_OS`。
-- 显式 defconfig pin 优先于请求位（[kconfig-rules.md](kconfig-rules.md) R5）；不要写与工程需求矛盾的 pin。
-- 手工 dual-pin 路径：scheduler 归一为 `scheduler/Kconfig` 中声明顺序靠后的 leg（FreeRTOS）。
-- CMake 不写跨 OS guard；任何残留 `FATAL_ERROR` 都是回归。
-
-## 7. 与现有项目的边界
+### 当时的中断及组件边界
 
 | 项 | 内容 |
 |---|---|
@@ -103,9 +85,9 @@ Executable 通过 `target_link_package_lib` 经 PUBLIC 链拉到 `freertos-confi
 | `target_include_directories(eventhub PUBLIC "app/inc")` | FreeRTOS demo 不包含 eventhub target，因此不应添加此配置 |
 | 启动文件 `startup_MCXN947_cm33_core0.S` | 含 weak spin-loop；FreeRTOS port.c 强符号自动覆盖，**不动启动文件** |
 
-## 8. 相关文档
+## 6. 相关文档
 
-- Kconfig 硬性规则（choice / select / 请求位 / 依赖方向）：`docs/reference/kconfig-rules.md`
-- FreeRTOS 移植设计：`docs/design/freertos-port.md`
-- FreeRTOS queue-set 后端（event-group 的整体替换）：`docs/design/queueset-backend.md`
-- OS 包并入 scheduler/ 的迁移方案：`docs/plans/scheduler-os-merge.md`
+- [Kconfig 硬性规则](kconfig-rules.md)
+- [FreeRTOS 首次移植设计](../design/freertos-port.md)
+- [FreeRTOS queue-set 后端](../design/queueset-backend.md)
+- [OS 包并入 scheduler/ 的迁移方案](../plans/scheduler-os-merge.md)

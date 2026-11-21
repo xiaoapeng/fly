@@ -1,0 +1,10 @@
+{
+  "id": "host-macos-arm64",
+  "label": "macOS host (Arm64)",
+  "chip": "Arm64 macOS host",
+  "core": "Native",
+  "arch_config": "CONFIG_ARCH_ARM64_MACOS",
+  "toolchain": "Apple Clang",
+  "probe": "None (native executable)",
+  "templates": ["baremetal"]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "gd32f103rc",
+  "label": "GD32F103RCT6 (8 MHz HXTAL)",
+  "chip": "GD32F103RCT6",
+  "core": "Cortex-M3",
+  "clock_hz": 108000000,
+  "arch_config": "CONFIG_ARCH_GD32F10X",
+  "toolchain": "Arm GNU Toolchain (arm-none-eabi)",
+  "probe": "J-Link over SWD",
+  "templates": ["baremetal"]
+}

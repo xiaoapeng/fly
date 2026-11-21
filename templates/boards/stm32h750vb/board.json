@@ -1,0 +1,11 @@
+{
+  "id": "stm32h750vb",
+  "label": "STM32H750VB",
+  "chip": "STM32H750VB",
+  "core": "Cortex-M7",
+  "clock_hz": 64000000,
+  "arch_config": "CONFIG_ARCH_STM32H7XX",
+  "toolchain": "Arm GNU Toolchain (arm-none-eabi)",
+  "probe": "J-Link over SWD",
+  "templates": ["baremetal"]
+}

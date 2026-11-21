@@ -1,0 +1,16 @@
+set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(FLY_JLINK_DEVICE "GD32E230C8T6")
+set(FLY_FLASH_ADDRESS "0x08000000")
+
+function(fly_configure_board target)
+    if(NOT CONFIG_ARCH_GD32E23X)
+        message(FATAL_ERROR "This project requires the GD32E23x architecture. Load its defconfig.")
+    endif()
+
+    target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board.c")
+    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}")
+    target_link_libraries(${target} arch-gd32e23x c m gcc)
+    set(linker_script "${FLY_BOARD_DIR}/flash.ld")
+    target_link_options(${target} PRIVATE "-T${linker_script}")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${linker_script}")
+endfunction()
