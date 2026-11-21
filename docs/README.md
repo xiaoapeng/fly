@@ -17,7 +17,7 @@
 - [回归脚本](../tool/test/README.md) — 应用配置、构建、SDK 安装及固件打包的校验入口
 - [Kconfig 硬性规则](reference/kconfig-rules.md) — choice、请求位、默认选项和应用到 SDK 组件的依赖方向
 - [RTOS 选择语义](reference/rtos-choice.md) — 生成模板如何选择调度器，以及 `package/scheduler/` 下的子包如何加载
-- [FreeRTOS queue-set 后端](design/queueset-backend.md) — event-group 整体替换为 `QueueSetHandle_t`；watcher 成员契约、select/take 成对、`FIXED_CAP` sizing、ISR 由调用方原生 give
+- [FreeRTOS queue-set 后端](design/queueset-backend.md) — watcher 注册和注销、退出前排空队列、容量校验及 ISR 通知
 
 ## 历史记录
 
