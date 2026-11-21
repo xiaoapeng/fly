@@ -4,6 +4,7 @@
   "chip": "Arm64 macOS host",
   "core": "Native",
   "arch_config": "CONFIG_ARCH_ARM64_MACOS",
+  "host_platform": "darwin",
   "toolchain": "Apple Clang",
   "probe": "None (native executable)",
   "templates": ["baremetal"]

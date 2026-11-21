@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -142,6 +143,56 @@ def check_selected_sdk(project, sdk):
         check_local_pin(project, sdk)
 
 
+def resolve_sdk(project, explicit=None):
+    override = explicit or os.environ.get("FLY_ROOT")
+    if not override:
+        installed = project / "fly"
+        if os.path.lexists(installed):
+            return installed
+        path_file = project / ".fly-root"
+        if not path_file.is_file():
+            return None
+        override = path_file.read_text(encoding="utf-8").splitlines()
+        if not override or not override[0]:
+            raise ValueError(f"No SDK path is recorded in {path_file}. {RUN_SETUP}")
+        override = override[0]
+    return project / Path(override).expanduser()
+
+
+def require_sdk(project, explicit=None):
+    selected = resolve_sdk(project, explicit)
+    if selected is None:
+        raise ValueError(f"Could not locate FLY. {RUN_SETUP} Alternatively, set FLY_ROOT.")
+    check_selected_sdk(project, selected)
+    return selected.resolve()
+
+
+def build_python(sdk):
+    venv_python = sdk / (".venv/Scripts/python.exe" if os.name == "nt" else ".venv/bin/python")
+    for candidate in (os.environ.get("FLY_PYTHON"), str(venv_python)):
+        python = shutil.which(candidate) if candidate else None
+        if python:
+            try:
+                result = subprocess.run(
+                    [python, "-c", "import sys; sys.exit(sys.version_info < (3, 8))"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+            except OSError:
+                continue
+            if result.returncode == 0:
+                return os.path.abspath(python)
+    return sys.executable
+
+
+def run_build(project, arguments):
+    sdk = require_sdk(project)
+    python = build_python(sdk)
+    command = [python, "-B", str(sdk / "tool/python/build.py"), "--project-dir", str(project), *arguments]
+    if os.name != "nt":
+        os.execv(python, command)
+    return subprocess.call(command)
+
+
 def checkout(directory, commit):
     git(directory, "fetch", "--depth=1", "--no-tags", "origin", commit)
     if git(directory, "rev-parse", "--verify", "FETCH_HEAD", capture=True) != commit:
@@ -170,18 +221,10 @@ def install(project, sdk, url, commit):
 
 
 def setup(project, sdk):
-    override = os.environ.get("FLY_ROOT")
-    stored_path = project / ".fly-root"
-    if override or (not os.path.lexists(sdk) and stored_path.is_file()):
-        path = Path(override or stored_path.read_text(encoding="utf-8").rstrip("\r\n")).expanduser()
-        check_selected_sdk(project, path)
-        print(f"Using local FLY SDK at {path.resolve()}")
-        return
-    if os.path.lexists(sdk) and not is_managed(sdk):
-        if not is_sdk(sdk):
-            raise ValueError(f"{sdk} already exists. Point FLY_ROOT at a compatible FLY SDK.")
-        check_local_pin(project, sdk)
-        print(f"Using local FLY SDK at {sdk.resolve()}")
+    selected = resolve_sdk(project)
+    if selected is not None and (os.environ.get("FLY_ROOT") or selected != sdk or not is_managed(sdk)):
+        check_selected_sdk(project, selected)
+        print(f"Using local FLY SDK at {selected.resolve()}")
         return
 
     url, commit = read_pin(project)
@@ -202,26 +245,49 @@ def setup(project, sdk):
     print(f"FLY SDK ready at {commit} in {sdk}")
 
 
-def main():
+def main(arguments=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--sdk-dir", type=Path, help=argparse.SUPPRESS)
-    args = parser.parse_args()
-    if args.sdk_dir is not None and not args.check:
-        parser.error("--sdk-dir requires --check")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
+    mode.add_argument("--resolve", action="store_true", help=argparse.SUPPRESS)
+    mode.add_argument("--build", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+    parser.add_argument("--sdk-dir", help=argparse.SUPPRESS)
+    parser.add_argument("--configured-sdk-dir", type=Path, help=argparse.SUPPRESS)
+    args = parser.parse_args(arguments)
+    if args.sdk_dir is not None and not (args.check or args.resolve):
+        parser.error("--sdk-dir requires --check or --resolve")
+    if args.configured_sdk_dir is not None and not args.resolve:
+        parser.error("--configured-sdk-dir requires --resolve")
     project = Path(__file__).resolve().parents[2]
     sdk = project / "fly"
     try:
         if args.check:
             if args.sdk_dir is not None:
-                check_selected_sdk(project, args.sdk_dir.expanduser())
+                check_selected_sdk(project, project / Path(args.sdk_dir).expanduser())
             elif is_managed(sdk):
                 check_managed_sdk(project, sdk)
+        elif args.resolve:
+            # A build subprocess uses its launcher's already selected SDK.
+            explicit = os.environ.get("FLY_APP_SDK_DIR") or args.sdk_dir
+            selected = require_sdk(project, explicit)
+            if args.configured_sdk_dir is None:
+                print(selected.as_posix())
+            elif selected != args.configured_sdk_dir:
+                raise ValueError(
+                    f"The selected FLY SDK moved from {args.configured_sdk_dir} to {selected}. "
+                    "Reconfigure the application with CMake before building."
+                )
+        elif args.build is not None:
+            if args.build[:1] == ["setup"]:
+                return main(args.build[1:])
+            return run_build(project, args.build)
         else:
             setup(project, sdk)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"FLY SDK: {error}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 

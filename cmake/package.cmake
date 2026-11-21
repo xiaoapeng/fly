@@ -8,7 +8,12 @@ endfunction()
 
 function(package_lib_compile_options COMPILE_OPTIONS)
     foreach(lib_target IN LISTS FLY_ALL_PACKAGE_LIB_LIST)
-        target_compile_options(${lib_target} PRIVATE ${COMPILE_OPTIONS})
+        set(options ${COMPILE_OPTIONS})
+        get_property(excluded TARGET ${lib_target} PROPERTY FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS)
+        if(excluded)
+            list(REMOVE_ITEM options ${excluded})
+        endif()
+        target_compile_options(${lib_target} PRIVATE ${options})
     endforeach()
 endfunction()
 

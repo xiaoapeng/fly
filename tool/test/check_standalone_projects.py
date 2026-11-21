@@ -17,26 +17,12 @@ from zipfile import ZipFile
 from zlib import crc32
 
 
-NANOSIG_TEMPLATES = ("baremetal-nanosig", "freertos-nanosig")
-TEMPLATES = ("baremetal", *NANOSIG_TEMPLATES)
 FRDM_BOARD = "frdm-mcxn947-core0"
-BOARD_HEADERS = {
-    FRDM_BOARD: ("board.h", "board_time.h", "clock_config.h"),
-    "gd32e230c8": ("board.h",),
-    "gd32f103rc": ("board.h",),
-    "stm32f030x8": ("stm32f0xx_hal_conf.h",),
-    "stm32f103x6": ("stm32f1xx_hal_conf.h",),
-    "stm32f401cb": ("stm32f4xx_hal_conf.h",),
-    "stm32h750vb": ("stm32h7xx_hal_conf.h",),
-}
-HOST_ARCHES = {
-    "linux": "CONFIG_ARCH_X64_LINUX",
-    "darwin": "CONFIG_ARCH_ARM64_MACOS",
-    "win32": "CONFIG_ARCH_X64_WINDOWS",
-}
-RISCV_ARCHES = {"CONFIG_ARCH_CH58X", "CONFIG_ARCH_GD32VF103X"}
+FRDM_NANOSIG_SMOKES = ("baremetal-nanosig", "freertos-nanosig")
+FRDM_SMOKES = ("baremetal", *FRDM_NANOSIG_SMOKES)
 FACTORY_DATA_ENABLED = "CONFIG_FACTORY_DATA_SUPPORTED=y"
 FACTORY_DATA_DISABLED = "# CONFIG_FACTORY_DATA_SUPPORTED is not set"
+OPENOCD_TEST_RTT = ("0x10002000", "0x1800")
 
 
 def entrypoint(directory, name, *args):
@@ -64,6 +50,11 @@ def commit(repo, message, *, allow_empty=False):
     return run(["git", "rev-parse", "HEAD"], repo).strip()
 
 
+def template_manifest(sdk, template):
+    manifest = sdk / "templates/apps" / template / "template.json"
+    return json.loads(manifest.read_text(encoding="utf-8"))
+
+
 def generate(sdk, project, name, board, template):
     run(entrypoint(sdk, "fly", "new", name, "--board", board,
                    "--template", template, "--output", str(project)), sdk)
@@ -83,14 +74,35 @@ def generate(sdk, project, name, board, template):
         wrapper_cmake = wrapper.read_text(encoding="utf-8")
         if any(setting not in wrapper_cmake for setting in settings):
             raise RuntimeError(f"{project.name} must check availability in {relative_path}")
+    for relative_path in template_manifest(sdk, template).get("required_files", ()):
+        if not (project / relative_path).is_file():
+            raise RuntimeError(f"{project.name} is missing {relative_path}")
+
+    misplaced_headers = sorted(header.name for header in (project / "app").glob("*.h"))
+    if misplaced_headers:
+        raise RuntimeError(f"{project.name} has headers directly under app/: {misplaced_headers}")
+    board_dir = project / "board"
+    board_include = board_dir / "include"
+    misplaced_headers = sorted(
+        header.relative_to(board_dir).as_posix()
+        for header in board_dir.rglob("*.h")
+        if header.is_file() and board_include not in header.parents
+    )
+    if misplaced_headers:
+        raise RuntimeError(f"{project.name} has headers outside board/include/: {misplaced_headers}")
+    board_source = sdk / "templates/boards" / board
+    for source_header in (board_source / "include").rglob("*.h"):
+        relative_path = source_header.relative_to(board_source)
+        if not (board_dir / relative_path).is_file():
+            raise RuntimeError(f"{project.name} is missing board/{relative_path.as_posix()}")
+
+
+def check_frdm_layout(project, template):
     app = project / "app"
     include = app / "include"
     for relative_path in ("mid/firmware_info.c", "include/mid/firmware_info.h"):
         if not (app / relative_path).is_file():
             raise RuntimeError(f"{project.name} is missing app/{relative_path}")
-    misplaced_headers = sorted(header.name for header in app.glob("*.h"))
-    if misplaced_headers:
-        raise RuntimeError(f"{project.name} has headers directly under app/: {misplaced_headers}")
     for relative_path in (
         "app.c", "app_runtime.c", "app_demo.c", "firmware_info.c",
         "include/app.h", "include/app_runtime.h", "include/app_demo.h", "include/firmware_info.h",
@@ -98,7 +110,7 @@ def generate(sdk, project, name, board, template):
         if (app / relative_path).exists():
             raise RuntimeError(f"{project.name} unexpectedly contains app/{relative_path}")
 
-    needs_runtime = template in NANOSIG_TEMPLATES
+    needs_runtime = template in FRDM_NANOSIG_SMOKES
     for business_dir in (app / "biz", include / "biz"):
         relative_path = business_dir.relative_to(project).as_posix()
         if not business_dir.is_dir():
@@ -111,19 +123,6 @@ def generate(sdk, project, name, board, template):
             raise RuntimeError(f"{project.name} is missing app/{relative_path}")
         if not needs_runtime and source.exists():
             raise RuntimeError(f"{project.name} unexpectedly contains app/{relative_path}")
-
-    board_dir = project / "board"
-    board_include = board_dir / "include"
-    misplaced_headers = sorted(
-        header.relative_to(board_dir).as_posix()
-        for header in board_dir.rglob("*.h")
-        if header.is_file() and board_include not in header.parents
-    )
-    if misplaced_headers:
-        raise RuntimeError(f"{project.name} has headers outside board/include/: {misplaced_headers}")
-    for header in BOARD_HEADERS.get(board, ()):
-        if not (board_include / header).is_file():
-            raise RuntimeError(f"{project.name} is missing board/include/{header}")
 
 
 def check_sdk_pin_mismatch(command, project, env, *, expected, actual, source=None):
@@ -228,16 +227,28 @@ def check_native_sdk_pin(sdk, workspace):
     origin = workspace / "native SDK origin"
     origin.mkdir()
     run(["git", "init", "-q"], origin)
-    for file in ("cmake/fly-configure.cmake", "cmake/python3.cmake",
-                 "tool/python/build.py", "tool/python/build_environment.py"):
+    for file in ("cmake/fly-configure.cmake", "tool/python/build.py"):
         destination = origin / file
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(sdk / file, destination)
+        destination.touch()
+    (origin / "cmake/fly-configure.cmake").write_text(
+        'get_filename_component(sdk "${CMAKE_CURRENT_LIST_DIR}/.." REALPATH)\n'
+        'set(FLY_RESOLVED_SDK_DIR "${sdk}" CACHE INTERNAL "Resolved fixture SDK")\n'
+        'file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/sdk-loaded" "SDK configured\\n")\n',
+        encoding="utf-8",
+    )
     installed_pin = commit(origin, "SDK for native configure")
     new_pin = commit(origin, "New SDK revision", allow_empty=True)
 
     app = workspace / "native app"
     generate(sdk, app, "native-pin-check", FRDM_BOARD, "baremetal")
+    (app / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.21)
+include("${CMAKE_CURRENT_LIST_DIR}/tool/cmake/app-sdk.cmake")
+include("${FLY_SDK_DIR}/cmake/fly-configure.cmake")
+project(test_sdk_pin NONE)
+add_custom_target(app_target)
+app_add_sdk_check(app_target)
+''', encoding="utf-8")
     local_sdk = app / "fly"
     if local_sdk.is_symlink():
         local_sdk.unlink()
@@ -249,14 +260,38 @@ def check_native_sdk_pin(sdk, workspace):
     env["FLY_AUTO_SETUP_PY"] = "0"
     run(entrypoint(app, "build", "setup"), app, env)
     command = ["cmake", "-S", str(app), f"-DPython3_EXECUTABLE:FILEPATH={sys.executable}"]
+
+    env_a = dict(env, FLY_ROOT=str(local_sdk))
+    env_b = dict(env, FLY_ROOT=str(origin))
+    reused = app / "build/cmake"
+    reconfigure = [*command, "-B", str(reused)]
+    run(reconfigure, app, env_a)
+    cache = reused / "CMakeCache.txt"
+    cache_a = cache.read_text(encoding="utf-8").splitlines()
+    resolved = next((line for line in cache_a if line.startswith("FLY_RESOLVED_SDK_DIR:")), "")
+    configured = reused / "sdk-loaded"
+    marker_a = configured.read_bytes()
+    if (not resolved or Path(resolved.partition("=")[2]).resolve() != local_sdk.resolve()
+            or any(line.startswith("FLY_SDK_DIR:") for line in cache_a)):
+        raise RuntimeError("Native CMake did not distinguish a resolved SDK from an explicit override")
+    build = ["cmake", "--build", str(reused), "--target", "app_target"]
+    run(build, app, env_a)
+    check_sdk_pin_mismatch(build, app, env_b, expected=installed_pin, actual=new_pin)
+    check_sdk_pin_mismatch(reconfigure, app, env_b, expected=installed_pin, actual=new_pin)
+    cache_after = cache.read_text(encoding="utf-8").splitlines()
+    if (resolved not in cache_after or configured.read_bytes() != marker_a
+            or any(line.startswith("FLY_SDK_DIR:") for line in cache_after)):
+        raise RuntimeError("A rejected FLY_ROOT change altered the existing native configure state")
+
     check_sdk_pin_mismatch([*command, "-B", str(app / "build/explicit-cmake"), f"-DFLY_SDK_DIR:PATH={origin}"],
-                           app, env, expected=installed_pin, actual=new_pin)
+                           app, env_a, expected=installed_pin, actual=new_pin)
     lock.write_text(json.dumps({"url": origin.as_uri(), "commit": new_pin}), encoding="utf-8")
-    check_sdk_pin_mismatch([*command, "-B", str(app / "build/cmake")], app, env,
+    check_sdk_pin_mismatch([*command, "-B", str(app / "build/managed-cmake")], app, env,
                            expected=new_pin, actual=installed_pin)
-    if (app / "build/config/autoconf.h").exists():
-        raise RuntimeError("Direct CMake prepared Kconfig before validating the SDK pin")
-    print("Native CMake validates both explicit and managed SDK pins: PASS", flush=True)
+    if any((app / "build" / directory / "sdk-loaded").exists()
+           for directory in ("explicit-cmake", "managed-cmake")):
+        raise RuntimeError("Direct CMake loaded the SDK before validating its pin")
+    print("Native CMake validates explicit, managed and reselected SDK pins: PASS", flush=True)
 
 
 def check_openocd_script(sdk, workspace):
@@ -271,6 +306,8 @@ def check_openocd_script(sdk, workspace):
          "--firmware-name", "openocd-check", "--output-dir", str(images),
          "--config-file-list", str(config),
          "--firmware-parts", "APP:0.1.0:0x00000000:0x1000:firmware.bin"], project)
+    if any((images / "CURRENT").glob("log.*")):
+        raise RuntimeError("OpenOCD generated RTT scripts without a board-specific RTT range")
     tools = project / "test tools"
     tools.mkdir()
     probe = tools / "openocd"
@@ -361,7 +398,7 @@ def check_image_packagers(sdk, workspace):
     backends = {
         "jlink": ["--jlink-path", str(jlink_tools), "--chip-name", "MCXN947_M33_0",
                   "--speed", "4000", "--jtagconf=-1,-1", "--nm", sys.executable],
-        "openocd": ["--config-file-list", str(board_config)],
+        "openocd": ["--config-file-list", str(board_config), "--rtt-setting", *OPENOCD_TEST_RTT],
     }
     packages = {}
     for backend, options in backends.items():
@@ -474,6 +511,8 @@ def check_image_rtt_failures(sdk, workspace, packages):
                            f"{result.stdout}{result.stderr}")
 
     openocd = packages["openocd"]
+    if f"rtt setup {' '.join(OPENOCD_TEST_RTT)}" not in (openocd / "log.sh").read_text(encoding="utf-8"):
+        raise RuntimeError("OpenOCD did not use the explicit RTT range")
     tools = workspace / "RTT test tools"
     probe = tools / "openocd"
     telnet = tools / "telnet"
@@ -612,14 +651,14 @@ def check_image_after_distclean(project):
     print("Published firmware and RTT entry after distclean: PASS", flush=True)
 
 
-def check_vscode(sdk, project):
+def check_vscode(project):
     vscode = project / ".vscode"
     settings = json.loads((vscode / "settings.json").read_text(encoding="utf-8"))
     if settings["cmake.sourceDirectory"] != "${workspaceFolder}":
         raise RuntimeError("CMake Tools must configure the application entry point")
     if (settings["cmake.buildDirectory"] != "${workspaceFolder}/build/cmake"
-            or Path(settings["cmake.configureSettings"]["FLY_SDK_DIR"]).resolve() != sdk):
-        raise RuntimeError("CMake Tools must use the application's build directory and the selected SDK")
+            or "FLY_SDK_DIR" in settings["cmake.configureSettings"]):
+        raise RuntimeError("CMake Tools must use the application build directory without forcing an SDK override")
 
     database_dir = project / "build/cmake"
     expected_database_arg = f"--compile-commands-dir={database_dir.resolve().as_posix()}"
@@ -641,12 +680,12 @@ def check_build_outputs(sdk, project, *, host=False):
     cache = (cmake_dir / "CMakeCache.txt").read_text(encoding="utf-8")
     cache_paths = {}
     for line in cache.splitlines():
-        if line.startswith(("CMAKE_HOME_DIRECTORY:", "FLY_SDK_DIR:")):
+        if line.startswith(("CMAKE_HOME_DIRECTORY:", "FLY_RESOLVED_SDK_DIR:")):
             key, _, value = line.partition("=")
             cache_paths[key.split(":", 1)[0]] = Path(value).resolve()
     if cache_paths.get("CMAKE_HOME_DIRECTORY") != project.resolve():
         raise RuntimeError(f"{project.name} did not configure from its own CMakeLists.txt")
-    if cache_paths.get("FLY_SDK_DIR") != sdk:
+    if cache_paths.get("FLY_RESOLVED_SDK_DIR") != sdk:
         raise RuntimeError(f"{project.name} did not use the current SDK checkout")
 
     executable_name = "fly_app.exe" if host and os.name == "nt" else "fly_app"
@@ -735,10 +774,11 @@ def check_debug_launch(project):
     run(["git", "check-ignore", "--", ".vscode/launch.json"], project)
 
 
-def check_project(sdk, workspace, template, build_type):
+def check_frdm_project(sdk, workspace, template, build_type):
     project = workspace / template
     name = f"test-{template}"
     generate(sdk, project, name, FRDM_BOARD, template)
+    check_frdm_layout(project, template)
     git_root = run(["git", "rev-parse", "--show-toplevel"], project).strip()
     if Path(git_root).resolve() != project.resolve():
         raise RuntimeError(f"{project} was not initialized as its own Git repository")
@@ -767,11 +807,21 @@ def check_project(sdk, workspace, template, build_type):
         run(entrypoint(project, "build", "vscode", build_type), project)
         if (project / "build/cmake/fly_app").exists():
             raise RuntimeError("The vscode command must prepare the workspace without compiling")
-        check_vscode(sdk, project)
+        check_vscode(project)
+        settings_path = project / ".vscode/settings.json"
+        previous = settings_path.read_text(encoding="utf-8")
+        settings = json.loads(previous)
+        settings["cmake.configureSettings"]["FLY_SDK_DIR"] = sdk.as_posix()
+        settings_path.write_text(json.dumps(settings), encoding="utf-8")
+        run(entrypoint(project, "build", "vscode", build_type), project)
+        preserved = json.loads(settings_path.read_text(encoding="utf-8"))["cmake.configureSettings"]
+        if preserved.get("FLY_SDK_DIR") != sdk.as_posix():
+            raise RuntimeError("Refreshing VS Code discarded an explicit user SDK override")
+        settings_path.write_text(previous, encoding="utf-8")
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
     cmake_cache = check_build_outputs(sdk, project)
     check_firmware_info_messages(project, enabled=True)
-    if template in NANOSIG_TEMPLATES:
+    if template in FRDM_NANOSIG_SMOKES:
         binary = (project / "build/cmake/fly_app.bin").read_bytes()
         for message in (b"nanosig ready", b"nanosig stopped"):
             if message not in binary:
@@ -781,7 +831,7 @@ def check_project(sdk, workspace, template, build_type):
 
     for directory in ("build/", "image/"):
         run(["git", "check-ignore", "--", directory], project)
-    check_vscode(sdk, project)
+    check_vscode(project)
     check_image(project, name, "0.1.0", revision, build_type)
     if any(line.startswith("CMAKE_GDB:INTERNAL=") and not line.endswith("-NOTFOUND")
            for line in cmake_cache.splitlines()):
@@ -809,27 +859,6 @@ def check_project(sdk, workspace, template, build_type):
     print(f"{template}: build and J-Link package PASS", flush=True)
 
 
-def ci_boards(sdk):
-    menu = (sdk / "arch/Kconfig").read_text(encoding="utf-8")
-    required_arches = set()
-    for line in menu.splitlines():
-        pieces = line.partition("#")[0].split()
-        if len(pieces) == 2 and pieces[0] == "config" and pieces[1].startswith("ARCH_"):
-            required_arches.add(f"CONFIG_{pieces[1]}")
-    required_arches -= RISCV_ARCHES
-
-    boards = [json.loads(path.read_text(encoding="utf-8"))
-              for path in sorted((sdk / "templates/boards").glob("*/board.json"))]
-    boards = [board for board in boards if board["arch_config"] not in RISCV_ARCHES]
-    baremetal_arches = {board["arch_config"] for board in boards if "baremetal" in board["templates"]}
-    if baremetal_arches != required_arches:
-        missing = ", ".join(sorted(required_arches - baremetal_arches)) or "none"
-        unexpected = ", ".join(sorted(baremetal_arches - required_arches)) or "none"
-        raise RuntimeError(f"Generated board coverage differs from arch/Kconfig. "
-                           f"Missing: {missing}. Unexpected: {unexpected}.")
-    return boards
-
-
 def check_generated_config(sdk, workspace, board, template):
     name = f"{board['id']}-{template}"
     project = workspace / name
@@ -839,23 +868,71 @@ def check_generated_config(sdk, workspace, board, template):
         raise RuntimeError(f"{name} generated Kconfig warnings:\n{output}")
 
     config = (project / "build/config/.config").read_text(encoding="utf-8").splitlines()
-    architecture = board["arch_config"]
-    scheduler = "FREERTOS" if template == "freertos-nanosig" else "NONE"
-    factory_data = FACTORY_DATA_DISABLED if architecture in HOST_ARCHES.values() else FACTORY_DATA_ENABLED
-    for assignment in (f"{architecture}=y", f"CONFIG_PACKAGE_SCHEDULER_{scheduler}=y", factory_data):
+    expected = [f'{board["arch_config"]}=y', *template_manifest(sdk, template).get("expected_config", ())]
+    board_config = sdk / "templates/boards" / board["id"] / "defconfig"
+    if board_config.is_file():
+        expected.extend(line for line in board_config.read_text(encoding="utf-8").splitlines()
+                        if re.fullmatch(r"CONFIG_[A-Z0-9_]+=.*|# CONFIG_[A-Z0-9_]+ is not set", line))
+    for assignment in expected:
         if assignment not in config:
             raise RuntimeError(f"{name} is missing Kconfig line {assignment!r}")
     print(f"{name}: Kconfig PASS", flush=True)
 
 
-def check_board_build(sdk, workspace, board, build_type, *, host=False):
-    name = board["id"]
+def check_registered_template(sdk, workspace):
+    fixture = workspace / "SDK with an added template"
+    fixture.mkdir()
+    for launcher in ("fly.sh", "fly.bat"):
+        shutil.copy2(sdk / launcher, fixture / launcher)
+    for directory in ("templates", "tool/python"):
+        shutil.copytree(sdk / directory, fixture / directory, ignore=shutil.ignore_patterns("__pycache__"))
+    template = {
+        "label": "Data-only fixture template",
+        "expected_log": "fixture says hello",
+        "overlays": ["common/fixture-layer"],
+        "board_bindings": {"FIXTURE_NUMBER": {"field": "fixture_number", "type": "positive_integer"}},
+        "expected_config": ["CONFIG_FIXTURE_NUMBER=6100"],
+        "required_files": ["app/main.c", "app/biz/fixture.c"],
+    }
+    board = {
+        "id": "fixture-board", "label": "Fixture board", "chip": "Fixture chip", "core": "Fixture core",
+        "arch_config": "CONFIG_ARCH_FIXTURE", "toolchain": "Fixture toolchain", "probe": "No probe",
+        "fixture_number": 6100, "templates": ["fixture-template"],
+    }
+    files = {
+        "templates/apps/fixture-template/template.json": json.dumps(template),
+        "templates/apps/fixture-template/defconfig": "CONFIG_FIXTURE_NUMBER=@FIXTURE_NUMBER@\n",
+        "templates/apps/fixture-template/app/main.c": "/* selected template */\n",
+        "templates/apps/common/fixture-layer/app/main.c": "/* shared overlay */\n",
+        "templates/apps/common/fixture-layer/app/biz/fixture.c": "/* overlay marker */\n",
+        "templates/boards/fixture-board/board.json": json.dumps(board),
+        "templates/boards/fixture-board/board.cmake": "# fixture board\n",
+    }
+    for name, content in files.items():
+        destination = fixture / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding="utf-8")
+
+    project = workspace / "fixture-app"
+    generate(fixture, project, "fixture-app", board["id"], "fixture-template")
+    if (project / "app/main.c").read_text(encoding="utf-8") != files["templates/apps/fixture-template/app/main.c"]:
+        raise RuntimeError("The selected template did not override the shared overlay")
+    if (project / "app/biz/fixture.c").read_text(encoding="utf-8") != "/* overlay marker */\n":
+        raise RuntimeError("The manifest's overlay content did not reach the generated application")
+    config = (project / "defconfig").read_text(encoding="utf-8").splitlines()
+    if config != [f'{board["arch_config"]}=y', *template["expected_config"]]:
+        raise RuntimeError("The generator did not render the manifest's board binding")
+    if template["expected_log"] not in (project / "README.md").read_text(encoding="utf-8"):
+        raise RuntimeError("The generated README did not use the manifest's expected log")
+    print("Data-only template registration, overlay and board binding: PASS", flush=True)
+
+
+def check_board_build(sdk, workspace, board, template, build_type):
+    name = f"{board['id']}-{template}"
     project = workspace / name
-    generate(sdk, project, name, name, "baremetal")
+    generate(sdk, project, name, board["id"], template)
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
-    check_build_outputs(sdk, project, host=host)
-    if not host:
-        check_firmware_info_messages(project, enabled=True)
+    check_build_outputs(sdk, project, host=bool(board.get("host_platform")))
     print(f"{name}: {build_type} compile and link PASS", flush=True)
 
 
@@ -868,30 +945,34 @@ def check_frdm_templates(sdk, workspace, build_type):
     check_jlink_requires_binary(sdk, workspace)
     packages = check_image_packagers(sdk, workspace)
     check_image_rtt_failures(sdk, workspace, packages)
-    with ThreadPoolExecutor(max_workers=len(TEMPLATES)) as pool:
-        futures = [pool.submit(check_project, sdk, workspace, template, build_type) for template in TEMPLATES]
+    with ThreadPoolExecutor(max_workers=len(FRDM_SMOKES)) as pool:
+        futures = [pool.submit(check_frdm_project, sdk, workspace, template, build_type) for template in FRDM_SMOKES]
         for future in futures:
             future.result()
+    return {(FRDM_BOARD, template) for template in FRDM_SMOKES}
 
 
 def check_matrix(sdk, workspace, matrix, build_type):
-    boards = ci_boards(sdk)
+    boards = [json.loads(path.read_text(encoding="utf-8"))
+              for path in sorted((sdk / "templates/boards").glob("*/board.json"))]
+    if not boards:
+        raise RuntimeError("No board manifests found")
     if matrix == "config":
         for board in boards:
             for template in board["templates"]:
                 check_generated_config(sdk, workspace, board, template)
-    elif matrix == "arm":
-        for board in boards:
-            if board["arch_config"] not in HOST_ARCHES.values() and board["id"] != FRDM_BOARD:
-                check_board_build(sdk, workspace, board, build_type)
-        check_frdm_templates(sdk, workspace, build_type)
-    else:
-        host = HOST_ARCHES.get(sys.platform)
-        if host is None:
-            raise RuntimeError(f"Unsupported CI host: {sys.platform}")
-        for board in boards:
-            if board["arch_config"] == host:
-                check_board_build(sdk, workspace, board, build_type, host=True)
+        check_registered_template(sdk, workspace)
+        return
+
+    platform = sys.platform if matrix == "host" else None
+    selected = [board for board in boards if board.get("host_platform") == platform]
+    if not selected:
+        raise RuntimeError(f"No boards registered for the {matrix} matrix on {sys.platform}")
+    smoke_coverage = check_frdm_templates(sdk, workspace, build_type) if matrix == "arm" else set()
+    for board in selected:
+        for template in board["templates"]:
+            if (board["id"], template) not in smoke_coverage:
+                check_board_build(sdk, workspace, board, template, build_type)
 
 
 def main():

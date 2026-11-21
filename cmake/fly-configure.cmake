@@ -1,6 +1,6 @@
 # Prepare the selected SDK and toolchain before the application's project().
 get_filename_component(FLY_TOP_DIR "${CMAKE_CURRENT_LIST_DIR}/.." REALPATH)
-set(FLY_SDK_DIR "${FLY_TOP_DIR}" CACHE PATH "FLY SDK checkout" FORCE)
+set(FLY_RESOLVED_SDK_DIR "${FLY_TOP_DIR}" CACHE INTERNAL "Resolved FLY SDK checkout")
 set(FLY_WORKSPACE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(FLY_OUTPUT_DIR "${FLY_WORKSPACE_DIR}/build")
 set(FLY_CONFIG_DIR "${FLY_OUTPUT_DIR}/config")

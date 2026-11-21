@@ -113,6 +113,9 @@ target_link_libraries(freertos-kernel PUBLIC freertos-heap freertos-config)
 target_link_libraries(freertos-port   PUBLIC freertos-kernel freertos-heap freertos-config)
 target_link_libraries(freertos-assert PUBLIC freertos-kernel freertos-heap freertos-config)
 
+set_property(TARGET freertos-heap freertos-kernel freertos-port
+    PROPERTY FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS -Wconversion -Wsign-conversion)
+
 # Register only the OBJECT libs. freertos-config is an INTERFACE target
 # and must not enter FLY_ALL_PACKAGE_LIB_LIST because
 # package_lib_compile_options() would apply PRIVATE compile options,

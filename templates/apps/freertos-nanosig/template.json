@@ -1,0 +1,17 @@
+{
+  "label": "FreeRTOS + nanosig",
+  "overlays": ["common/nanosig"],
+  "expected_log": "nanosig ready",
+  "board_bindings": {
+    "BOARD_CLOCK_HZ": {"field": "clock_hz", "type": "positive_integer"}
+  },
+  "expected_config": ["CONFIG_PACKAGE_SCHEDULER_FREERTOS=y", "CONFIG_PACKAGE_NANOSIG=y"],
+  "required_files": [
+    "app/main.c",
+    "app/configure.cmake",
+    "app/runtime.c",
+    "app/include/runtime.h",
+    "app/biz/app_demo.c",
+    "app/include/biz/app_demo.h"
+  ]
+}

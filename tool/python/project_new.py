@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
@@ -15,36 +16,151 @@ from urllib.parse import urlsplit
 from vscode_project import write_vscode_scaffold
 
 
-TEMPLATE_LABELS = {
-    "baremetal": "Bare metal",
-    "baremetal-nanosig": "Bare metal + nanosig",
-    "freertos-nanosig": "FreeRTOS + nanosig",
-}
-NANOSIG_TEMPLATES = {"baremetal-nanosig", "freertos-nanosig"}
-
 PROJECT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 RESERVED_NAME = re.compile(r"(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])", re.IGNORECASE)
 GIT_COMMIT = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 SSH_ORIGIN = re.compile(r"[\w.-]+@([\w.-]+):([^\s]+)")
+DEFCONFIG_TOKEN = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)@")
 
 
-def add_parser(subparsers):
+def nonempty_line(value):
+    return isinstance(value, str) and bool(value.strip()) and not any(char in value for char in "\r\n\0")
+
+
+BOARD_FIELD_TYPES = {
+    "integer": lambda value: type(value) is int,
+    "positive_integer": lambda value: type(value) is int and value > 0,
+    "string": nonempty_line,
+}
+
+
+@dataclass(frozen=True)
+class Template:
+    id: str
+    directory: Path
+    label: str
+    expected_log: str
+    overlays: tuple[Path, ...]
+    defconfig: str
+    board_bindings: dict[str, tuple[str, str]]
+
+
+def add_parser(subparsers, templates):
     parser = subparsers.add_parser("new", help="Generate an independent FLY project.")
     parser.add_argument("name", nargs="?", help="Project name.")
-    parser.add_argument("--board", help="Board ID (for example frdm-mcxn947-core0).")
-    parser.add_argument("--template", choices=TEMPLATE_LABELS, help="Application template.")
+    parser.add_argument("--board", help="Board ID from the SDK board manifests.")
+    parser.add_argument("--template", choices=templates, help="Application template.")
     parser.add_argument(
         "--output", type=Path,
         help="Destination directory (defaults to ../fly-project/<name> next to FLY).",
     )
 
 
-def load_boards(templates_dir):
+def read_manifest(path):
+    try:
+        metadata = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Invalid JSON in {path}: {error}") from error
+    if not isinstance(metadata, dict):
+        raise ValueError(f"Manifest must be an object: {path}")
+    return metadata
+
+
+def manifest_strings(metadata, key, path):
+    items = metadata.get(key, [])
+    if not isinstance(items, list) or not all(map(nonempty_line, items)):
+        raise ValueError(f"{key} must be a list of nonempty strings: {path}")
+    return items
+
+
+def relative_manifest_path(value, manifest):
+    parts = value.split("/")
+    if any(part in ("", ".", "..") for part in parts) or any(char in value for char in ("\\", ":", "\0")):
+        raise ValueError(f"Expected a relative path within the template tree, got {value!r}: {manifest}")
+    return Path(*parts)
+
+
+def contained_path(path, root, manifest):
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(root.resolve())
+    except ValueError as error:
+        raise ValueError(f"Path {path} escapes {root}: {manifest}") from error
+    return resolved
+
+
+def load_template(manifest, apps_dir):
+    directory = contained_path(manifest.parent, apps_dir, manifest)
+    metadata = read_manifest(contained_path(manifest, directory, manifest))
+    if not nonempty_line(metadata.get("label")):
+        raise ValueError(f"Template manifest needs a nonempty label: {manifest}")
+    expected_log = metadata.get("expected_log", "")
+    if "expected_log" in metadata and not nonempty_line(expected_log):
+        raise ValueError(f"expected_log must be a nonempty string: {manifest}")
+
+    overlays = []
+    for name in manifest_strings(metadata, "overlays", manifest):
+        overlay = contained_path(apps_dir / relative_manifest_path(name, manifest), apps_dir, manifest)
+        if not overlay.is_dir():
+            raise ValueError(f"Template overlay {name!r} is missing: {manifest}")
+        overlays.append(overlay)
+    manifest_strings(metadata, "expected_config", manifest)
+    for name in manifest_strings(metadata, "required_files", manifest):
+        relative_manifest_path(name, manifest)
+
+    defconfig_path = contained_path(directory / "defconfig", directory, manifest)
+    if not defconfig_path.is_file():
+        raise ValueError(f"Template is missing its defconfig: {manifest}")
+    defconfig = defconfig_path.read_text(encoding="utf-8")
+    raw_bindings = metadata.get("board_bindings", {})
+    if not isinstance(raw_bindings, dict):
+        raise ValueError(f"board_bindings must be an object: {manifest}")
+    bindings = {}
+    for token, binding in raw_bindings.items():
+        field = binding.get("field") if isinstance(binding, dict) else None
+        kind = binding.get("type") if isinstance(binding, dict) else None
+        if not nonempty_line(field) or not isinstance(kind, str) or kind not in BOARD_FIELD_TYPES:
+            raise ValueError(f"Invalid board binding for @{token}@: {manifest}")
+        bindings[token] = (field, kind)
+    tokens = set(DEFCONFIG_TOKEN.findall(defconfig))
+    if tokens != bindings.keys():
+        differing = ", ".join(f"@{token}@" for token in sorted(tokens ^ bindings.keys()))
+        raise ValueError(f"Board bindings must match defconfig placeholders ({differing}): {manifest}")
+    return Template(
+        manifest.parent.name, directory, metadata["label"], expected_log,
+        tuple(overlays), defconfig, bindings,
+    )
+
+
+def load_templates(templates_dir):
+    apps_dir = templates_dir / "apps"
+    templates = {}
+    for manifest in sorted(apps_dir.glob("*/template.json")):
+        name = manifest.parent.name
+        if not PROJECT_NAME.fullmatch(name) or RESERVED_NAME.fullmatch(name):
+            raise ValueError(f"Invalid template ID: {manifest}")
+        templates[name] = load_template(manifest, apps_dir)
+    if not templates:
+        raise ValueError(f"No templates found in {apps_dir}")
+    return templates
+
+
+def render_defconfig(template, board):
+    values = {}
+    for token, (field, kind) in template.board_bindings.items():
+        value = board.get(field)
+        if not BOARD_FIELD_TYPES[kind](value):
+            description = kind.replace("_", " ")
+            raise ValueError(f"Board {board['id']!r} needs {description} field {field!r} for @{token}@")
+        values[token] = str(value)
+    return DEFCONFIG_TOKEN.sub(lambda match: values[match[1]], template.defconfig)
+
+
+def load_boards(templates_dir, templates):
     boards = {}
-    for manifest in sorted((templates_dir / "boards").glob("*/board.json")):
-        board = json.loads(manifest.read_text(encoding="utf-8"))
-        if not isinstance(board, dict):
-            raise ValueError(f"Board manifest must be an object: {manifest}")
+    boards_dir = templates_dir / "boards"
+    for manifest in sorted(boards_dir.glob("*/board.json")):
+        board = read_manifest(contained_path(manifest, boards_dir, manifest))
         for key in ("id", "label", "chip", "core", "arch_config", "toolchain", "probe"):
             if not isinstance(board.get(key), str) or not board[key]:
                 raise ValueError(f"Board manifest needs {key}: {manifest}")
@@ -54,16 +170,11 @@ def load_boards(templates_dir):
             raise ValueError(f"Invalid architecture symbol: {manifest}")
         supported = board.get("templates")
         if not isinstance(supported, list) or not supported or not all(
-            isinstance(name, str) and name in TEMPLATE_LABELS
-            and (templates_dir / "apps" / name / "defconfig").is_file()
-            for name in supported
+            isinstance(name, str) and name in templates for name in supported
         ):
             raise ValueError(f"Board manifest lists missing or unknown templates: {manifest}")
-        clock_hz = board.get("clock_hz")
-        if (clock_hz is not None or "freertos-nanosig" in supported) and (
-            type(clock_hz) is not int or clock_hz <= 0
-        ):
-            raise ValueError(f"Board clock_hz must be a positive integer: {manifest}")
+        for name in supported:
+            render_defconfig(templates[name], board)
         boards[board["id"]] = board
     if not boards:
         raise ValueError(f"No boards found in {templates_dir / 'boards'}")
@@ -86,7 +197,7 @@ def choose(title, options):
         print("Select one of the listed options.")
 
 
-def select_project(boards, args):
+def select_project(boards, templates, args):
     if not sys.stdin.isatty() and not all((args.name, args.board, args.template)):
         raise ValueError("Non-interactive generation needs <name>, --board and --template.")
     name = args.name if args.name is not None else input("Project name: ").strip()
@@ -120,9 +231,9 @@ def select_project(boards, args):
 
     template = args.template or choose(
         "Select an application template",
-        {key: TEMPLATE_LABELS[key] for key in board["templates"]},
+        {key: templates[key].label for key in board["templates"]},
     )
-    return name, board, template
+    return name, board, templates[template]
 
 
 def shareable_origin(origin):
@@ -167,8 +278,16 @@ def sdk_lock(sdk_dir):
     return {"url": origin, "commit": commit}
 
 
+def copy_template_layer(source, destination):
+    def ignore_manifest(directory, _names):
+        return ("template.json",) if Path(directory) == source else ()
+
+    shutil.copytree(source, destination, dirs_exist_ok=True, ignore=ignore_manifest)
+
+
 def generate(sdk_dir, destination, name, board, template):
     templates_dir = sdk_dir / "templates"
+    selected = render_defconfig(template, board)
     lock = sdk_lock(sdk_dir)
     destination.parent.mkdir(parents=True, exist_ok=True)
     # Reserve this name before copying. Concurrent generators or an existing
@@ -177,14 +296,10 @@ def generate(sdk_dir, destination, name, board, template):
     try:
         shutil.copytree(templates_dir / "scaffold", destination, dirs_exist_ok=True)
         shutil.copytree(templates_dir / "boards" / board["id"], destination / "board")
-        if template in NANOSIG_TEMPLATES:
-            shutil.copytree(templates_dir / "apps/common/nanosig", destination, dirs_exist_ok=True)
-        shutil.copytree(templates_dir / "apps" / template, destination, dirs_exist_ok=True)
+        for layer in (*template.overlays, template.directory):
+            copy_template_layer(layer, destination)
         write_vscode_scaffold(destination)
         defconfig = destination / "defconfig"
-        selected = defconfig.read_text(encoding="utf-8")
-        if "@BOARD_CLOCK_HZ@" in selected:
-            selected = selected.replace("@BOARD_CLOCK_HZ@", str(board["clock_hz"]))
         board_config = destination / "board/defconfig"
         board_defaults = board_config.read_text(encoding="utf-8").rstrip() + "\n" if board_config.is_file() else ""
         defconfig.write_text(f'{board["arch_config"]}=y\n{board_defaults}{selected}', encoding="utf-8")
@@ -197,14 +312,17 @@ def generate(sdk_dir, destination, name, board, template):
 
         readme = destination / "README.md"
         content = readme.read_text(encoding="utf-8")
+        startup_log_note = ""
+        if template.expected_log:
+            startup_log_note = f"The program's\nstartup output is `{template.expected_log}`. "
         fields = {
             "@PROJECT_NAME@": name,
             "@BOARD_LABEL@": board["label"],
             "@BOARD_CORE@": board["core"],
             "@TOOLCHAIN@": board["toolchain"],
             "@PROBE@": board["probe"],
-            "@TEMPLATE_ID@": template,
-            "@EXPECTED_LOG@": "boot ok" if template == "baremetal" else "nanosig ready",
+            "@TEMPLATE_ID@": template.id,
+            "@STARTUP_LOG_NOTE@": startup_log_note,
         }
         for token, value in fields.items():
             content = content.replace(token, value)
@@ -225,10 +343,11 @@ def generate(sdk_dir, destination, name, board, template):
     return lock
 
 
-def run(sdk_dir, args):
+def run(sdk_dir, templates, args):
     sdk_dir = Path(sdk_dir).resolve()
     try:
-        name, board, template = select_project(load_boards(sdk_dir / "templates"), args)
+        boards = load_boards(sdk_dir / "templates", templates)
+        name, board, template = select_project(boards, templates, args)
         output = args.output.expanduser() if args.output is not None else sdk_dir.parent / "fly-project" / name
         destination = output.parent.resolve() / output.name
         lock = generate(sdk_dir, destination, name, board, template)
@@ -243,7 +362,7 @@ def run(sdk_dir, args):
         return 130
 
     print(f"Created {destination}")
-    print(f'{board["label"]} / {board["core"]} | {TEMPLATE_LABELS[template]}')
+    print(f'{board["label"]} / {board["core"]} | {template.label}')
     if lock["commit"] is None:
         print(
             "FLY HEAD does not support application-root CMake. "
@@ -263,9 +382,15 @@ def run(sdk_dir, args):
 
 
 def main():
+    sdk_dir = Path(__file__).resolve().parents[2]
+    try:
+        templates = load_templates(sdk_dir / "templates")
+    except (ValueError, OSError) as error:
+        print(f"Cannot load templates: {error}", file=sys.stderr)
+        return 1
     parser = argparse.ArgumentParser(prog="fly", description=__doc__)
-    add_parser(parser.add_subparsers(dest="command", required=True))
-    return run(Path(__file__).resolve().parents[2], parser.parse_args())
+    add_parser(parser.add_subparsers(dest="command", required=True), templates)
+    return run(sdk_dir, templates, parser.parse_args())
 
 
 if __name__ == "__main__":

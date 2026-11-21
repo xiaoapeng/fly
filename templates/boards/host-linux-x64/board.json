@@ -4,6 +4,7 @@
   "chip": "x86-64 Linux host",
   "core": "Native",
   "arch_config": "CONFIG_ARCH_X64_LINUX",
+  "host_platform": "linux",
   "toolchain": "Native GCC",
   "probe": "None (native executable)",
   "templates": ["baremetal"]
