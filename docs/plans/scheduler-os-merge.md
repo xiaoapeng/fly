@@ -1,5 +1,7 @@
 # OS 包并入 `package/scheduler/` 迁移方案（v2）
 
+> 历史记录。下文的工程路径和命令对应迁移当时的目录结构。当前验证流程见 [CI 流程](../CI.md)。
+>
 > 状态：**已实施**（含 UX 修订：choice 与子配置包在 `menu "Scheduler / OS model"` 内）。
 >
 > 修订记录：

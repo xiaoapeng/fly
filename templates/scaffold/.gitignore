@@ -1,0 +1,10 @@
+/build/
+/fly
+/.fly-root
+/.fly-setup-*/
+/.vscode/launch.json
+/.vscode/settings.json
+/.vscode/cmake-kits.json
+/.vscode/fly-settings.json
+/.vscode/fly-tasks.json
+/.vscode/fly-cmake-kits.json

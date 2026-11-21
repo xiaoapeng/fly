@@ -1,49 +1,21 @@
-# tool/test/
+# FLY 项目回归检查
 
-Host-side regression scripts that validate FLY Kconfig / build configuration
-without touching toolchains, hardware, or the user's active `.config`.
+`check_standalone_projects.py` 通过公开的生成器和应用启动脚本，在临时目录中验证独立工程。工程所用的板卡和模板来自 `templates/`。
 
-`tool/python/` is reserved for **build orchestration** (cmake invocation,
-fetch helpers, image packaging, Kconfig rendering). This directory is for
-**validation** scripts that assert the configuration is correct.
-
-## Running
-
-```bash
-python3 tool/test/check_freertos_config.py
-```
-
-`tool/test/lib/` is the shared helper layer (Kconfig loader, defconfig
-isolation, symbol assertion API). Other scripts in this directory import
-from it instead of touching `kconfiglib` directly so the "never overwrite
-the user's `.config`" invariant stays in one place.
-
-## Files
-
-| Path | Purpose |
+| 参数 | 覆盖 |
 |---|---|
-| `lib/__init__.py` | `load_defconfig`, `load_inline_config`, `expect`, `TestContext` |
-| `check_freertos_config.py` | V-5 + V-8 sweep: 12 legacy defconfigs + freertos-demo + baremetal-demo + ch582-demo + malformed `.config` safety net |
-| `check_kconfig_hygiene.py` | Tree-wide hygiene: no choice member may be targeted by select/imply, and every `project/*/*/defconfig` must load with zero kconfiglib warnings. Enforces `docs/reference/kconfig-rules.md` R1/R2 |
-| `check_build.py` | Host-platform builds: `--platform linux|macos|windows` selects the project table, then loadconfig + clean build + executable assertion per project. Refuses to run a platform that is not the host. CI's `host-*` jobs call this |
-| `check_build_arm.py` | Build-time regression: loadconfig + cmake configure + arm-none-eabi-gcc Debug build for 11 arm projects; asserts V-3 (no FreeRTOS API undefined), V-8 (legacy projects contain no FreeRTOS symbols), V-4 (freertos-demo has strong `SysTick_Handler`), and baremetal-demo runtime symbols plus a 4 KiB main stack. Skips RISC-V (`gd32vf103x`, `ch58x`) and x86_64 (`linux`/`macos`/`windows`) projects whose toolchains are not in this host environment. |
+| 无 | FRDM-MCXN947 三个模板的生成、SDK 锁定安装、CMake 入口、编译、VS Code 配置和固件包 |
+| `--matrix config` | 为所有受测板卡和模板生成配置，校验选中的架构、调度器和 Kconfig 警告 |
+| `--matrix arm` | 构建每个 Cortex-M 板卡的裸机模板，并对三个 FRDM-MCXN947 模板执行完整检查 |
+| `--matrix host` | 生成并构建当前宿主平台的最小工程 |
+| `--build-type Release` | 矩阵和模板构建使用 Release，默认使用 Debug |
+| `--sdk-setup-only` | 验证独立 Git 工程的 SDK 安装、版本更新和应用启动脚本 |
+| `--image-links-only` | 验证固件包的当前目录链接 |
 
-## Conventions
+需要 Git、Python 3、`kconfiglib` 和 `requests`。构建检查还需要 CMake 和对应工具链。
 
-* Each check is a callable returning a list of `failure` strings; an empty
-  list means the check passed.
-* A top-level `main()` builds a single `TestContext`, runs every check, and
-  exits 0 only if every check returned an empty failure list.
-* Never import from `tool/python/` — this directory is allowed to depend on
-  `kconfiglib` only.
-* All script entry points are designed to run with the FLY `.venv`'s
-  Python (`./.venv/bin/python`) so that the workspace-local `kconfiglib`
-  install is used.
-
-## Adding a new check
-
-1. Add a new `check_<topic>.py` in this directory.
-2. Import helpers from `lib` (`from .lib import load_defconfig, expect, TestContext`).
-3. Define one or more `def check_<name>(ctx: TestContext) -> list[str]` functions.
-4. In `main()`, accumulate failures per check and exit 0/1 accordingly.
-5. Update this README to list the new file.
+```sh
+python3 tool/test/check_standalone_projects.py --matrix config
+python3 tool/test/check_standalone_projects.py --matrix arm
+python3 tool/test/check_standalone_projects.py --matrix host
+```

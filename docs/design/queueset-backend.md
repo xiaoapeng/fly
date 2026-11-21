@@ -2,6 +2,7 @@
 
 > 来源：`.omc/plans/queueset-watcher-v1.md`（v5）+ `.omc/specs/deep-interview-queueset-watcher.md`。
 > Pin：nanosig `b3e4d87ff777574baf00dc1199e831daa2f7c5a2`（FreeRTOS queue-set 后端已由上游 `79729fc` 提供；FLY 不再打补丁）。
+> 文中的旧示例路径记录当时的验证环境。当前构建和回归入口见 [CI 流程](../CI.md)。
 
 ## 1. 结论
 

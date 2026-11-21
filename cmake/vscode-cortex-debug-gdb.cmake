@@ -42,8 +42,8 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
         set(CUSTOM_FUNC_INTERFACE "swd")
     endif()
 
-    if(NOT CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST )
-        set(CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST " ")
+    if(CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST)
+        set(OPENOCD_CONFIG_ARGS --openocd-config-file-list ${CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST})
     endif()
 
     if(NOT CUSTOM_FUNC_ELF_NAME_LIST)
@@ -65,20 +65,22 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
     endif()
 
     
-    add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/.${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb.timestamp
+    set(debug_target "${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb")
+    add_custom_target(${debug_target} ALL
         COMMAND ${Python3_EXECUTABLE} ${FLY_TOP_DIR}/tool/python/mk_vscode_cortex_debug_gdb.py
-            --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE}  --top-path ${FLY_TOP_DIR} 
+            --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE} --top-path "${FLY_WORKSPACE_DIR}"
             --interface ${CUSTOM_FUNC_INTERFACE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --gdb-path "${CMAKE_GDB}" 
             --objdump-path "${CMAKE_OBJDUMP}" ${RTT_EN_FLAGS}  ${CUSTOM_FUNC_OTHER_EXT_CONFIG_OPTION} ${CUSTOM_FUNC_OTHER_EXT_CONFIG}
-            --elf-path ${ELF_PATH_LIST} --openocd-config-file-list ${CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST} 
+            --elf-path-list ${ELF_PATH_LIST} ${OPENOCD_CONFIG_ARGS}
         DEPENDS ${CUSTOM_FUNC_DEPENDS}
-        COMMENT "Make vscode jlink launch.json"
+        VERBATIM
+        COMMENT "Update VS Code launch configuration"
     )
 
-    # 添加自定义目标来生成 img 文件
-    add_custom_target(${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb ALL
-        DEPENDS ${CMAKE_BINARY_DIR}/.${CMAKE_TARGET}_make_vscode_jlink_gnu_gdb.timestamp
-    )
-
+    # Each target merges its entries into the same workspace file.
+    get_property(previous_debug_target GLOBAL PROPERTY FLY_VSCODE_DEBUG_TARGET)
+    if(previous_debug_target)
+        add_dependencies(${debug_target} ${previous_debug_target})
+    endif()
+    set_property(GLOBAL PROPERTY FLY_VSCODE_DEBUG_TARGET ${debug_target})
 endfunction()

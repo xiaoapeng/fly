@@ -1,52 +1,29 @@
 # CI 流程
 
-FLY 的持续集成分两条流水线：快速 CI（`ci.yml`，PR / push 到 `master` / 手动）和夜间 CI（`nightly.yml`，定时 + 手动）。设计原则与 nanosig 上游一致：**PR 路径只跑能快速给出结论的检查**，慢的 Release 全量构建和打包冒烟放夜间。
+CI 在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应用根目录运行构建。固件包和已拉取的依赖保存在各自应用的构建目录。
 
-## 总览
+## 检查与触发
 
-| 流水线 | 文件 | 触发 | 作用 |
-|---|---|---|---|
-| 快速 CI | `.github/workflows/ci.yml` | `pull_request`、push 到 `master`、`workflow_dispatch` | 配置扫描 + 11 个 ARM 工程 Debug 构建 + 三平台宿主工程构建 |
-| 夜间 CI | `.github/workflows/nightly.yml` | `schedule`（`17 2 * * *` UTC）+ `workflow_dispatch` | 全部 ARM 工程 Release 构建 + `make_img` 打包冒烟 |
-
-同一分支的新 push 会取消上一次未完成的 CI（`concurrency` + `cancel-in-progress`）。
-
-## 快速 CI 的五个 job（全部为必需检查）
-
-| 检查名 | runner | 内容 | 超时 |
-|---|---|---|---|
-| `kconfig` | ubuntu-latest | `tool/test/check_freertos_config.py`（scheduler 选路）+ `tool/test/check_kconfig_hygiene.py`（choice 成员禁止 select、所有 defconfigs 零警告） | 10 min |
-| `arm-build` | ubuntu-latest | `tool/test/check_build_arm.py`：11 个 arm-none-eabi 工程逐个 loadconfig + 全量重建 + 符号断言（FreeRTOS API 无 undefined、legacy 工程无 FreeRTOS 符号、`SysTick_Handler` 唯一、裸机 demo 不含线程/broker 入口） | 60 min |
-| `host-linux` | ubuntu-latest | `tool/test/check_build.py --platform linux`：`project/linux/ehip-test` 干净重建 + 产物断言 | 20 min |
-| `host-macos` | macos-latest | `tool/test/check_build.py --platform macos`：`project/macos/ehip-test`（Apple Clang；机器有 `ld.lld` 才用 lld 链接） | 20 min |
-| `host-windows` | windows-latest | `tool/test/check_build.py --platform windows`：`project/windows/ehip-test` + `co-ctx-test`（MinGW-w64 GCC） | 30 min |
-
-三个 `host-*` job 的构建逻辑都在 `tool/test/check_build.py` 里，平台 → 工程清单是该脚本的数据表；CI 只负责准备工具链然后调用它。脚本会先 `loadconfig`、删 `build/`、构建，再断言可执行文件存在（构建失败本身已经通过退出码判死，产物断言防的是"旧产物掩盖坏链接"）。
-
-要点：
-
-- **ARM 交叉编译只在 ubuntu 跑一次**。交叉结果与宿主无关，重复在 macOS/Windows 上跑只增加 flake 面；三平台各自跑的是**只有该平台能编**的宿主工程，这才是真正区分平台的部分。
-- **Windows 必须 GNU 工具链**。`arch/x64/windows` 的 `gcc-host-windows` 工具链文件和工程里的 GNU 专有 flag（如 `-mpreferred-stack-boundary=4`）都不接受 MSVC / clang-cl。CI 用 runner 镜像自带的 MSYS2（`C:\msys64`）安装 `mingw-w64-x86_64-gcc`。
-- **CI 用 `.venv` 固定解释器**。`cmake/python3.cmake` 优先使用仓库根的 `.venv`，否则 `find_package(Python3)` 可能选到没有 `requests` 的系统 Python（macOS runner 上就踩到了：`fetch_git_project.py` 直接 ImportError）。所以每个构建 job 都先 `python3 -m venv .venv && .venv/bin/python -m pip install kconfiglib requests`，让 CMake 与 `build.sh` 用同一个解释器。
-- `check_build_arm.py` 每个工程前会删 `build/`，所以 CI 里每个工程都是干净重建，不吃缓存假阳性。
-- 依赖包（`eventhub-os`、`ehip`、`ehip-tools`、`ehshell`、`freertos-kernel`、`nanosig` …）在 configure 阶段由 `fetch_git_project` 从 GitHub 拉取；CI 依赖公网访问，无需额外配置。`dl/` 缓存目前没做（后续可加，注意 key 要带 defconfig 里的 pin）。
-- **本地 `dl/` 会漂移**。`ehip`/`ehip-tools`/`ehshell`/`eventhub` 的 `GIT_TAG` 是 `main`/`master` 加 `AUTO_UPDATE OFF`，所以本地克隆不会自动跟随上游：CI 新克隆拿的是最新 `main`，本地拿的是上次 fetch 的快照。本地构建失败而 CI 通过（或反之）时，先跑 `./build.sh package_update <name>`（`-l` 看列表）把包装到最新，再复现。彻底解决办法是把这些包也钉到 SHA，见"已知限制"。
-
-### `host-macos` / `host-windows` 曾经不是必需检查（已修复）
-
-这两个 job 最初上线时是红的，原因都在上游被 fetch 的包里，不在 FLY 代码：
-
-- **`host-macos`**：`eventhub` 的 `eh_event_flags.c` 把普通 `eh_flags_t`（`typedef size_t`）传给 `atomic_load_explicit` 等 C11 泛型原子函数。标准要求实参是 `_Atomic` 指针，Apple Clang 21 严格报错（GCC 经 `__atomic_*` 放行，只是实现宽容）。
-- **`host-windows`**：`ehshell` 在 MinGW 下有两处隐式声明 —— `bzero`（MinGW 不提供）与缺 `<ctype.h>` 的 `isprint`；GCC 14 起 C99+ 把隐式声明默认当错误，Linux 上的 GCC 13 只当警告。
-
-已在上游修掉并推送：
-
-| 仓库 | commit | 改动 |
+| 流水线 | 触发 | 内容 |
 |---|---|---|
-| `xiaoapeng/eventhub_os` | `96916a7` | `eh_atomic.h` 的宏改用 `__atomic_*` 内建，不改字段类型、GCC/Clang 语义一致 |
-| `xiaoapeng/ehshell` | `a1c1bcf` | `bzero` → `memset`；补 `<ctype.h>` 并把 `isprint` 实参转 `unsigned char` |
+| `.github/workflows/ci.yml` | PR、push 到 `master`、手动 | 生成配置、ARM Debug 编译和打包、三平台原生构建 |
+| `.github/workflows/nightly.yml` | 每日 02:17 UTC、手动 | 相同的 ARM 工程和固件包使用 Release 构建 |
 
-现在两个 job 与其余三项一样是必需检查。
+快速 CI 在同一分支有新提交时会取消上一次未完成的运行。
+
+## 必需检查
+
+| 检查名 | Runner | 覆盖 |
+|---|---|---|
+| `kconfig` | Ubuntu x64 | 为受测板卡的各模板组合生成工程，确认配置无警告并选中对应架构和调度器 |
+| `arm-build` | Ubuntu x64 | 构建七类 Cortex-M 架构对应的最小工程。FRDM-MCXN947 的三个模板还检查 SDK 锁定安装、VS Code 配置和固件打包 |
+| `host-linux` | Ubuntu x64 | 用系统 GCC 构建生成的 Linux 应用 |
+| `host-macos` | macOS arm64 | 用 Apple Clang 构建生成的 macOS 应用 |
+| `host-windows` | Windows x64 | 用 MinGW-w64 构建生成的 Windows 应用，另测批处理入口、SDK 锁定安装和 NTFS 目录链接 |
+
+ARM 覆盖 MCXN947、STM32F0/F1/F4/H7、GD32F10x 和 GD32E23x。CH58x 和 GD32VF103 的 RISC-V 交叉编译暂不纳入 CI。配置检查会对照 `arch/Kconfig` 确认每个受测架构都有裸机工程。
+
+FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证固件产物和当前包链接。实板烧录与 RTT 运行需要单独验证。
 
 ## 分支保护（必需检查 + rebase 合并）
 
@@ -89,49 +66,21 @@ gh api -X PATCH "repos/:owner/:repo" \
 ## 本地复现
 
 ```sh
-# 与 kconfig job 一致
-python3 tool/test/check_freertos_config.py
-python3 tool/test/check_kconfig_hygiene.py
+# 需要 Python、Git、kconfiglib 和 requests
+python3 tool/test/check_standalone_projects.py --matrix config
 
-# 与 arm-build job 一致（需要 PATH 里有 arm-none-eabi-gcc）
-python3 tool/test/check_build_arm.py -j 4 --verbose
+# 需要 CMake 和 arm-none-eabi 工具链
+python3 tool/test/check_standalone_projects.py --matrix arm
+python3 tool/test/check_standalone_projects.py --matrix arm --build-type Release
 
-# 与 host-* job 一致（平台必须与宿主一致）
-python3 tool/test/check_build.py --platform macos
-python3 tool/test/check_build.py --platform linux
+# 用当前宿主平台的原生工具链
+python3 tool/test/check_standalone_projects.py --matrix host
 
-# 与 nightly/arm-release 一致：Release 全量
-for dc in project/*/*/defconfig; do
-  case "$dc" in project/linux/*|project/macos/*|project/windows/*) continue;; esac
-  case "$dc" in project/ch58x/*|project/gd32vf103x/*) continue;; esac
-  ./build.sh loadconfig "$dc" && ./build.sh build || break
-done
-
-# 手动触发夜间流水线（验证特性分支）
-gh workflow run nightly.yml --ref <branch>
-gh run watch
+# 只生成、编译和打包三个 FRDM-MCXN947 模板
+python3 tool/test/check_standalone_projects.py
 ```
 
-## 新增工程时要做什么
+新增板卡时，在 `templates/boards/` 中登记板卡和支持的模板。检查从 `board.json` 发现受测配置，并为各受测架构验证裸机模板覆盖。
 
-1. `tool/test/check_build_arm.py` 的 `ARM_PROJECTS` 列表加入 `(defconfig 路径, 可执行文件名, project id)`——CI 的 `arm-build` 直接读这个列表
-2. 若是宿主工程，把 `(defconfig 路径, 可执行文件名)` 加进 `tool/test/check_build.py` 的 `PLATFORM_PROJECTS`——`host-*` job 直接读这张表
-3. 需要新工具链的工程（如 RISC-V）先在 `docs/CI.md` 的已知限制里登记，别让它静默不被覆盖
-
-## 已知限制
-
-| 项 | 说明 |
-|---|---|
-| RISC-V 工程（`ch58x/ch582-demo`、`gd32vf103x/gd32vf103c-demo`） | 未纳入 CI。需要 `riscv-none-elf-`（xPack）与 `riscv-none-embed-`（MounRiver）两套交叉工具链，apt/Homebrew 都没有；`check_build_arm.py` 与夜间流水线都显式跳过 |
-| `macos/ehip-test` 的 Debug 配置 | 工程 Debug flag 带 `-fsanitize=address,leak`；CI 只跑默认 Release，ASAN 路径未在 CI 中执行 |
-| Windows job | 依赖 runner 镜像的 `C:\msys64`。镜像若更换路径，改 `host-windows` 的 PATH 注入即可 |
-| `host-macos` 的链接器 | `cmake/tool_chain/clang-host-darwin.cmake` 会探测 `ld.lld`：找到就加 `-fuse-ld=lld`（`brew install lld`），找不到就用系统默认 Apple ld 并打印 `ld.lld not found, using the default linker`。CI 故意不装 lld，覆盖后一条路径 |
-| `ehip` / `ehip-tools` / `ehshell` / `eventhub` 的版本漂移 | 四个包的 `GIT_TAG` 是浮动的 `main`/`master` + `AUTO_UPDATE OFF`：本地 `dl/` 不会自动更新，CI 新克隆永远拿最新。二者不一致时会出现"本地炸、CI 过"。短期用 `./build.sh package_update <pkg>` 对齐；长期应像 `nanosig` 一样钉到 SHA（未做，改动会牵动 4 个包 + 三平台验证） |
-| 硬件行为 | CI 只做编译期与静态断言，Flash / RTT 运行证据仍需本地 `./build.sh flash` + `./build.sh rttlog`，PR 模板里要求人工附上 |
-| 首次落地 | 本流水线**尚未在真实 runner 上跑过**。建议先推到特性分支观察一轮，再开启分支保护，避免把不稳定的 job 设成必需检查 |
-
-## 相关文档
-
-- [Kconfig 硬性规则](reference/kconfig-rules.md) — `kconfig` job 强制的规则来源
-- [RTOS 选择语义](reference/rtos-choice.md)
-- [tool/test/ 说明](../tool/test/README.md)
+- [回归脚本说明](../tool/test/README.md)
+- [Kconfig 规则](reference/kconfig-rules.md)

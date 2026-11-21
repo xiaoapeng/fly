@@ -12,25 +12,18 @@
 
 ## 使用教程
 
-### 快速开始（5分钟）
+### 快速开始
 
-> 默认情况下：Linux/macOS 使用 `./build.sh`，Windows 使用 `build.bat`，两者子命令一致。
+在 SDK 目录创建应用，然后进入生成的工程目录编译。首次构建自动加载应用的 `defconfig`。
 
-```bash
-# 1) 加载一个现成配置
-./build.sh loadconfig ./project/stm32f0xx/stm32f030x8-demo/defconfig
-
-# 2) 编译（默认 Release）
-./build.sh
-
-# 3) 生成镜像 / 烧写 / 查看日志（按需执行）
+```sh
+./fly.sh new sensor-node --board frdm-mcxn947-core0 --template baremetal-nanosig
+cd ../fly-project/sensor-node
+./build.sh build Debug
 ./build.sh make_img
-./build.sh flash
-./build.sh rttlog
 ```
 
-FRDM-MCXN947 的无 RTOS 按键/RGB 灯效例子见
-[baremetal-demo](project/mcxn947/baremetal-demo/README.md)，加载其 defconfig 后使用相同命令构建、打包和烧写。
+Windows 在 SDK 中使用 `fly.bat new`，在应用中使用 `build.bat`。应用里的 `build.sh` / `build.bat` 调用 SDK 的 Python 构建工具。首次使用请安装 Git、Python 3、CMake 3.21 或更新版本以及目标工具链。
 
 ### 1. clone项目到本地
 
@@ -39,54 +32,9 @@ git clone https://github.com/xiaoapeng/fly.git
 cd fly
 ```
 
-### 2. 安装 Python3（依赖可自动补齐）
+### 2. 安装 Python 3
 
-> `build.sh` / `build.bat` 会在缺少依赖时自动安装 `kconfiglib`、`requests`。  
-> 如需手动指定解释器，可设置 `FLY_PYTHON`；如需关闭自动安装，可设置 `FLY_AUTO_SETUP_PY=0`。
-
-#### windows 安装python
-
-- [下载](https://www.python.org/downloads/)python,安装时(或安装后)请将python加入全局环境变量，并重启设备。
-- 如需在 Windows 下使用 `menuconfig`，可能还需要安装 `windows-curses`：
-
-    ```bat
-    .venv\Scripts\pip3.exe install windows-curses
-    ```
-- 如果希望手动准备虚拟环境，可执行：
-
-    ```bat
-    python -m venv .venv # or python3 -m venv .venv
-    .venv\Scripts\pip3.exe install kconfiglib
-    .venv\Scripts\pip3.exe install requests
-    ```
-
-#### ubuntu 安装python
-
-- 运行 sudo apt install python3
-
-    ```bash
-    sudo apt install python3
-    ```
-
-- 虚拟环境中安装kconfiglib
-
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip3 install kconfiglib
-    pip3 install requests
-    ```
-
-#### mac os 安装kconfiglib (虚拟环境)
-
-- 虚拟环境中安装kconfiglib
-
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install kconfiglib
-    pip install requests
-    ```
+请将 Python 3 加入 PATH，或通过 `FLY_PYTHON` 指定解释器。创建模板只需要 Python 标准库。应用首次构建时会安装缺失的 `kconfiglib`、`requests`。可以设置 `FLY_AUTO_SETUP_PY=0` 关闭自动安装。Windows 的 `menuconfig` 还需要在同一环境安装 `windows-curses`。
 
 ### 3.安装cmake
 
@@ -175,18 +123,20 @@ cd fly
     PS C:\Users\user>
     ```
 
-### 7. 选择芯片，开始构建、打包、烧写
+### 7. 在应用目录构建、打包和烧写
 
-<p><span style="color: yellow;">构建时 windows使用build.bat脚本，linux使用build.sh脚本</span></p>
+以下命令都从应用根目录执行。Windows 使用相同子命令的 `build.bat`。
 
 #### 命令速查（全量）
 
 | 命令 | 作用 | 示例 |
 | --- | --- | --- |
+| `setup` | 从锁文件安装 SDK | `./build.sh setup` |
 | `menuconfig` | 打开图形配置菜单 | `./build.sh menuconfig` |
-| `loadconfig <file>` | 加载配置文件 | `./build.sh loadconfig ./project/stm32f0xx/stm32f030x8-demo/defconfig` |
+| `loadconfig <file>` | 加载配置文件 | `./build.sh loadconfig defconfig` |
 | `saveconfig [name]` | 保存当前配置 | `./build.sh saveconfig` |
 | `build [type] [-j N]` | 编译项目 | `./build.sh build Debug -j 8` |
+| `vscode [type]` | 配置 CMake 并刷新 VS Code 文件 | `./build.sh vscode Debug` |
 | `clean` | 清理构建产物（保留配置） | `./build.sh clean` |
 | `distclean` | 删除构建目录与自动生成配置 | `./build.sh distclean` |
 | `make_img [target]` | 生成镜像 | `./build.sh make_img` |
@@ -212,27 +162,9 @@ cd fly
     ./build.sh add_path_env   /xxxx/xxx/openocd/
     ```
 
-#### 选择项目
+#### 配置应用
 
-- 打开menuconfig
-
-    ```bash
-    ./build.sh menuconfig
-    ```
-
-- 分别选择Arch
-
-    ```bash
-    Select CPU Architecture (gd32vf103x)  --->
-    ```
-
-- 选择项目
-
-    ```bash
-    - Select a gd32vf103x platform project (GD32VF103C demo project)  --->
-    ```
-
-- 按ESC后选择Y保存退出
+生成工程时确定板卡和模板。进入应用目录后，用 `./build.sh menuconfig` 调整配置，再用 `./build.sh saveconfig` 写回应用的 `defconfig`。
 
 #### 编译项目
 
@@ -260,8 +192,7 @@ cd fly
     ./build.sh make_img
     ```
 
-- 查看打包
-![alt text](resource/image1.png)
+打包后在应用的 `build/image/` 下查看 ZIP，当前固件包通过 `build/image/CURRENT/` 访问。
 
 #### 烧写
 
@@ -286,449 +217,108 @@ cd fly
 
 #### 配置文件加载
 
-- 输入./build.sh loadconfig ./project/xxxx/xxxx/defconfig
+在应用目录运行 `./build.sh loadconfig defconfig`。也可以传入其他配置文件的绝对路径或相对路径。
 
-    ```bash
-    # 以./project/gd32f10x/gd32f103-demo/defconfig 举例， 必须输入绝对或者相对目录
-    ./build.sh loadconfig ./project/gd32f10x/gd32f103-demo/defconfig
-    ```
+### 8. 从模板创建独立工程
 
-### 8. 新建项目
+从 FLY 根目录运行 `./fly.sh new`，按提示选择板卡和模板。也可以直接传参，Windows 下使用 `fly.bat new`。
 
-以新建一个gd32vf103x的项目为例
-
-- 进入project/gd32vf103x目录
-- 修改Kconfig,新建一个项 PROJECT_TEST_DEMO
-
-    ```Kconfig
-    choice
-    prompt "Select a gd32vf103x platform project"
-    default PROJECT_GD32VF103X_NONE
-    depends on ARCH_GD32VF103X
-
-    config PROJECT_GD32VF103X_NONE
-        bool "None"
-        help
-        Select this if you do not want to set any project.
-
-    config PROJECT_GD32VF103C_DEMO
-        bool "GD32VF103C demo project"
-        help
-            Select this option to enable Module GD32VF103C DEMO.
-        select PACKAGE_SCHEDULER_EVENTHUB_OS
-        select PACKAGE_SEGGER_RTT
-
-    # 新建 TEST_DEMO
-    config PROJECT_TEST_DEMO
-        bool "TEST demo project"
-        help
-            Select this option to enable Module TEST DEMO.
-    # 这里根据需要的包来添加默认依赖(包名请去看package/xxx/Kconfig里面有定义包的名称)
-        select PACKAGE_SCHEDULER_EVENTHUB_OS
-        select PACKAGE_SEGGER_RTT
-
-        
-    endchoice
-
-    config PROJECT
-        string
-        default "gd32vf103x/gd32vf103c-demo" if PROJECT_GD32VF103C_DEMO
-    # 设置 TEST_DEMO 的项目路径，项目路径以project文件夹的路径为基路径
-        default "gd32vf103x/test-demo" if PROJECT_TEST_DEMO
-    ```
-
-- 复制gd32vf103c-demo 为 test-demo
-
-    虽然复制了gd32vf103c-demo,但是项目名称和目标名称还是没有变，需要进入test-demo来进行修改project/gd32vf103x/test-demo/CMakeLists.txt，需要了解一些cmake语法。
-
-    ```cmake
-    cmake_minimum_required(VERSION 3.10)
-
-    project(test-demo LANGUAGES C CXX ASM)
-
-    set(TARGET_FLAGS 
-        "-Wall"
-        "-Wextra"
-        "-Wconversion"
-        "-Wsign-conversion"
-        "-Wno-psabi"
-    )
-
-
-    target_include_directories(arch-gd32vf103c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
-    target_include_directories(eventhub PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
-
-    # app程序生成
-    add_executable(test-demo)
-    target_include_directories(test-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
-
-    target_link_libraries(test-demo  arch-gd32vf103c segger-rtt factory-data eventhub c )
-
-    target_sources(test-demo PRIVATE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
-    )
-
-    target_compile_options(test-demo PRIVATE "${TARGET_FLAGS}")
-    target_link_options(test-demo  PRIVATE
-        "-T${CMAKE_CURRENT_SOURCE_DIR}/app/GD32VF103xB.lds"
-    )
-        
-    # 自动生成map
-    add_target_make_map(test-demo)
-    # 自动生成bin
-    add_target_make_bin(test-demo)
-    # 自动打印内存/存储占用
-    add_target_print_memory_usage(test-demo)
-
-    add_jlink_image( default
-        IMAGE_NAME "TEST_DEMO"
-        CHIP_NAME "GD32VF103CBT6"
-        INTERFACE "jtag"
-        SPEED "10000"
-        FIRMWARE_LIST "APP:V0.0.1:0x08000000:test-demo.bin"
-        DEPENDS test-demo
-    )
-
-    add_vscode_cortex_debug_gdb( jlink
-        CHIP_NAME "GD32VF103CBT6"
-        ELF_NAME_LIST "test-demo"
-        SERVER_TYPE "jlink"
-        INTERFACE "jtag"
-        OTHER_EXT_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/debugconfig/ext-cortex-debug-config.json"
-        RTT_DEBUG  ON
-        DEPENDS test-demo
-    )
-    ```
-
-- 回到顶层目录，重新使用./build.sh menuconfig选择刚刚新增的项目，再开始编译
-
-    ```bash
-    # ./build.sh
-    simon@:~/project/fly$ ./build.sh  
-    [  8%] Building C object package/segger-rtt/CMakeFiles/segger-rtt.dir/SEGGER_RTT.c.obj
-    [  8%]  
-    [  8%] Building C object package/factory-data/CMakeFiles/factory-data.dir/factory-data.c.obj
-    [  8%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/coroutine/riscv32-bumblebee-n200/coroutine.c.obj
-    [ 11%] Building ASM object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/coroutine/riscv32-bumblebee-n200/coroutine.S.obj
-    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_rbtree.c.obj
-    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/platform/riscv32-bumblebee-n200/platform.c.obj
-    [ 14%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_formatio.c.obj
-    [ 17%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_debug.c.obj
-    [ 20%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/general/eh_ringbuf.c.obj
-    [ 20%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_core.c.obj
-    [ 22%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_timer.c.obj
-    [ 25%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_sleep.c.obj
-    [ 25%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_event.c.obj
-    [ 28%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_event_cb.c.obj
-    [ 28%] Building ASM object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/start.S.obj
-    Git status changed to 'dirty'. Timestamp updated.
-    [ 28%] Built target check_git_status
-    [ 28%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_mutex.c.obj
-    [ 31%] Building ASM object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/entry.S.obj
-    [ 34%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_sem.c.obj
-    [ 34%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_adc.c.obj
-    [ 34%] Built target factory-data
-    [ 34%] Building C object package_build/packge-eventhub-os/src/CMakeFiles/eventhub.dir/eh_mem.c.obj
-    [ 37%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_bkp.c.obj
-    [ 37%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_can.c.obj
-    [ 40%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_crc.c.obj
-    [ 42%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dac.c.obj
-    [ 42%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dbg.c.obj
-    [ 45%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_dma.c.obj
-    [ 45%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_eclic.c.obj
-    [ 48%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_exmc.c.obj
-    [ 48%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_exti.c.obj
-    [ 51%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_fmc.c.obj
-    [ 54%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_fwdgt.c.obj
-    [ 54%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_gpio.c.obj
-    [ 57%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_i2c.c.obj
-    [ 60%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_rcu.c.obj
-    [ 60%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_pmu.c.obj
-    [ 62%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_rtc.c.obj
-    [ 62%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_spi.c.obj
-    [ 62%] Built target segger-rtt
-    [ 65%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_timer.c.obj
-    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_usart.c.obj
-    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/GD32VF103_standard_peripheral/Source/gd32vf103_wwdgt.c.obj
-    [ 68%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/drivers/n200_func.c.obj
-    [ 71%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/your_printf.c.obj
-    [ 74%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/_exit.c.obj
-    [ 77%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/init.c.obj
-    [ 71%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/env_Eclipse/handlers.c.obj
-    [ 80%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/close.c.obj
-    [ 80%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/fstat.c.obj
-    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/isatty.c.obj
-    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/sbrk.c.obj
-    [ 82%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/lseek.c.obj
-    [ 85%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/read.c.obj
-    [ 85%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/write_hex.c.obj
-    [ 88%] Building C object arch/gd32/risc-v/gd32vf103/CMakeFiles/arch-gd32vf103c.dir/RISCV/stubs/write.c.obj
-    [ 88%] Built target arch-gd32vf103c
-    [ 88%] Built target eventhub
-    [ 88%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/init.c.obj
-    [ 91%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/app/main.c.obj
-    [ 94%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/system_gd32vf103.c.obj
-    [ 94%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/led.c.obj
-    [ 97%] Building C object project/gd32vf103x/test-demo/CMakeFiles/test-demo.dir/board/button.c.obj
-    [100%] Linking C executable test-demo
-    Memory region         Used Size  Region Size  %age Used
-            flash:       48084 B       128 KB     36.69%
-                ram:         32 KB        32 KB    100.00%
-    Building test-demo
-    Building test-demo.bin
-    text    data     bss     dec     hex filename
-    46718    1360   16508   64586    fc4a /home/simon/project/fly/build/project/gd32vf103x/test-demo/test-demo
-    [100%] Built target test-demo
-    [100%] :Make vscode jlink gnu gdb
-    [100%] Built target jlink_make_vscode_jlink_gnu_gdb
-    ```
-
-### 9. 新建一个可被复用的源码包
-
-#### 包的结构
-
-一个包是由CMakeLists.txt 和 Kconfig组成的一系列文件,下面是segger-rtt包的结构
-
-```txt
-simon@:~/fly/package/segger-rtt$ tree 
-.
-├── CMakeLists.txt               # CMakeList.txt 提供给CMake使用
-├── inc
-│   ├── SEGGER_RTT_Conf.h
-│   └── SEGGER_RTT.h
-├── Kconfig                      # Kconfig 提供给menuconfig来提供配置项
-└── SEGGER_RTT.c
+```sh
+./fly.sh new sensor-node --board frdm-mcxn947-core0 --template baremetal-nanosig
+cd ../fly-project/sensor-node
+./build.sh build Debug
+./build.sh make_img
 ```
 
-#### 新建一个可复用的源码包
+| 模板 | FRDM-MCXN947 Core 0 的启动验收信号 |
+|---|---|
+| `baremetal` | 板级初始化完成后 RTT 输出 `boot ok` |
+| `baremetal-nanosig` | 裸机 nanosig 定时器回调输出 `nanosig ready` |
+| `freertos-nanosig` | FreeRTOS 应用任务中的 nanosig 定时器回调输出 `nanosig ready` |
 
-- 假设有以下源码想作为一个可复用的包
+工程默认生成到 FLY 同级的 `fly-project/`，自带独立 Git 仓库。用 `--output <目录>` 可指定工程位置。第一次构建加载工程自己的 `defconfig`，后续可用 `menuconfig` 和 `saveconfig` 更新配置。
 
-    ```c
-    /* add.h */
-    #ifndef _ADD_H_
-    #define _ADD_H_
+分享工程时，把 `fly.lock` 随应用一起提交。它记录 FLY 的 Git 地址和锁定的 commit。保证该 commit 已发布到锁定地址后，其他人 clone 应用仓库即可用下面的命令安装 SDK 并构建。
 
-    extern int      add_int(int a, int b);
-    extern double   add_double(double a, double b);
+```sh
+./build.sh setup
+./build.sh build Debug
+```
 
-    #endif /* _ADD_H_ */
-    ```
+Windows 使用 `build.bat setup` 和 `build.bat build Debug`。首次安装需要 Git 和 Python 3。SDK 安装在被 Git 忽略的 `fly/` 下。开发时也可以用 `FLY_ROOT` 或本机链接接入共享 SDK。
 
-    ```c
-    /* add.c */
+应用通过 `board/board.h` 调用板级功能，CMake 从 `board/board.cmake` 加载板级构建设置。配置、依赖和镜像分别位于工程的 `build/config/`、`build/deps/` 和 `build/image/`。维护指南见[模板目录说明](templates/README.md)。
 
-    int add_int(int a, int b){
-        return a+b;
-    }
+应用根目录的 `CMakeLists.txt` 是构建入口，也负责设置固件名称和版本。工具链由 SDK 在 `project()` 启用编译语言前选择，应用的编译、调试和打包目标定义在 `app/CMakeLists.txt`。
 
-    double add_double(double a, double b){
-        return a+b;
-    }
+安装 SDK 和目标工具链后可以在应用目录直接配置和构建。首次配置会自动生成 Kconfig 输出。
 
-    ```
+```sh
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/cmake
+```
 
-- 在fly/package下新建一个名为add的包
+Windows 下直接使用 MinGW-w64 和 Ninja 时，首次配置加上 `-G Ninja`。如果使用 `build.bat`，脚本会选择已安装的生成器。
 
-    ```bash
-    mkdir add
-    cd add
-    touch Kconfig CMakeLists.txt add.c 
-    mkdir inc
-    touch inc/add.h
-    ```
+CI 每次从模板生成工程，覆盖七个 Cortex-M 架构和 Linux、macOS、Windows 三种宿主平台，同时验证 FRDM-MCXN947 的三种模板打包。两个 RISC-V 目标暂不纳入 CI。见 [CI 流程](docs/CI.md)。
 
-- 编写源码add.h和add.c
-- 编写Kconfig，这里包名为PACKAGE_TEST_ADD
+### 9. 在独立应用中使用 SDK 源码包
 
-    ```Kconfig
-    config PACKAGE_TEST_ADD
-            bool "TEST ADD Supported"
-        help
-            "TEST ADD Supported"
-    ```
+SDK 从 `package/` 加载包的 CMake 和 Kconfig 设置。下面用一个求和函数演示如何把包注册到 SDK，再从生成的 FRDM-MCXN947 裸机应用调用它。
 
-- 编写CMakeLists.txt
+在 SDK 内创建以下文件。
 
-    ```cmake
-    cmake_minimum_required(VERSION 3.10)
+~~~text
+package/test-add/
+├── Kconfig
+├── CMakeLists.txt
+├── add.c
+└── inc/
+    └── add.h
+~~~
 
-    # 如果没有使能这个配置，就不要add_library
-    if(CONFIG_PACKAGE_TEST_ADD)
+在 `Kconfig` 中定义开关。
 
-        # 相当于向全局声明test-add这个库，test-add的属性为编译单元(.o)
-        add_library(test-add OBJECT)
+~~~kconfig
+config PACKAGE_TEST_ADD
+    bool "Test add"
+~~~
 
-        # 为test-add库添加源码
-        target_sources(test-add PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/add.c
-        )
+在包的 `CMakeLists.txt` 中注册对象库。
 
-        # 为test-add库添加头文件，这里使用PUBLIC，意味着依赖这个库的都可以访问到这个文件夹下的头文件
-        target_include_directories(test-add PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc/")
+~~~cmake
+if(CONFIG_PACKAGE_TEST_ADD)
+    add_library(test-add OBJECT add.c)
+    target_include_directories(test-add PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
+    package_lib_add(test-add)
+endif()
+~~~
 
-    endif(CONFIG_PACKAGE_TEST_ADD)
-    ```
+在 `inc/add.h` 声明 `int add_int(int a, int b);`，然后在 `add.c` 引入该头文件并实现函数。
 
-- 测试menuconfig中是否存在我们的自定义包,如果看到我们的测试包，那么说明建包成功。
+~~~c
+#include "add.h"
 
-    ```txt
-    Target Packages -->
-        [ ] TEST ADD Supported (NEW)
-    ```
+int add_int(int a, int b)
+{
+    return a + b;
+}
+~~~
 
-    ![alt text](resource/image5.png)
+生成的 `app/CMakeLists.txt` 通过 `target_link_package_lib(fly_app)` 链接启用的包。在 `app/main.c` 中引入 `add.h`，并在板卡初始化后调用求和函数。
 
-- 在项目中使用包，这里以project/gd32vf103x/gd32vf103c-demo为例，来使用test-add这个包
-  - 修改项目目录下的target_link_libraries添加test-add这个包
-  
-    这里的包名使用上面add_library(test-add OBJECT)定义的test-add。(这里的包名不是包文件夹名称，而是cmake中add_library的名称哦)。
+~~~c
+board_log(add_int(3, 4) == 7 ? "add ok\n" : "add failed\n");
+~~~
 
-    ```cmake
-    ...
+在应用的 `defconfig` 中加上 `CONFIG_PACKAGE_TEST_ADD=y`，然后从应用根目录重新加载配置并构建。
 
-    # app程序生成
-    add_executable(gd32vf103c-demo)
-    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
+~~~sh
+./build.sh loadconfig defconfig
+./build.sh build Debug
+~~~
 
-    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
-
-    target_sources(gd32vf103c-demo PRIVATE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
-    )
-
-    ...
-    ```
-
-  - 假如有些包需要用户来提供某个头文件给它(例子中不需要，下面只是演示)，可是使用target_include_directories给包传递你的头文件目录
-
-    ```cmake
-    ...
-
-    # 在项目的CMakeLists.txt中给外部的包添加include目录
-    target_include_directories(test-add PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config-inc")
-
-    # app程序生成
-    add_executable(gd32vf103c-demo)
-    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
-
-    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
-
-    target_sources(gd32vf103c-demo PRIVATE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
-    )
-
-    ...
-    ```
-
-  - 假如有些包需要用户定义一些宏，可以使用target_compile_definitions给包传递你宏定义
-
-    ```cmake
-    ...
-
-    # 在项目的CMakeLists.txt中给外部的包添加宏定义
-    target_compile_definitions(test-add PUBLIC -DTEST1=1 -DTEST_STR="test-str" )
-
-    # app程序生成
-    add_executable(gd32vf103c-demo)
-    target_include_directories(gd32vf103c-demo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/board/inc/")
-
-    target_link_libraries(gd32vf103c-demo  arch-gd32vf103c test-add segger-rtt factory-data eventhub c )
-
-    target_sources(gd32vf103c-demo PRIVATE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/app/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/init.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/system_gd32vf103.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/led.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/board/button.c"
-    )
-
-    ...
-    ```
-
-  - 在源码中使用test-add包提供的函数
-
-    ```c
-    ...
-    
-    #include "add.h"
-    ...
-        print_factory_data();
-        eh_infofl("test add int 3+4=%d", add_int(3, 4));
-        eh_infofl("test add double 3.3+4.4=%f", add_double(3.3, 4.4));
-        eh_global_init();
-    ...
-
-    ```
-
-  - 添加依赖项PACKAGE_TEST_ADD，使代码编译时自动选上test-add包。修改项目上级目录的Kconfig
-
-    ```Kconfig
-    choice
-        prompt "Select a gd32vf103x platform project"
-        default PROJECT_GD32VF103X_NONE
-        depends on ARCH_GD32VF103X
-
-    config PROJECT_GD32VF103X_NONE
-        bool "None"
-        help
-        Select this if you do not want to set any project.
-
-    config PROJECT_GD32VF103C_DEMO
-        bool "GD32VF103C demo project"
-        help
-            Select this option to enable Module GD32VF103C DEMO.
-        select PACKAGE_SCHEDULER_EVENTHUB_OS
-        select PACKAGE_SEGGER_RTT
-    # 添加依赖包 PACKAGE_TEST_ADD
-        select PACKAGE_TEST_ADD
-        
-    endchoice
-
-
-    config PROJECT
-        string
-        default "gd32vf103x/gd32vf103c-demo" if PROJECT_GD32VF103C_DEMO
-
-    ```
-
-  - 由于修改了Kconfig,刷新一下menuconfig，如果没有选gd32vf103c-demo请选中gd32vf103c-demo使其生成正确的配置
-
-    ```bash
-    ./build.sh menuconfig #进入后选择gd32vf103c-demo后 按ESC 选Y后退出
-    ```
-
-  - 使用./build.sh 开始编译
-
-    ```bash
-    ./build.sh
-    ```
-
-  - 使用./build.sh flash烧写后使用 ./build.sh rttlog查看日志
-
-    ```log
-    [2024-09-29 23:36:30.305] [    0.091618] [INFO] firmware_name:GD32VF103C_DEMO_Debug
-    [2024-09-29 23:36:30.306] [    0.091750] [INFO] part_name:APP
-    [2024-09-29 23:36:30.307] [    0.091857] [INFO] version:V0.0.1
-    [2024-09-29 23:36:30.308] [    0.091994] [INFO] generated_description:git@dirty_b02e985287 time@20240929_233524
-    [2024-09-29 23:36:30.309] [    0.092150] [INFO] software_len:48344
-    [2024-09-29 23:36:30.310] [    0.092296] [INFO] [main, 113]: app start!
-    [2024-09-29 23:36:30.311] [    0.092435] [INFO] [main, 114]: test add int 3+4=7
-    [2024-09-29 23:36:30.312] [    0.092592] [INFO] [main, 115]: test add double 3.3+4.4=7.700000
-    [2024-09-29 23:36:30.574] [    1.092904] [INFO] slot_test_function timer-1000ms
-    ```
+将应用分发给其他人时，把 `fly.lock` 指向包含该包的 SDK 提交。
 
 ### 10. 配合VS Code插件使用-插件安装
 
@@ -750,150 +340,37 @@ simon@:~/fly/package/segger-rtt$ tree
     code --install-extension llvm-vs-code-extensions.vscode-clangd
     ```
 
-### 11. 配合VS Code插件使用-编译、烧写、打包
+### 11. 在 VS Code 构建、烧录和打包
 
-- 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用CAMKE Tools插件直接进行编译。
-- 可以通过cmake插件旁边的项目大纲来一键烧写或一键打包固件
-![alt text](resource/image2.png)
-- 请不要使用cmake tools插件进行配置，可能会找不到编译器(除非编译器在全局环境变量)，如果发生配置失败的情况，请删除./build目录，再使用./build.sh进行重新构建。
-![alt text](resource/image3.png)
-- 打包固件使用命名规则 <IMAGE_NAME>_<CMAKE_BUILD_TYPE>_<BURN_MODE>_<PARTITION_1_NAME>v<PARTITION_1_VERSION>..._[<PARTITION_x_NAME>v<PARTITION_x_VERSION>]_<MAKE_IMG_TIME>_[dirty]_<GIT_COMMIT_HASH>, 该这些内容在项目的CMakeLists.txt文件中指定：
+打开应用根目录。在命令面板运行 `Tasks: Run Task`，克隆后的应用可先用 **FLY: Setup** 安装锁定的 SDK。**FLY: Configure** 准备本机工具链和 VS Code 设置。也可以在任务菜单中选择 **FLY: Build**、**FLY: Make image** 或 **FLY: Flash**。
 
-    ```cmake
+首次构建也会更新 `.vscode/settings.json` 和本机的 `.vscode/cmake-kits.json`。还可以执行 `./build.sh vscode Debug`（Windows 使用 `build.bat vscode Debug`）生成这些文件和编译数据库。CMake Tools 和命令行都从应用根目录配置，并使用应用的 `build/cmake/`。SDK 位置和交叉工具链路径由本机配置提供。
 
-    # OPENOCD固件
-    # STM32F030X8_DEMO_APP__openocd_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd 是 在cmake中调用这个函数生成的
-    add_openocd_image( openocd_image
-        IMAGE_NAME "STM32F030X8_DEMO_APP"
-        RTT_ADDR_AND_SIZE 0x20000000 0x3000
-        CONFIGFILE_LIST "${CMAKE_CURRENT_SOURCE_DIR}/openocd/jlink.cfg"
-        # 固件表，可以包含不止一个固件多个固件用空格隔开即可,比如
-        # FIRMWARE_LIST "BOOT:V0.0.1:0x8000000:stm32f030x8_demo_boot.bin" "APP:V0.0.1:0x8004000:stm32f030x8_demo_app.bin"
-        FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
-        DEPENDS stm32f030x8_demo_app
-    )
+在命令面板执行 `CMake: Select a Kit`，选 **FLY**，然后执行 `CMake: Configure`。用 **CMake: Build** 编译，或用 **CMake: Build Target** 选择 `default_make_img` 打包和 `default_flash` 烧录。
 
-    # JLINK固件
-    # STM32F030X8_DEMO_APP__jlink_APPv0.0.1_20240928_150140_dirty_9bf0eb71fd 是 在cmake中调用这个函数生成的
-    # 这里的目标名称叫default，意味着./build.sh make_img会依赖该目标，该目标又依赖了openocd_image_make_img(上面openocd目标)，所以
-    add_jlink_image( default
-        IMAGE_NAME "STM32F030X8_DEMO_APP"
-        CHIP_NAME "STM32F030C8"
-        # 固件表，可以包含不止一个固件多个固件用空格隔开即可,比如
-        # FIRMWARE_LIST "BOOT:V0.0.1:0x8000000:stm32f030x8_demo_boot.bin" "APP:V0.0.1:0x8004000:stm32f030x8_demo_app.bin"
-        FIRMWARE_LIST "APP:V0.0.1:0x8000000:stm32f030x8_demo_app.bin"
-        # 依赖上面的openocd_image目标，当该目标被生成时上面的目标也可以被生成。
-        DEPENDS stm32f030x8_demo_app openocd_image_make_img
-    )
+如果已有带注释的 VS Code 配置，FLY 会保留原文件并生成 `.vscode/fly-*.json` 合并片段。
 
-    
+生成工程的打包目标定义在 `app/CMakeLists.txt`。固件名和版本来自应用根目录，器件和写入地址来自板卡配置。以默认的 J-Link 目标为例。
 
-    ```
+~~~cmake
+add_jlink_image(default
+    IMAGE_NAME "${FLY_FIRMWARE_NAME}"
+    CHIP_NAME "${FLY_JLINK_DEVICE}"
+    FIRMWARE_LIST "APP:${FLY_FIRMWARE_VERSION}:${FLY_FLASH_ADDRESS}:fly_app.bin"
+    DEPENDS fly_app
+)
+~~~
 
-- 打包img包各文件解释(jlink包为例)
+OpenOCD 使用 `add_openocd_image()`，在同一个应用构建文件里指定对应的配置文件和固件列表。每个打包目标都会生成相应的烧录目标。J-Link 的当前包位于 `build/image/CURRENT/`，其中有 `APP.bin`、`download.jlink` 和烧录脚本。启用 RTT 的工程也可在应用目录用 `./build.sh rttlog` 查看日志。
 
-    ```txt
-    ├── APP.bin                                             # 分区固件
-    ├── burn.bat                                            # 在windows下的烧写脚本
-    ├── burn.sh                                             # 在linux下的烧写脚本
-    ├── download.jlink
-    ├── log.bat                                             # 在windows下日志抓取脚本
-    ├── log.ps1
-    ├── log.sh                                              # 在linux下日志烧写脚本
-    └── tool
-        ├── JLinkARM.dll
-        ├── JLink.exe
-        ├── 
-    ```
+### 12. 在 VS Code 调试
 
-### 12. 配合VS Code插件使用-调试
+安装 Cortex-Debug、板卡对应的调试工具和交叉 GDB。支持 J-Link 调试的模板会在构建时根据 `app/CMakeLists.txt` 里的 `add_vscode_cortex_debug_gdb()` 生成应用根目录的 `.vscode/launch.json`。打开应用根目录，在「运行和调试」里选择生成的配置。
 
-- 如果你已经使用./build.sh 完成了项目的初次构建，那么应该可以使用Cortex-Debug插件直接进行调试。
-![alt text](resource/image4.png)
-- 调试文件launch.json是由cmake函数调用python脚本生成的,如果想要编译时自动生成launch.json，需要在项目的CMakeLists.txt调用add_vscode_cortex_debug_gdb
+FRDM-MCXN947 裸机模板构建后可查看 RTT 通道 0。板卡初始化完成后会输出 `boot ok`。另外两个 nanosig 模板在定时器工作后输出 `nanosig ready`。
 
-    这里以project/gd32vf103x/gd32vf103c-demo/CMakeLists.txt为例：
+### 13. clangd 代码补全
 
-    ```cmake
-    ...
-    
-    add_vscode_cortex_debug_gdb( jlink
-        CHIP_NAME "GD32VF103CBT6"
-        ELF_NAME_LIST "gd32vf103c-demo"
-        SERVER_TYPE "jlink"
-        INTERFACE "jtag"
-        OTHER_EXT_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/debugconfig/ext-cortex-debug-config.json"
-        RTT_DEBUG  ON
-        DEPENDS gd32vf103c-demo
-    )
-    ```
+安装 clangd 扩展后打开应用根目录，运行一次 `./build.sh vscode Debug` 或构建应用。工作区设置会让 clangd 读取 `build/cmake/compile_commands.json`，并通过 `--query-driver` 向当前交叉编译器获取系统头文件路径。切换工具链或 SDK 后重新运行该命令。
 
-- 调试已经支持了RTT日志的查看，你要使能RTT相关包，然后配置eventhub-os包提供的格式化输出，就能看到相关日志的输出。
-
-    ```c
-    #include "SEGGER_RTT.h"
-    #include <eh.h>
-    #include <eh_debug.h>
-
-    void stdout_write(void *stream, const uint8_t *buf, size_t size){
-        (void)stream;
-        SEGGER_RTT_Write(0, buf, (unsigned)size);
-    }
-    int main(void){
-        eh_infoln("hello fly!");
-        return 0;
-    }
-    ```
-
-### 13. 配合VS Code插件使用-LSP语法提示、跳转、代码补全
-
-- 想用 c/c++ 插件请自行配置，略过此章。
-- 如果你已经使用./build.sh 完成了项目的初次构建，应该可以使用clangd进行代码补全。
-- 先在.vscode下建立.vscode/settings.json,添加如下内容。
-
-    ```json
-    "C_Cpp.intelliSenseEngine": "disabled",
-    "clangd.onConfigChanged": "restart",
-    "clangd.checkUpdates": false,
-    "clangd.arguments": [
-        // 在后台自动分析文件（基于complie_commands）
-        "--background-index",
-        // 同时开启的任务数量
-        "-j=6",
-        // 标记compelie_commands.json文件的目录位置
-        "--compile-commands-dir=${workspaceFolder}/build",
-        // 使用的编译器，通过编译器来寻找系统头文件位置,这里必须使用绝对路径，不能使用链接路径
-        //"--query-driver=",
-        // 补充头文件的形式
-        /* iwyu:自动补充  never：不自动补充*/
-        "--header-insertion=iwyu",
-        //"--header-insertion=never",
-        // pch优化的位置
-        "--pch-storage=disk",
-        // 全局补全（会自动补充头文件）
-        "--all-scopes-completion",
-        // clang-tidy功能
-        "--clang-tidy",
-        "--clang-tidy-checks=performance-*,bugprone-*",
-        // 建议风格：打包(重载函数只会给出一个建议）
-        // 相反可以设置为bundled 
-        "--completion-style=detailed",
-        // 跨文件重命名变量
-        "--cross-file-rename",
-        // 使能.cland文件
-        // .clangd示例:
-        //  CompileFlags:                     # Tweak the parse settings
-        //      Remove: [-march=rv32imac, -mabi=ilp32] 
-        //
-        //"--enable-config",
-    ]
-    ```
-
-- 然后使用vs code顶部命令（或者直接重启VS Code） >clangd:Restart language server 重启clangd服务，即可支持代码补全。
-- 对于一些新架构，比如riscv，clangd会出现报错，在fly目录下建立.clangd文件(指定命令来移除clangd不能识别的选项)可以解决问题，比如下面的。
-
-    ```.clangd
-    # 这里就是移除了 -march=rv32imac, -mabi=ilp32，防止clangd报错
-    CompileFlags:                     # Tweak the parse settings
-    Remove: [-march=rv32imac, -mabi=ilp32]
-    ```
+如果 clangd 在首次生成设置前已启动，可以执行 `clangd: Restart language server`。

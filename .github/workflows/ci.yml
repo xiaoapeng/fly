@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast configuration gate: scheduler selection sweep + Kconfig hygiene.
   kconfig:
     name: kconfig
     runs-on: ubuntu-latest
@@ -24,15 +23,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install kconfiglib
-        run: python3 -m pip install --upgrade pip kconfiglib requests
-      - name: Scheduler selection sweep
-        run: python3 tool/test/check_freertos_config.py
-      - name: Kconfig hygiene sweep
-        run: python3 tool/test/check_kconfig_hygiene.py
+        run: python3 -m pip install kconfiglib requests
+      - name: Validate generated configurations
+        run: python3 tool/test/check_standalone_projects.py --matrix config
 
-  # The 11 arm-none-eabi projects: build + symbol assertions
-  # (no FreeRTOS API undefined, legacy projects FreeRTOS-free, SysTick_Handler
-  # uniqueness). Same command a developer runs locally.
   arm-build:
     name: arm-build
     runs-on: ubuntu-latest
@@ -48,22 +42,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
             gdb-multiarch ninja-build cmake git
-          python3 -m pip install kconfiglib requests
-      - name: Toolchain version
-        run: arm-none-eabi-gcc --version | head -1
       - name: Bootstrap Python venv
-        # CMake picks .venv over whatever `python3` is first on PATH
-        # (cmake/python3.cmake), so pin the interpreter by creating it here.
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
-      - name: Build ARM projects
-        run: python3 tool/test/check_build_arm.py -j 4 --verbose
+          .venv/bin/python -m pip install kconfiglib requests
+      - name: Build generated ARM projects and package FRDM templates
+        run: .venv/bin/python tool/test/check_standalone_projects.py --matrix arm
 
-  # Host triple: one real build per OS. These projects link the OS sockets /
-  # threading layer, so they catch host-specific breakage that cross builds
-  # never see. Linux and Windows use the GCC toolchain files, so MSVC cannot
-  # replace MinGW here.
   host-linux:
     name: host-linux
     runs-on: ubuntu-latest
@@ -80,9 +65,9 @@ jobs:
       - name: Bootstrap Python venv
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
-      - name: Build linux host projects
-        run: python3 tool/test/check_build.py --platform linux
+          .venv/bin/python -m pip install kconfiglib requests
+      - name: Build generated Linux project
+        run: .venv/bin/python tool/test/check_standalone_projects.py --matrix host
 
   host-macos:
     name: host-macos
@@ -95,13 +80,11 @@ jobs:
           python-version: "3.12"
       - name: Install build tools
         run: |
-          # 不装 lld：clang-host-darwin.cmake 只在检测到 ld.lld 时才加
-          # -fuse-ld=lld，这里正好覆盖"纯净 macOS 用系统链接器"的路径。
-          brew install ninja cmake || true
+          command -v cmake >/dev/null || brew install cmake
           python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip kconfiglib requests
-      - name: Build macos host projects
-        run: python3 tool/test/check_build.py --platform macos
+          .venv/bin/python -m pip install kconfiglib requests
+      - name: Build generated macOS project
+        run: .venv/bin/python tool/test/check_standalone_projects.py --matrix host
 
   host-windows:
     name: host-windows
@@ -120,9 +103,12 @@ jobs:
           C:\msys64\usr\bin\bash.exe -lc "pacman -Sy --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-ninja"
           Add-Content -Path $env:GITHUB_PATH -Value 'C:\msys64\mingw64\bin'
       - name: Bootstrap Python venv
-        # cmake/python3.cmake prefers .venv over the PATH interpreter.
         run: |
           python -m venv .venv
-          & .\.venv\Scripts\python.exe -m pip install --upgrade pip kconfiglib requests
-      - name: Build windows host projects
-        run: python tool/test/check_build.py --platform windows
+          & .\.venv\Scripts\python.exe -m pip install kconfiglib requests
+      - name: Build generated Windows project
+        run: .\.venv\Scripts\python.exe tool/test/check_standalone_projects.py --matrix host
+      - name: Verify Windows generator and application launchers
+        run: .\.venv\Scripts\python.exe tool/test/check_standalone_projects.py --sdk-setup-only
+      - name: Verify Windows package directory junctions
+        run: .\.venv\Scripts\python.exe tool/test/check_standalone_projects.py --image-links-only

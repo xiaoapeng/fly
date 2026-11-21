@@ -1,0 +1,10 @@
+{
+  "id": "host-linux-x64",
+  "label": "Linux host (x86-64)",
+  "chip": "x86-64 Linux host",
+  "core": "Native",
+  "arch_config": "CONFIG_ARCH_X64_LINUX",
+  "toolchain": "Native GCC",
+  "probe": "None (native executable)",
+  "templates": ["baremetal"]
+}
