@@ -40,11 +40,16 @@ if(FLY_JLINK_DEVICE AND DEFINED FLY_FLASH_ADDRESS)
     )
 endif()
 if(FLY_JLINK_DEVICE AND CMAKE_GDB AND CMAKE_OBJDUMP)
+    set(flash_debug_args "")
+    if(TARGET default_flash)
+        set(flash_debug_args FLASH_TASK "FLY: Flash")
+    endif()
     add_vscode_cortex_debug_gdb(default
         CHIP_NAME "${FLY_JLINK_DEVICE}"
         ELF_NAME_LIST fly_app
         SERVER_TYPE jlink
         RTT_DEBUG "${CONFIG_PACKAGE_SEGGER_RTT}"
         DEPENDS fly_app
+        ${flash_debug_args}
     )
 endif()

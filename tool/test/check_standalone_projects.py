@@ -183,6 +183,23 @@ def check_openocd_script(sdk, workspace):
     print("OpenOCD package with spaced paths and failed probe: PASS", flush=True)
 
 
+def check_jlink_requires_binary(sdk, workspace):
+    images = workspace / "J-Link images"
+    empty = workspace / "empty firmware.bin"
+    empty.touch()
+    for binary in (workspace / "missing firmware.bin", empty):
+        command = [sys.executable, "-B", str(sdk / "tool/python/mk_jlink_img.py"),
+                   "--firmware-name", "jlink-check", "--jlink-path", str(sdk / "tool/jlink"),
+                   "--output-dir", str(images), "--chip-name", "MCXN947_M33_0",
+                   "--speed", "4000", "--jtagconf=-1,-1", "--nm", sys.executable,
+                   "--firmware-parts", f"APP:0.1.0:0x00000000:{binary}"]
+        result = subprocess.run(command, cwd=workspace, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0 or "Firmware binary is missing or empty" not in result.stderr or images.exists():
+            raise RuntimeError(f"J-Link packager accepted {binary.name} or published a package:\n"
+                               f"{result.stdout}{result.stderr}")
+    print("J-Link refuses missing or empty firmware: PASS", flush=True)
+
+
 def check_image_links(sdk, workspace):
     images = workspace / "image output"
     images.mkdir()
@@ -263,6 +280,33 @@ def check_build_outputs(sdk, project, *, host=False):
     return cache
 
 
+def check_debug_launch(project):
+    launch = json.loads((project / ".vscode/launch.json").read_text(encoding="utf-8"))
+    expected_requests = {
+        "default-fly_app": "launch",
+        "default-fly_app (attach)": "attach",
+        "default-fly_app (flash BIN and attach)": "attach",
+    }
+    entries = [entry for entry in launch["configurations"] if entry["name"] in expected_requests]
+    profiles = {entry["name"]: entry for entry in entries}
+    if profiles.keys() != expected_requests.keys() or len(entries) != len(profiles):
+        raise RuntimeError(f"{project.name} did not generate each FLY debug profile exactly once")
+
+    elf = (project / "build/cmake/app/fly_app").resolve()
+    for name, request in expected_requests.items():
+        profile = profiles[name]
+        if profile["request"] != request or Path(profile["executable"]) != elf:
+            raise RuntimeError(f"{project.name} generated an invalid {name} profile for {elf}")
+
+    flash_attach = profiles["default-fly_app (flash BIN and attach)"]
+    normal_attach = profiles["default-fly_app (attach)"]
+    if flash_attach.get("preLaunchTask") != "FLY: Flash" or flash_attach["device"] != normal_attach["device"]:
+        raise RuntimeError(f"{project.name} must flash the packaged BIN before attaching to the same device")
+    if "preLaunchTask" in normal_attach or "preLaunchTask" in profiles["default-fly_app"]:
+        raise RuntimeError(f"{project.name} must limit packaged BIN flashing to its optional debug profile")
+    run(["git", "check-ignore", "--", ".vscode/launch.json"], project)
+
+
 def check_project(sdk, workspace, template, build_type):
     project = workspace / template
     name = f"test-{template}"
@@ -308,12 +352,7 @@ def check_project(sdk, workspace, template, build_type):
     check_image(project, name, "0.1.0", revision, build_type)
     if any(line.startswith("CMAKE_GDB:INTERNAL=") and not line.endswith("-NOTFOUND")
            for line in cmake_cache.splitlines()):
-        launch_path = project / ".vscode/launch.json"
-        launch = json.loads(launch_path.read_text(encoding="utf-8"))
-        elf = project / "build/cmake/app/fly_app"
-        if not any(Path(entry["executable"]) == elf.resolve() for entry in launch["configurations"]):
-            raise RuntimeError(f"{template} has no launch configuration for {elf}")
-        run(["git", "check-ignore", "--", ".vscode/launch.json"], project)
+        check_debug_launch(project)
     if template == "baremetal":
         revision = commit(project, "Change application revision", allow_empty=True)
         run(make_img, project)
@@ -379,6 +418,7 @@ def check_frdm_templates(sdk, workspace, build_type):
     check_sdk_setup(sdk, workspace)
     check_native_sdk_pin(sdk, workspace)
     check_openocd_script(sdk, workspace)
+    check_jlink_requires_binary(sdk, workspace)
     with ThreadPoolExecutor(max_workers=len(TEMPLATES)) as pool:
         futures = [pool.submit(check_project, sdk, workspace, template, build_type) for template in TEMPLATES]
         for future in futures:

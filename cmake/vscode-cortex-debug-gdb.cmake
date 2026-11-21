@@ -4,7 +4,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/git-status.cmake")
 function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
     cmake_parse_arguments(
         CUSTOM_FUNC ""
-        "CHIP_NAME;DEPENDS;SPEED;SERVER_TYPE;RTT_DEBUG;INTERFACE;OTHER_EXT_CONFIG"
+        "CHIP_NAME;DEPENDS;SPEED;SERVER_TYPE;RTT_DEBUG;INTERFACE;OTHER_EXT_CONFIG;FLASH_TASK"
         "OPENOCD_CONFIGFILE_LIST;ELF_NAME_LIST"
         ""
         ${ARGN}
@@ -46,6 +46,11 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
         set(OPENOCD_CONFIG_ARGS --openocd-config-file-list ${CUSTOM_FUNC_OPENOCD_CONFIGFILE_LIST})
     endif()
 
+    set(FLASH_TASK_ARGS "")
+    if(CUSTOM_FUNC_FLASH_TASK)
+        set(FLASH_TASK_ARGS --flash-task "${CUSTOM_FUNC_FLASH_TASK}")
+    endif()
+
     if(NOT CUSTOM_FUNC_ELF_NAME_LIST)
         message(FATAL_ERROR "No elf file name specified")
     endif()
@@ -71,7 +76,7 @@ function(add_vscode_cortex_debug_gdb CMAKE_TARGET)
             --config-name ${CMAKE_TARGET} --server-type ${CUSTOM_FUNC_SERVER_TYPE} --top-path "${FLY_WORKSPACE_DIR}"
             --interface ${CUSTOM_FUNC_INTERFACE} --chip-name ${CUSTOM_FUNC_CHIP_NAME} --gdb-path "${CMAKE_GDB}" 
             --objdump-path "${CMAKE_OBJDUMP}" ${RTT_EN_FLAGS}  ${CUSTOM_FUNC_OTHER_EXT_CONFIG_OPTION} ${CUSTOM_FUNC_OTHER_EXT_CONFIG}
-            --elf-path-list ${ELF_PATH_LIST} ${OPENOCD_CONFIG_ARGS}
+            --elf-path-list ${ELF_PATH_LIST} ${OPENOCD_CONFIG_ARGS} ${FLASH_TASK_ARGS}
         DEPENDS ${CUSTOM_FUNC_DEPENDS}
         VERBATIM
         COMMENT "Update VS Code launch configuration"

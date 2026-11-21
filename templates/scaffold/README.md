@@ -58,6 +58,11 @@ For boards with debug targets, building with GDB and objdump installed generates
 `.vscode/launch.json` in the project root. Open that directory in VS Code to use
 the debug entries.
 
+On those boards, select **default-fly_app (flash BIN and attach)** after the
+first build to debug the packaged firmware. VS Code runs **FLY: Flash** to
+program the final BIN, then attaches using symbols from the matching ELF. The
+target resets and runs before the debugger attaches.
+
 Open **Tasks: Run Task** and use **FLY: Setup** if the SDK needs installation.
 Run **FLY: Configure** to prepare local settings for clangd and CMake Tools
 before compiling, or use `./build.sh vscode Debug` (`build.bat vscode Debug`
