@@ -30,7 +30,8 @@ SECTIONS
         *(.text .text.*)
         *(.rodata .rodata.*)
         *(.glue_7 .glue_7t)
-        KEEP(*(.init .fini))
+        KEEP(*(.init))
+        KEEP(*(.fini))
         . = ALIGN(4);
     } > FLASH
 
