@@ -39,7 +39,7 @@ class BuildPaths:
 
     @property
     def images(self):
-        return self.output / 'image'
+        return self.project / 'image'
 
     @property
     def mirror(self):
@@ -240,6 +240,9 @@ def run_target(paths, target):
 
 def run_rttlog(paths):
     current = paths.images / 'CURRENT'
+    if not current.is_dir():
+        # Applications made with an older SDK may still have a package here.
+        current = paths.output / 'image' / 'CURRENT'
     if platform.system() == 'Windows':
         script = current / 'log.bat'
         command = [str(script)]
@@ -327,7 +330,7 @@ def main():
     parser_clean = subparsers.add_parser('clean', help='Clean build outputs (keep config).')
 
     # distclean 
-    parser_distclean = subparsers.add_parser('distclean', help='Delete build directory and generated configs.')
+    parser_distclean = subparsers.add_parser('distclean', help='Delete build and generated configs, keeping top-level image packages.')
 
     # flash
     parser_flash = subparsers.add_parser('flash', help='Flash firmware to target.')
@@ -377,10 +380,13 @@ def main():
     os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
     try:
-        if args.command in ('distclean', 'add_path_env'):
+        if args.command in ('distclean', 'add_path_env', 'rttlog'):
             os.chdir(paths.project)
             if args.command == 'distclean':
                 run_distclean(paths)
+            elif args.command == 'rttlog':
+                load_env(paths.sdk)
+                run_rttlog(paths)
             else:
                 run_append_path_env(sdk, args.env_path)
             return 0
@@ -424,8 +430,6 @@ def run_command(paths, args, tool_paths):
             run_target(paths, 'clean')
     elif args.command in ('flash', 'make_img'):
         run_target(paths, f'{args.flash_target}_{args.command}')
-    elif args.command == 'rttlog':
-        run_rttlog(paths)
     elif args.command == 'package_update':
         target = 'show_list' if args.list else args.pack_name
         run_target(paths, f'package_update_{target}')

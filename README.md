@@ -25,6 +25,8 @@ cd ../fly-project/sensor-node
 
 Windows 在 SDK 中使用 `fly.bat new`，在应用中使用 `build.bat`。应用里的 `build.sh` / `build.bat` 调用 SDK 的 Python 构建工具。首次使用请安装 Git、Python 3、CMake 3.21 或更新版本以及目标工具链。
 
+克隆已有应用后，在应用目录运行 `./build.sh setup` 安装 `fly.lock` 指定的 SDK。Windows 使用 `build.bat setup`。如果构建提示 SDK 版本与锁文件不一致，重跑 setup。手动指定过 SDK 时，先解除该路径设置，或切到锁定的提交。 [SDK 安装与版本检查](#8-从模板创建独立工程)
+
 ### 1. clone项目到本地
 
 ```bash
@@ -138,8 +140,8 @@ cd fly
 | `build [type] [-j N]` | 编译项目 | `./build.sh build Debug -j 8` |
 | `vscode [type]` | 配置 CMake 并刷新 VS Code 文件 | `./build.sh vscode Debug` |
 | `clean` | 清理构建产物（保留配置） | `./build.sh clean` |
-| `distclean` | 删除构建目录与自动生成配置 | `./build.sh distclean` |
-| `make_img [target]` | 生成镜像 | `./build.sh make_img` |
+| `distclean` | 删除 `build/` 和自动生成的配置，保留 `image/` | `./build.sh distclean` |
+| `make_img [target]` | 打包固件到应用根目录的 `image/` | `./build.sh make_img` |
 | `flash [target]` | 烧写固件 | `./build.sh flash` |
 | `rttlog` | 打开 RTT 日志 | `./build.sh rttlog` |
 | `package_update [name] [-l]` | 更新包或列出可更新包 | `./build.sh package_update -l` |
@@ -192,7 +194,11 @@ cd fly
     ./build.sh make_img
     ```
 
-打包后在应用的 `build/image/` 下查看 ZIP，当前固件包通过 `build/image/CURRENT/` 访问。
+打包后的 ZIP 存在应用根目录的 `image/` 下，当前固件包通过 `image/CURRENT/` 访问。删除 `build/` 或执行 `./build.sh distclean` 后，这些固件包仍可访问。
+
+输入未变且上一次打包生成的文件都在、大小一致时，打包命令会复用该包。缺少固件、烧录脚本或随包文件，或文件被截短时，会重新生成完整包。
+
+如果旧版 SDK 的固件包还在 `build/image/`，请在清理前将要保留的 ZIP 复制到应用根目录的 `image/`。已有应用可在自己的 `.gitignore` 中加入 `/image/`。用新版 SDK 重新打包会更新 `image/CURRENT/`。
 
 #### 烧写
 
@@ -233,23 +239,32 @@ cd ../fly-project/sensor-node
 | 模板 | FRDM-MCXN947 Core 0 的启动验收信号 |
 |---|---|
 | `baremetal` | 板级初始化完成后 RTT 输出 `boot ok` |
-| `baremetal-nanosig` | 裸机 nanosig 定时器回调输出 `nanosig ready` |
-| `freertos-nanosig` | FreeRTOS 应用任务中的 nanosig 定时器回调输出 `nanosig ready` |
+| `baremetal-nanosig` | 裸机定时器回调输出 `nanosig ready`，回收后输出 `nanosig stopped` |
+| `freertos-nanosig` | 应用任务输出 `nanosig ready`，回收后输出 `nanosig stopped` |
 
 工程默认生成到 FLY 同级的 `fly-project/`，自带独立 Git 仓库。用 `--output <目录>` 可指定工程位置。第一次构建加载工程自己的 `defconfig`，后续可用 `menuconfig` 和 `saveconfig` 更新配置。
 
-分享工程时，把 `fly.lock` 随应用一起提交。它记录 FLY 的 Git 地址和锁定的 commit。保证该 commit 已发布到锁定地址后，其他人 clone 应用仓库即可用下面的命令安装 SDK 并构建。
+分享工程时，把 `fly.lock` 随应用一起提交。它记录 FLY 的 Git 地址和完整提交哈希。将该提交发布到锁定地址，并在没有本地 SDK 覆盖的干净克隆中验证安装、构建以及该应用提供的打包目标。
 
 ```sh
 ./build.sh setup
 ./build.sh build Debug
 ```
 
-Windows 使用 `build.bat setup` 和 `build.bat build Debug`。首次安装需要 Git 和 Python 3。SDK 安装在被 Git 忽略的 `fly/` 下。开发时也可以用 `FLY_ROOT` 或本机链接接入共享 SDK。
+Windows 使用 `build.bat setup` 和 `build.bat build Debug`。首次安装需要 Git 和 Python 3。SDK 安装在被 Git 忽略的 `fly/` 下。远端分支继续更新时，应用仍使用锁定的提交。
 
-应用通过 `board/board.h` 调用板级功能，CMake 从 `board/board.cmake` 加载板级构建设置。配置、依赖和镜像分别位于工程的 `build/config/`、`build/deps/` 和 `build/image/`。维护指南见[模板目录说明](templates/README.md)。
+`build.sh` 和 `build.bat` 会在调用 SDK 前检查所选 SDK 的 `HEAD`。直接使用 CMake 时，配置工程和编译固件前都会检查。有提交锁定时，版本不匹配会停止当前操作并提示如何处理。
 
-应用根目录的 `CMakeLists.txt` 是构建入口，也负责设置固件名称和版本。工具链由 SDK 在 `project()` 启用编译语言前选择，应用的编译、调试和打包目标定义在 `app/CMakeLists.txt`。
+- `fly/` 由 `setup` 管理时，更新锁定提交后重新执行 `./build.sh setup` 或 `build.bat setup`，然后重新构建。如果更改了锁定的 Git 地址，先移开原有的 `fly/`，再执行 `setup`。
+- 本地开发可以通过 `FLY_ROOT`、应用根目录下的 `fly/` 链接或 SDK 目录、`.fly-root` 路径文件来选择 SDK。直接运行 CMake 时也可传入 `-DFLY_SDK_DIR=/path/to/fly`。版本不匹配时，选择 `HEAD` 与锁文件一致的工作树，或者清除本地路径设置、移开手动放置的 `fly/` 后再运行 `setup`。用过 `-DFLY_SDK_DIR` 时，也要更新或清除 CMake 缓存里的该项。版本检查只读取当前选择。
+
+手动选择的 SDK 可以包含未提交改动，`fly.lock` 只锁定它的 `HEAD`。没有 `fly.lock` 或 `commit` 为 `null` 的工程可使用本地 SDK 开发。通过 `setup` 安装 SDK 需要在锁文件中提供 Git 地址和完整提交哈希。
+
+应用使用 `#include "board.h"` 调用板级接口。随板卡生成的头文件位于 `board/include/`，CMake 从 `board/board.cmake` 加载板级构建设置。配置和依赖分别位于应用的 `build/config/` 和 `build/deps/`，打包产物放在应用根目录的 `image/`。维护指南见[模板目录说明](templates/README.md)。
+
+应用根目录的 `CMakeLists.txt` 是构建入口，负责设置固件名称和版本，并定义固件、调试和打包目标。`app/CMakeLists.txt` 向固件目标登记应用源码、头文件目录和可选的应用配置。SDK 在 `project()` 启用编译语言前选择工具链。使用应用构建脚本时，嵌入式 ELF 和 BIN 分别生成到 `build/cmake/fly_app` 和 `build/cmake/fly_app.bin`。
+
+嵌入式应用从 `app/main.c` 启动，业务和中间件源码分别放在 `app/biz/` 和 `app/mid/`，对应的公开头文件放在 `app/include/biz/` 和 `app/include/mid/`。
 
 安装 SDK 和目标工具链后可以在应用目录直接配置和构建。首次配置会自动生成 Kconfig 输出。
 
@@ -305,7 +320,7 @@ int add_int(int a, int b)
 }
 ~~~
 
-生成的 `app/CMakeLists.txt` 通过 `target_link_package_lib(fly_app)` 链接启用的包。在 `app/main.c` 中引入 `add.h`，并在板卡初始化后调用求和函数。
+应用根目录的 `CMakeLists.txt` 通过 `target_link_package_lib(fly_app)` 链接启用的包。在 `app/main.c` 中引入 `add.h`，并在板卡初始化后调用求和函数。
 
 ~~~c
 board_log(add_int(3, 4) == 7 ? "add ok\n" : "add failed\n");
@@ -350,26 +365,41 @@ board_log(add_int(3, 4) == 7 ? "add ok\n" : "add failed\n");
 
 如果已有带注释的 VS Code 配置，FLY 会保留原文件并生成 `.vscode/fly-*.json` 合并片段。
 
-生成工程的打包目标定义在 `app/CMakeLists.txt`。固件名和版本来自应用根目录，器件和写入地址来自板卡配置。以默认的 J-Link 目标为例。
+在应用根目录的 `CMakeLists.txt` 中载入打包模块并声明镜像。应用模块读取板卡配置中的 `FLY_JLINK_DEVICE`，并把器件名传给 SDK 的 `add_jlink_image()`。宿主工程和未配置 J-Link 的板卡会跳过 J-Link 打包目标。应用镜像使用板卡给出的 Flash 地址和分区容量。
 
 ~~~cmake
-add_jlink_image(default
+include("${CMAKE_CURRENT_LIST_DIR}/tool/cmake/app-image.cmake")
+app_add_jlink_image(default
     IMAGE_NAME "${FLY_FIRMWARE_NAME}"
-    CHIP_NAME "${FLY_JLINK_DEVICE}"
-    FIRMWARE_LIST "APP:${FLY_FIRMWARE_VERSION}:${FLY_FLASH_ADDRESS}:fly_app.bin"
+    FIRMWARE_LIST
+        "APP:${FLY_FIRMWARE_VERSION}:${FLY_FLASH_ADDRESS}:${FLY_FLASH_SIZE}:fly_app.bin"
+        # "BOOT:${BOOT_VERSION}:${BOOT_FLASH_ADDRESS}:${BOOT_FLASH_SIZE}:${BOOT_BIN}"
     DEPENDS fly_app
 )
 ~~~
 
-OpenOCD 使用 `add_openocd_image()`，在同一个应用构建文件里指定对应的配置文件和固件列表。每个打包目标都会生成相应的烧录目标。J-Link 的当前包位于 `build/image/CURRENT/`，其中有 `APP.bin`、`download.jlink` 和烧录脚本。启用 RTT 的工程也可在应用目录用 `./build.sh rttlog` 查看日志。
+`FIRMWARE_LIST` 的每一项采用 `NAME:VERSION:ADDRESS:CAPACITY:BIN`，容量是十进制或带 `0x` 前缀的十六进制字节数。打包工具校验加上对齐填充和元数据尾部后的最终 BIN。超过对应分区容量时，打包失败。应用侧的 `CONFIG_FACTORY_DATA_SUPPORTED` 控制板上读取和日志，打包始终检查容量。已有工程需要在固件条目的 BIN 路径前填写分区容量。
+
+要在同一个包中加入 bootloader，填写示例中的 `BOOT` 条目和对应的版本、烧录地址、分区容量和 BIN 路径。相对 BIN 路径以 `build/cmake/` 为基准，已有 BIN 可以用绝对路径。若 BIN 由当前 CMake 工程生成，将对应的构建目标加入 `DEPENDS`。各镜像的烧录地址和分区容量需与 Flash 布局一致，并确保分区互不重叠。若为 bootloader 调整应用的起始地址，同时更新应用链接脚本和板卡配置中的 `FLY_FLASH_ADDRESS`、`FLY_FLASH_SIZE`。
+
+OpenOCD 使用 `add_openocd_image()`，在应用根目录的 `CMakeLists.txt` 中指定配置文件及同样格式的 `FIRMWARE_LIST`。每个打包目标都会生成相应的烧录目标。J-Link 的当前包位于 `image/CURRENT/`，其中包含清单中的 BIN、`download.jlink` 和烧录脚本。启用 RTT 的工程也可在应用目录用 `./build.sh rttlog` 查看日志。
 
 ### 12. 在 VS Code 调试
 
-安装 Cortex-Debug、板卡对应的调试工具和交叉 GDB。支持 J-Link 调试的模板会在构建时根据 `app/CMakeLists.txt` 里的 `add_vscode_cortex_debug_gdb()` 生成应用根目录的 `.vscode/launch.json`。打开应用根目录，在「运行和调试」里选择生成的配置。
+安装 Cortex-Debug、板卡对应的调试工具和交叉 GDB。应用根目录的 `CMakeLists.txt` 载入应用自己的调试模块，并传入固件目标。
 
-要调试带 CRC 尾部的发布固件，首次构建后选择 **default-fly_app (flash BIN and attach)**。按 F5 会运行 **FLY: Flash**，烧录打包后的 BIN，再从同一次构建的 ELF 读取符号并附加。烧录结束时目标会复位并运行，因此附加时程序可能已执行过启动代码。
+~~~cmake
+include("${CMAKE_CURRENT_LIST_DIR}/tool/cmake/app-vscode.cmake")
+app_add_vscode_debug(fly_app)
+~~~
 
-FRDM-MCXN947 裸机模板构建后可查看 RTT 通道 0。板卡初始化完成后会输出 `boot ok`。另外两个 nanosig 模板在定时器工作后输出 `nanosig ready`。
+在应用的 `tool/cmake/app-vscode.cmake` 中可以调整 RTT 等调试参数。`app_add_vscode_debug()` 检查板卡的 J-Link 器件及 GDB 和 objdump，再调用 SDK 的 `add_vscode_cortex_debug_gdb()` 生成 `.vscode/launch.json`。宿主工程、未配置 J-Link 的板卡以及缺少 GDB 或 objdump 的环境会跳过调试配置生成。嵌入式构建也会用 objdump 生成反汇编列表。打开应用根目录，在「运行和调试」里选择生成的配置。
+
+应用模块检测到 `default_flash` 时，也会为 SDK 配置 **FLY: Flash** 前置任务，生成 **default-fly_app (flash BIN and attach)**。要调试带 CRC 尾部的发布固件，首次构建后选中该配置并按 F5。**FLY: Flash** 会烧录包中的各个镜像，再从同一次构建的应用 ELF 读取符号并附加。烧录结束时目标会复位并运行，因此附加时程序可能已执行过启动代码。
+
+三个嵌入式模板默认启用 `CONFIG_FACTORY_DATA_SUPPORTED`。烧录打包后的 BIN 后，启动时会校验 Flash 中的尾部，并在 RTT 通道 0 打印固件名、版本、分区和烧录地址、对齐后的镜像长度、尾部长度、CRC32，以及打包时记录的 Git 版本和时间。找不到有效尾部时（例如普通 ELF 调试只下载了程序），会打印一次 `Firmware info unavailable`，随后继续启动。在 `menuconfig` 中关闭该选项即可跳过这项检查和日志。
+
+FRDM-MCXN947 裸机模板随后输出 `boot ok`。两个 nanosig 模板在定时器回调后退出循环，并在完成资源回收后输出 `nanosig stopped`。可在 [nanosig 应用运行时](templates/README.md#nanosig-应用运行时) 查看接口和示例。
 
 ### 13. clangd 代码补全
 

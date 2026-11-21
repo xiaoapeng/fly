@@ -3,11 +3,9 @@ setlocal EnableExtensions DisableDelayedExpansion
 
 for %%I in ("%~dp0.") do set "project_dir=%%~fI"
 set "fly_dir=%FLY_ROOT%"
-set "use_managed="
 if defined fly_dir goto :dispatch
 if exist "%project_dir%\fly\" (
     set "fly_dir=%project_dir%\fly"
-    set "use_managed=1"
     goto :dispatch
 )
 if exist "%project_dir%\.fly-root" set /p "fly_dir=" < "%project_dir%\.fly-root"
@@ -22,10 +20,8 @@ if not exist "%fly_dir%\cmake\fly-configure.cmake" (
 )
 call :find_python
 if errorlevel 1 exit /b 1
-if defined use_managed if exist "%fly_dir%\.git\fly-managed" (
-    "%python_bin%" -B "%project_dir%\tool\python\setup_fly.py" --check
-    if errorlevel 1 exit /b 1
-)
+"%python_bin%" -B "%project_dir%\tool\python\setup_fly.py" --check --sdk-dir "%fly_dir%"
+if errorlevel 1 exit /b 1
 "%python_bin%" -B "%fly_dir%\tool\python\build.py" --project-dir "%project_dir%" %*
 exit /b %errorlevel%
 

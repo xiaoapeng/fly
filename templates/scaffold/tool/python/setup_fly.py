@@ -12,6 +12,13 @@ import tempfile
 
 MANAGED_MARKER = ".git/fly-managed"
 SDK_ENTRY_FILES = ("tool/python/build.py", "cmake/fly-configure.cmake")
+SETUP_COMMAND = "./build.sh setup or build.bat setup on Windows"
+RUN_SETUP = f"Run {SETUP_COMMAND}."
+LOCAL_SDK_RECOVERY = (
+    "Select the locked SDK commit. To install from fly.lock, clear the applicable "
+    "FLY_ROOT, .fly-root, or CMake FLY_SDK_DIR override, or move the unmanaged fly path aside, "
+    f"then run {SETUP_COMMAND}."
+)
 
 
 def git(directory, *args, capture=False):
@@ -24,19 +31,26 @@ def git(directory, *args, capture=False):
     return result.stdout.strip() if capture else None
 
 
-def read_pin(project):
-    with (project / "fly.lock").open(encoding="utf-8") as lock:
-        pin = json.load(lock)
+def read_lock(project):
+    try:
+        with (project / "fly.lock").open(encoding="utf-8") as lock:
+            pin = json.load(lock)
+    except json.JSONDecodeError as error:
+        raise ValueError("fly.lock is not valid JSON. Ask the project maintainer for the pin.") from error
     if not isinstance(pin, dict):
         raise ValueError("fly.lock must be a JSON object with url and commit fields.")
+    return pin
+
+
+def is_commit(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?", value) is not None
+
+
+def read_pin(project):
+    pin = read_lock(project)
     url = pin.get("url")
     commit = pin.get("commit")
-    if (
-        not isinstance(url, str)
-        or not url.strip()
-        or not isinstance(commit, str)
-        or not re.fullmatch(r"[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?", commit)
-    ):
+    if not isinstance(url, str) or not url.strip() or not is_commit(commit):
         raise ValueError("fly.lock needs a repository URL and a full FLY commit. Ask the project maintainer for the pin.")
     return url, commit.lower()
 
@@ -46,7 +60,12 @@ def is_sdk(directory):
 
 
 def is_managed(directory):
-    return not directory.is_symlink() and (directory / MANAGED_MARKER).is_file()
+    # A junction can expose a different project's managed SDK on Windows.
+    return (
+        not directory.is_symlink()
+        and (directory / MANAGED_MARKER).is_file()
+        and directory.resolve() == directory.parent.resolve() / directory.name
+    )
 
 
 def head(directory):
@@ -59,6 +78,68 @@ def configured_origin(directory):
 
 def has_changes(directory):
     return bool(git(directory, "status", "--porcelain", capture=True))
+
+
+def check_local_pin(project, sdk):
+    try:
+        pin = read_lock(project)
+    except FileNotFoundError:
+        return
+    # Generation from an SDK archive records a null commit for local use.
+    if "commit" in pin and pin["commit"] is None:
+        return
+    expected = pin.get("commit")
+    if not is_commit(expected):
+        raise ValueError("fly.lock needs a full FLY commit. Ask the project maintainer for the pin.")
+
+    result = subprocess.run(
+        ["git", "-C", str(sdk), "rev-parse", "--show-toplevel", "HEAD"],
+        capture_output=True,
+        text=True,
+        encoding=sys.getfilesystemencoding(),
+        errors="surrogateescape",
+    )
+    # Git can walk up to the application's repository when the SDK has no Git metadata.
+    lines = result.stdout.rstrip("\n").rsplit("\n", 1)
+    if (result.returncode != 0 or len(lines) != 2 or not is_commit(lines[1])
+            or Path(lines[0]).resolve() != sdk.resolve()):
+        raise ValueError(f"Cannot verify the commit of the selected FLY SDK at {sdk}. {LOCAL_SDK_RECOVERY}")
+    actual = lines[1]
+    expected = expected.lower()
+    if actual != expected:
+        raise ValueError(
+            f"The selected FLY SDK at {sdk} differs from fly.lock "
+            f"(expected {expected}, found {actual}). {LOCAL_SDK_RECOVERY}"
+        )
+
+
+def check_managed_sdk(project, sdk):
+    url, expected = read_pin(project)
+    actual = head(sdk)
+    if actual != expected:
+        raise ValueError(
+            f"The installed FLY SDK differs from fly.lock (expected {expected}, found {actual}). "
+            f"Clear any FLY_ROOT override, then run {SETUP_COMMAND}."
+        )
+    if configured_origin(sdk) != url:
+        raise ValueError(
+            f"The installed FLY SDK repository differs from fly.lock. Move the existing {sdk} aside. {RUN_SETUP}"
+        )
+    if has_changes(sdk):
+        raise ValueError(
+            "The installed FLY SDK has local changes. Use FLY_ROOT to build with a separate local checkout "
+            "at the locked commit."
+        )
+
+
+def check_selected_sdk(project, sdk):
+    if not is_sdk(sdk):
+        raise ValueError(f"A compatible FLY SDK was not found at {sdk}. Check the selected path. {RUN_SETUP}")
+    installed = project / "fly"
+    if is_managed(installed) and installed.resolve() == sdk.resolve():
+        check_managed_sdk(project, installed)
+    else:
+        check_local_pin(project, sdk)
 
 
 def checkout(directory, commit):
@@ -93,13 +174,13 @@ def setup(project, sdk):
     stored_path = project / ".fly-root"
     if override or (not os.path.lexists(sdk) and stored_path.is_file()):
         path = Path(override or stored_path.read_text(encoding="utf-8").rstrip("\r\n")).expanduser()
-        if not is_sdk(path):
-            raise ValueError(f"A compatible FLY SDK was not found at {path}. Check FLY_ROOT or .fly-root.")
+        check_selected_sdk(project, path)
         print(f"Using local FLY SDK at {path.resolve()}")
         return
     if os.path.lexists(sdk) and not is_managed(sdk):
         if not is_sdk(sdk):
             raise ValueError(f"{sdk} already exists. Point FLY_ROOT at a compatible FLY SDK.")
+        check_local_pin(project, sdk)
         print(f"Using local FLY SDK at {sdk.resolve()}")
         return
 
@@ -124,17 +205,18 @@ def setup(project, sdk):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--sdk-dir", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.sdk_dir is not None and not args.check:
+        parser.error("--sdk-dir requires --check")
     project = Path(__file__).resolve().parents[2]
     sdk = project / "fly"
     try:
         if args.check:
-            if is_managed(sdk):
-                url, commit = read_pin(project)
-                if head(sdk) != commit or configured_origin(sdk) != url:
-                    raise ValueError("The installed FLY SDK differs from fly.lock. Run the build script with setup.")
-                if has_changes(sdk):
-                    raise ValueError("The installed FLY SDK has local changes. Use FLY_ROOT to build with a local checkout.")
+            if args.sdk_dir is not None:
+                check_selected_sdk(project, args.sdk_dir.expanduser())
+            elif is_managed(sdk):
+                check_managed_sdk(project, sdk)
         else:
             setup(project, sdk)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:

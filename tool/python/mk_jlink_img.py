@@ -5,62 +5,10 @@ import shutil
 import os
 import subprocess
 import argparse
-from datetime import datetime
 from collections import namedtuple
 from pathlib import Path
-from image_directory_link import publish_directory
-from image_packaging_state import package_is_current, package_key, remember_package
-from mk_mcu_firmware_factory_data import append_factory_data_to_bin
-import sys
 
-
-def git_get_hash():
-    try:
-        # 使用 subprocess 运行 git rev-parse HEAD 命令
-        result = subprocess.run(['git', 'rev-parse', '--verify', 'HEAD'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        # Read the full commit for invalidation and shorten it only for display.
-        return result.stdout.strip()
-    except subprocess.CalledProcessError:
-        return None
-
-def git_is_workspace_clean():
-    try:
-        # 使用 subprocess 运行 git status --porcelain 命令
-        result = subprocess.run(['git', 'status', '--porcelain'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        # 如果 stdout 为空，则工作区是干净的
-        return result.stdout.strip() == ''
-    except subprocess.CalledProcessError as e:
-        # 处理错误并输出错误信息
-        print(f"Error occurred: {e.stderr.strip()}")
-        return False
-
-def _parse_version(version_string):
-    # 将字符串转换为小写并移除首尾空格
-    version_string = version_string.strip().lower()
-
-    # 假设版本号格式为 v0.0.1，v0.0.1，r0.0.1 或 r0.0.1
-    if version_string.startswith('v'):
-        version_string = version_string[1:]
-    elif version_string.startswith('r'):
-        version_string = version_string[1:]
-
-    # 分割版本号的三个部分
-    version = version_string.split('.')
-    major = 0
-    minor = 0
-    patch = 0
-
-    # 解析版本号的三个部分，并确保转换为整数
-    major = int(version[0])
-    minor = int(version[1])
-    if len(version) == 3:
-        patch = int(version[2])
-    
-
-    # 使用小端序将版本号转换为uint32_t类型的变量
-    version_number = patch << 16 | minor << 8 | major
-
-    return version_number,"v%d.%d.%d" % (major, minor, patch)
+from image_packaging import FIRMWARE_PART_FORMAT, create_image_package, parse_firmware_parts
 
 
 def find_rtt_ctrl_block_addr(nm_path, elf_path):
@@ -86,10 +34,8 @@ def find_rtt_ctrl_block_addr(nm_path, elf_path):
         pass
     return None
 
-# ./mk_jlink_img.py --firmware-name TEST --chip-name GD32F103C8 --jlink-path ../win/jlink/  --output-dir ../../image/  --speed 4000 BOOT:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin APP:V0.0.1:0x8000000:../../build/gd32_t527_mcu_demo_app.bin
 def parse_args():
     ArgsInfo = namedtuple('ArgsInfo', ['firmware_name', 'chip_name', 'jlink_path', 'output_dir', 'firmware_parts', 'speed', "symlink_name", "interface_name", 'jtagconf', 'nm'])
-    FirmwareInfo = namedtuple('FirmwareInfo', ['bin_name', 'bin_version_str', 'bin_version_uint32', 'start_addr', 'file_path'])
     
     parser = argparse.ArgumentParser(description='Generate J-Link compatible firmware image.')
 
@@ -104,62 +50,27 @@ def parse_args():
     parser.add_argument('--jtagconf', default='-1,-1', required=True, help='Configures the JTAG scan configuration of the target device.\nIRPre==-1 and DRPre==-1 can be passed to use auto-detection (=> first known device will be used).')
     parser.add_argument('--nm', required=True, help='Path to nm (from CMAKE_NM), used to read the RTT control block symbol address from the ELF.')
 
-    # Positional arguments for firmware parts
-    parser.add_argument('--firmware-parts', nargs='+', type=str, required=True, help='Memory address and firmware file pairs in the format bin_name:bin_version:address:file_path.')
-
+    parser.add_argument("--firmware-parts", nargs="+", required=True, metavar=FIRMWARE_PART_FORMAT,
+                        help="Firmware records with partition capacity in decimal or hexadecimal bytes.")
     parser.add_argument("--cache-file", help="Reuse the current package when the inputs match.")
     args = parser.parse_args()
     if not os.path.exists(args.jlink_path):
-        print('JLink executable does not exist: {}'.format(args.jlink_path))
-        sys.exit(1)
-        
-    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.jlink_path, args.output_dir, [], args.speed, args.symlink_name, args.interface_name, args.jtagconf, args.nm)
-    for firmware_part in args.firmware_parts:
-        try:
-            bin_name, bin_version, start_addr,file_path = firmware_part.split(':', 3)
-        except ValueError:
-            parser.error(f'Invalid firmware part {firmware_part!r}. Expected name:version:address:file.')
-        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
-            parser.error(f'Firmware binary is missing or empty: {file_path}')
-            
-        bin_version_uint32,bin_version_str = _parse_version(bin_version)
-        args_info.firmware_parts.append(FirmwareInfo(bin_name, bin_version_str, bin_version_uint32, start_addr, file_path))
+        parser.error(f"J-Link tools path does not exist: {args.jlink_path}")
+
+    try:
+        parts = parse_firmware_parts(args.firmware_parts)
+    except ValueError as error:
+        parser.error(str(error))
+    args_info = ArgsInfo(args.firmware_name, args.chip_name, args.jlink_path, args.output_dir,
+                         parts, args.speed, args.symlink_name, args.interface_name, args.jtagconf, args.nm)
     return args_info, args.cache_file
 
 
-if __name__ == '__main__':
-    args_info, cache_file = parse_args()
-    revision = git_get_hash()
-    dirty = not git_is_workspace_clean()
-    git_field = revision[:10] if revision else 'uncommitted'
-    if dirty:
-        git_field = 'dirty_' + git_field
-    firmware_link_path = Path(args_info.output_dir) / args_info.symlink_name
-    key = None
-    if cache_file:
-        sources = [Path(__file__)]
-        sources.extend(Path(part.file_path) for part in args_info.firmware_parts)
-        sources.extend(Path(part.file_path).with_suffix('') for part in args_info.firmware_parts)
-        sources.extend(sorted(Path(args_info.jlink_path).rglob('*')))
-        key = package_key(args_info, [revision, dirty], sources)
-        if package_is_current(cache_file, key, firmware_link_path):
-            print('JLINK package is up to date')
-            sys.exit(0)
-    time_field = datetime.now().strftime("%Y%m%d_%H%M%S")
-    make_firmware_name = args_info.firmware_name + '_jlink'
-    for firmware_part in args_info.firmware_parts:
-        make_firmware_name = make_firmware_name + '_' + firmware_part.bin_name + firmware_part.bin_version_str
-    make_firmware_name = make_firmware_name + '_' + time_field + '_' + git_field
-    print('make_firmware_name:', make_firmware_name)
-    make_firmware_path = args_info.output_dir + '/' + make_firmware_name
-    # 创建固件文件夹（如果已存在则清空后重建）
-    if os.path.exists(make_firmware_path):
-        shutil.rmtree(make_firmware_path)
-    os.makedirs(make_firmware_path)
+def write_probe_files(args_info, package):
     # 复制jlink工具
-    shutil.copytree(args_info.jlink_path, make_firmware_path + '/tool/jlink')
+    shutil.copytree(args_info.jlink_path, package / 'tool/jlink')
     # 创建download.jlink文件
-    with open(make_firmware_path + '/' + 'download.jlink', 'w') as f:
+    with open(package / 'download.jlink', 'w') as f:
         f.write("r\n")  # 擦除芯片
         f.write("h\n")  
         for firmware_part in args_info.firmware_parts:
@@ -167,21 +78,13 @@ if __name__ == '__main__':
         f.write("r\n")  # 读取内存数据
         f.write("g\n")  # 开始执行
         f.write("qc\n")  # 退出 J-Link 连接
-    # 拷贝bin文件
-    for firmware_part in args_info.firmware_parts:
-        dst_bin_path = make_firmware_path + '/' + firmware_part.bin_name + '.bin'
-        shutil.copyfile(firmware_part.file_path, dst_bin_path)
-        # bin文件添加尾部信息
-        append_factory_data_to_bin(dst_bin_path, firmware_part.bin_version_uint32, 
-            firmware_part.bin_name, args_info.firmware_name, 'git@' + git_field + ' ' + 'time@' + time_field)
-
     jlink_flash_args = (
         f'-ExitOnError 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} '
         f'-JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink'
     )
 
     # 生成windows烧写脚本
-    with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
+    with open(package / 'burn.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
         f.write('cd /d "%script_dir%" || exit /b 1\n\n')
@@ -211,10 +114,10 @@ if __name__ == '__main__':
         f.write(')\n')
         f.write('exit 0\n')
     # 生成windows日志查看脚本
-    with open(make_firmware_path + '/' + 'log.bat', 'w') as f:
+    with open(package / 'log.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
-        f.write('cd /d "%script_dir%"\n\n')
+        f.write('cd /d "%script_dir%" || exit /b 1\n\n')
 
         f.write('set "RTT_EXE=%script_dir%\\tool\\jlink\\win-x64\\rtt-shell.exe"\n')
         # 只有在纯 32 位系统下，PROCESSOR_ARCHITECTURE 才是 x86 且没有 64 位兼容层变量
@@ -222,12 +125,13 @@ if __name__ == '__main__':
         f.write('    set "RTT_EXE=%script_dir%\\tool\\jlink\\win-x86\\rtt-shell.exe"\n')
         f.write(')\n\n')
         # 使用引号包裹路径以防含有空格，并执行
-        f.write(f'"%RTT_EXE%" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
-        
+        f.write(f'"%RTT_EXE%" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n')
+        f.write('if not "%errorlevel%"=="0" exit /b %errorlevel%\n')
         f.write('pause\n')
+        f.write('exit /b 0\n')
 
     # 生成wsl/linux/macos的烧写脚本
-    with open(make_firmware_path + '/' + 'burn.sh', 'w') as f:
+    with open(package / 'burn.sh', 'w') as f:
         f.write('#!/bin/bash\n')
         f.write('set -e  # 错误立即退出，提升脚本健壮性\n')
         f.write('\n')
@@ -304,10 +208,10 @@ if __name__ == '__main__':
         f.write('\n')
         f.write('exit 0\n')
         
-    os.chmod(make_firmware_path + '/' + 'burn.sh', 0o755)
+    os.chmod(package / 'burn.sh', 0o755)
 
     # 生成wsl/linux/macos的日志查看脚本
-    with open(make_firmware_path + '/' + 'log.sh', 'w') as f:
+    with open(package / 'log.sh', 'w') as f:
         f.write('#!/bin/bash\n\n')
         
         f.write('# --- 环境识别 ---\n')
@@ -373,23 +277,24 @@ if __name__ == '__main__':
                     break
         if rtt_addr:
             print('RTT control block address: ' + rtt_addr)
-            f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --addr {rtt_addr} --out_log log.txt\n\n')
+            f.write(f'exec "$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --addr {rtt_addr} --out_log log.txt\n')
         else:
-            f.write(f'"$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n\n')
-        
-        f.write('echo "Debug finished.."\n')
-        f.write('exit 0\n')
+            f.write(f'exec "$RTT_EXE" --device {args_info.chip_name} --if {args_info.interface_name} --speed {args_info.speed} --out_log log.txt\n')
 
-    os.chmod(make_firmware_path + '/' + 'log.sh', 0o755)
+    os.chmod(package / 'log.sh', 0o755)
 
 
-    # 制作同名压缩包，避免手动压缩
+def main():
+    options, cache_file = parse_args()
+    inputs = [Path(__file__)]
+    if cache_file:
+        inputs.extend(Path(part.file_path).with_suffix('') for part in options.firmware_parts)
+        inputs.extend(sorted(Path(options.jlink_path).rglob('*')))
+    try:
+        create_image_package(options, 'jlink', cache_file, inputs, write_probe_files)
+    except ValueError as error:
+        raise SystemExit(f"Error: {error}") from None
 
-    shutil.make_archive(make_firmware_path, 'zip', make_firmware_path)
-    publish_directory(firmware_link_path, make_firmware_path)
-    remember_package(cache_file, key, make_firmware_path)
-    
 
-
-
-
+if __name__ == '__main__':
+    main()

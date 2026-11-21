@@ -20,6 +20,7 @@ TEMPLATE_LABELS = {
     "baremetal-nanosig": "Bare metal + nanosig",
     "freertos-nanosig": "FreeRTOS + nanosig",
 }
+NANOSIG_TEMPLATES = {"baremetal-nanosig", "freertos-nanosig"}
 
 PROJECT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 RESERVED_NAME = re.compile(r"(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])", re.IGNORECASE)
@@ -176,6 +177,8 @@ def generate(sdk_dir, destination, name, board, template):
     try:
         shutil.copytree(templates_dir / "scaffold", destination, dirs_exist_ok=True)
         shutil.copytree(templates_dir / "boards" / board["id"], destination / "board")
+        if template in NANOSIG_TEMPLATES:
+            shutil.copytree(templates_dir / "apps/common/nanosig", destination, dirs_exist_ok=True)
         shutil.copytree(templates_dir / "apps" / template, destination, dirs_exist_ok=True)
         write_vscode_scaffold(destination)
         defconfig = destination / "defconfig"
@@ -248,7 +251,11 @@ def run(sdk_dir, args):
             file=sys.stderr,
         )
     elif git_output(sdk_dir, "status", "--porcelain"):
-        print("fly.lock records FLY HEAD. Local SDK changes apply only to this checkout.", file=sys.stderr)
+        print(
+            "fly.lock records FLY HEAD, while generated files can include local changes. "
+            "Before sharing, publish a compatible FLY commit and update fly.lock.",
+            file=sys.stderr,
+        )
     if lock["url"] is None:
         print("Set a shareable FLY repository URL in fly.lock before sharing this project.", file=sys.stderr)
     print("To build, run ./build.sh (or build.bat on Windows) from the new project.")

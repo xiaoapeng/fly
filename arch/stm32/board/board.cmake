@@ -10,8 +10,10 @@ function(fly_configure_board target)
     set(support_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}")
     set(system_source "${sdk_family}/Device/ST/${FLY_STM32_FAMILY}/Source/Templates/system_${family_lower}.c")
 
-    target_include_directories(${FLY_STM32_ARCH_TARGET} PRIVATE "${FLY_BOARD_DIR}")
-    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}" "${support_dir}")
+    # Older generated projects keep the HAL configuration header in board/.
+    set(board_include_dirs "${FLY_BOARD_DIR}/include" "${FLY_BOARD_DIR}")
+    target_include_directories(${FLY_STM32_ARCH_TARGET} PRIVATE ${board_include_dirs})
+    target_include_directories(${target} PRIVATE ${board_include_dirs} "${support_dir}")
     target_compile_definitions(${target} PRIVATE FLY_STM32_DEVICE_HEADER="${family_lower}.h")
     target_sources(${target} PRIVATE "${support_dir}/board.c" "${system_source}")
     target_link_libraries(${target} ${FLY_STM32_ARCH_TARGET} c m gcc)

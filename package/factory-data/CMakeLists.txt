@@ -10,5 +10,8 @@ target_sources(factory-data PRIVATE
 
 target_include_directories(factory-data PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc/")
 
+# Some boards map application Flash at address zero.
+target_compile_options(factory-data PRIVATE -fno-delete-null-pointer-checks)
+
 package_lib_add(factory-data)
 endif(CONFIG_FACTORY_DATA_SUPPORTED)

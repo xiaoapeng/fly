@@ -1,4 +1,5 @@
 /build/
+/image/
 /fly
 /.fly-root
 /.fly-setup-*/

@@ -45,8 +45,5 @@ if [ ! -f "$fly_dir/cmake/fly-configure.cmake" ]; then
 fi
 
 python=$(find_python) || exit 1
-if [ -z "${FLY_ROOT:-}" ] && [ "$fly_dir" = "$project_dir/fly" ] &&
-    [ ! -L "$fly_dir" ] && [ -f "$fly_dir/.git/fly-managed" ]; then
-    "$python" -B "$project_dir/tool/python/setup_fly.py" --check
-fi
+"$python" -B "$project_dir/tool/python/setup_fly.py" --check --sdk-dir "$fly_dir"
 exec "$python" -B "$fly_dir/tool/python/build.py" --project-dir "$project_dir" "$@"
