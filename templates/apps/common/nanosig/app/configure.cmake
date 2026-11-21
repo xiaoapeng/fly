@@ -1,4 +1,4 @@
-target_sources(fly_app PRIVATE runtime.c biz/app_demo.c)
+target_sources(fly_app PRIVATE runtime.c biz/heartbeat.c)
 
 if(CONFIG_PACKAGE_SCHEDULER_NONE)
     fly_add_board_timebase(fly_app)
