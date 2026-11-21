@@ -5,11 +5,17 @@
 | 目录 | 内容 | 生成位置 |
 | --- | --- | --- |
 | `scaffold/` | 共用的构建脚本、CMake、Kconfig 和 README 骨架 | 工程根目录 |
-| `apps/<模板>/` | 应用入口、调度器和包的默认配置 | `app/` 和 `defconfig` |
+| `apps/<模板>/` | 应用入口、默认配置和 `template.json` 清单 | `app/` 和 `defconfig` |
 | `apps/common/nanosig/` | 两个 nanosig 模板共用的运行时和定时器示例 | `app/` |
 | `boards/<板卡>/` | 板卡信息、初始化、链接脚本和烧录配置 | `board/` |
 
-新增运行方式时，在 `apps/` 添加应用入口和默认配置，并在生成器里注册模板名。新增板卡时，在 `boards/` 提供 `board.json`、`board.cmake` 和应用使用的板级接口，并在 `board.json` 中声明已经验证的模板组合。
+新增模板时，在 `apps/<模板>/` 放置默认配置、应用源码和 `template.json`。生成器发现清单，使用目录名作为模板 ID。
+
+- `label` 指定显示名称。可选的 `expected_log` 用于生成启动提示。可选的 `overlays` 按顺序列出需要复制的公共目录，路径以 `apps/` 为起点。
+- `board_bindings` 可将默认配置中的 `@TOKEN@` 绑定到板卡清单字段。每个绑定声明 `field` 和 `type`，类型支持 `positive_integer`、`integer` 和 `string`。生成器复制前校验字段和值。
+- `expected_config` 和 `required_files` 供生成回归检查使用，分别列出配置行与生成工程中的相对文件路径。
+
+新增板卡时，在 `boards/` 提供 `board.json`、`board.cmake` 和应用使用的板级接口。用 `board.json` 的 `templates` 声明已验证的模板组合。宿主板卡还通过 `host_platform` 指定对应的 CI 平台。
 
 生成后的应用以根目录 `CMakeLists.txt` 为入口，调用 SDK 的 CMake 模块准备 Kconfig、工具链和依赖包。根目录的 CMake 文件定义固件、调试和打包目标。`app/CMakeLists.txt` 登记应用源码、公开头文件的搜索路径 `app/include/` 和可选的应用配置。
 
@@ -20,6 +26,8 @@
 根目录通过 `tool/cmake/app-image.cmake` 中的 `app_add_jlink_image()` 声明打包目标。应用模块将板卡的 `FLY_JLINK_DEVICE` 传给 SDK 的 `add_jlink_image()`。`FIRMWARE_LIST` 的每一项采用 `NAME:VERSION:ADDRESS:CAPACITY:BIN`。`APP` 条目的容量取自板卡的 `FLY_FLASH_SIZE`。加入 bootloader 时，追加 `"BOOT:${BOOT_VERSION}:${BOOT_FLASH_ADDRESS}:${BOOT_FLASH_SIZE}:${BOOT_BIN}"`，若工程需要生成该 BIN，再将相应目标加入 `DEPENDS`。分区的烧录地址和容量应与 Flash 布局一致，且分区互不重叠。
 
 分区容量使用十进制或 `0x` 十六进制字节数。打包工具校验包含对齐填充和元数据尾部的最终 BIN，超过容量就停止打包。`CONFIG_FACTORY_DATA_SUPPORTED` 控制板上读取和日志，打包始终检查容量。
+
+OpenOCD 的 RTT 搜索范围由板卡或应用通过 `RTT_ADDR_AND_SIZE` 传给打包目标。省略该范围时，包包含烧录脚本。
 
 应用根目录调用 `tool/cmake/app-vscode.cmake` 中的 `app_add_vscode_debug(fly_app)`。应用模块检查板卡的 `FLY_JLINK_DEVICE` 以及 GDB 和 objdump，再将 RTT 等调试参数交给 SDK。宿主工程和未配置 J-Link 的板卡会跳过 J-Link 打包及调试目标。缺少 GDB 或 objdump 时，应用模块跳过调试配置生成。存在 `default_flash` 时，应用模块会启用先烧录 BIN 再附加的配置。
 

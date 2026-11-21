@@ -139,7 +139,7 @@ def _cache_path(cache, key):
     return None
 
 
-def write_vscode_project(project, sdk, cmake_dir, cache, tool_paths):
+def write_vscode_project(project, cmake_dir, cache, tool_paths):
     project = Path(project).resolve()
     cmake_dir = Path(cmake_dir).resolve()
     vscode = project / '.vscode'
@@ -166,7 +166,6 @@ def write_vscode_project(project, sdk, cmake_dir, cache, tool_paths):
     if project in cmake_dir.parents:
         build_dir = f'{WORKSPACE_FOLDER}/{cmake_dir.relative_to(project).as_posix()}'
     settings = _cmake_settings(build_dir)
-    settings['cmake.configureSettings']['FLY_SDK_DIR'] = Path(sdk).resolve().as_posix()
     settings['cmake.configureSettings'].update({key: path.as_posix() for key, path in tool_executables.items()})
     settings['cmake.environment'] = {'PATH': os.pathsep.join(path_entries)}
     settings['clangd.arguments'] = clangd_args

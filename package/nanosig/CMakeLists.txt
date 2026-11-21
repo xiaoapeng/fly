@@ -88,6 +88,8 @@ target_compile_definitions(nanosig PRIVATE
     NS_CONFIG_DEFAULT_DEBUG_LEVEL=${CONFIG_PACKAGE_NANOSIG_LOG_LEVEL}
 )
 
+set_property(TARGET nanosig PROPERTY FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS
+    -Wconversion -Wsign-conversion)
 package_lib_add(nanosig)
 
 endif()

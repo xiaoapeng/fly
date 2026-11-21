@@ -140,6 +140,19 @@ def require_cmake():
         raise ValueError('cmake not installed. Please install cmake first.')
 
 
+def run_cmake(paths, command):
+    # Reconfigure and build with the SDK that launched this command, without
+    # persisting an explicit CMake override. Older scaffolds read FLY_ROOT.
+    sdk = paths.sdk.as_posix()
+    env = dict(os.environ, FLY_APP_SDK_DIR=sdk, FLY_ROOT=sdk)
+    subprocess.run(command, cwd=paths.project, env=env, check=True)
+
+
+def configured_sdk_path(build_dir):
+    return (get_cmake_cache_value(build_dir, 'FLY_RESOLVED_SDK_DIR')
+            or get_cmake_cache_value(build_dir, 'FLY_SDK_DIR'))
+
+
 def project_rules_changed(paths):
     configured = get_cmake_cache_value(paths.cmake, 'FLY_PROJECT_RULES_HASH')
     files = ('CMakeLists.txt', 'app/CMakeLists.txt', 'board/board.cmake')
@@ -154,11 +167,15 @@ def configure_project(paths, build_type=None, *, force=False):
 
     previous_source = get_cmake_cache_value(paths.cmake, 'CMAKE_HOME_DIRECTORY')
     previous_type = get_cmake_cache_value(paths.cmake, 'CMAKE_BUILD_TYPE')
-    previous_sdk = get_cmake_cache_value(paths.cmake, 'FLY_SDK_DIR')
+    previous_sdk = configured_sdk_path(paths.cmake)
+    retained_override = None
     if previous_source and (
         Path(previous_source).resolve() != paths.project
         or not previous_sdk or Path(previous_sdk).resolve() != paths.sdk
     ):
+        if (Path(previous_source).resolve() == paths.project
+                and get_cmake_cache_value(paths.cmake, 'FLY_RESOLVED_SDK_DIR')):
+            retained_override = get_cmake_cache_value(paths.cmake, 'FLY_SDK_DIR')
         # The CMake cache stores absolute source directories.
         (paths.cmake / 'CMakeCache.txt').unlink()
         cmake_files = paths.cmake / 'CMakeFiles'
@@ -182,9 +199,10 @@ def configure_project(paths, build_type=None, *, force=False):
             'cmake', '-S', str(paths.project), '-B', str(paths.cmake),
             f'-DCMAKE_BUILD_TYPE:STRING={build_type}',
             '-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE',
-            f'-DFLY_SDK_DIR:PATH={paths.sdk}',
             f'-DPython3_EXECUTABLE:FILEPATH={sys.executable}',
         ]
+        if retained_override:
+            command.append(f'-DFLY_SDK_DIR:PATH={retained_override}')
         if platform.system() == 'Windows' and not build_tool:
             if shutil.which('ninja'):
                 command.extend(['-G', 'Ninja'])
@@ -192,7 +210,7 @@ def configure_project(paths, build_type=None, *, force=False):
                 command.extend(['-G', 'Unix Makefiles'])
             else:
                 raise ValueError('No build tool found. Please install ninja or make.')
-        subprocess.run(command, cwd=paths.project, check=True)
+        run_cmake(paths, command)
 
 
 def update_vscode(paths, tool_paths):
@@ -204,7 +222,7 @@ def update_vscode(paths, tool_paths):
         'Python3_EXECUTABLE', 'CMAKE_COMMAND',
     )
     cache = {key: get_cmake_cache_value(paths.cmake, key) for key in keys}
-    write_vscode_project(paths.project, paths.sdk, paths.cmake, cache, tool_paths)
+    write_vscode_project(paths.project, paths.cmake, cache, tool_paths)
 
 
 def run_build(paths, build_type=None, jobs=None, tool_paths=()):
@@ -215,16 +233,16 @@ def run_build(paths, build_type=None, jobs=None, tool_paths=()):
         except (OSError, ValueError) as error:
             print(f'Could not update VS Code configuration: {error}', file=sys.stderr)
     jobs = jobs if jobs is not None else (os.cpu_count() or 1)
-    subprocess.run([
+    run_cmake(paths, [
         'cmake', '--build', str(paths.cmake), '--target', 'all', f'-j{jobs}', '--',
-    ], cwd=paths.project, check=True)
+    ])
 
 
 def run_target(paths, target):
     require_cmake()
     if not (paths.cmake / 'CMakeCache.txt').is_file():
         raise ValueError('Build directory is not configured. Run build first.')
-    configured_sdk = get_cmake_cache_value(paths.cmake, 'FLY_SDK_DIR')
+    configured_sdk = configured_sdk_path(paths.cmake)
     configured_project = get_cmake_cache_value(paths.cmake, 'CMAKE_HOME_DIRECTORY')
     if not configured_sdk or Path(configured_sdk).resolve() != paths.sdk:
         raise ValueError('The FLY SDK location changed. Run build first.')
@@ -232,10 +250,8 @@ def run_target(paths, target):
         raise ValueError('The project location changed. Run build first.')
     # Older Make versions can miss same-second edits to app packaging settings.
     if target.endswith(('_make_img', '_flash')) and project_rules_changed(paths):
-        subprocess.run(['cmake', '-S', str(paths.project), '-B', str(paths.cmake)],
-                       cwd=paths.project, check=True)
-    subprocess.run(['cmake', '--build', str(paths.cmake), '--target', target],
-                   cwd=paths.project, check=True)
+        run_cmake(paths, ['cmake', '-S', str(paths.project), '-B', str(paths.cmake)])
+    run_cmake(paths, ['cmake', '--build', str(paths.cmake), '--target', target])
 
 
 def run_rttlog(paths):
@@ -250,6 +266,8 @@ def run_rttlog(paths):
         script = current / 'log.sh'
         command = ['bash', str(script)]
     if not script.is_file():
+        if current.is_dir():
+            raise ValueError('The current image package does not provide RTT logging. Configure it and rebuild the image.')
         raise ValueError('Image log script not found. Run make_img first.')
     subprocess.run(command, cwd=paths.project, check=True)
 

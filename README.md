@@ -253,12 +253,14 @@ cd ../fly-project/sensor-node
 
 Windows 使用 `build.bat setup` 和 `build.bat build Debug`。首次安装需要 Git 和 Python 3。SDK 安装在被 Git 忽略的 `fly/` 下。远端分支继续更新时，应用仍使用锁定的提交。
 
-`build.sh` 和 `build.bat` 会在调用 SDK 前检查所选 SDK 的 `HEAD`。直接使用 CMake 时，配置工程和编译固件前都会检查。有提交锁定时，版本不匹配会停止当前操作并提示如何处理。
+`build.sh`、`build.bat` 和 CMake 共用应用自己的 SDK 解析器，按 `FLY_ROOT`、应用根目录的 `fly/`、`.fly-root` 的顺序选择 SDK。直接配置 CMake 时，显式设置的 `FLY_SDK_DIR` 优先，实际选中的路径单独记录。有提交锁定时，版本不匹配会停止当前操作并提示如何处理。
 
 - `fly/` 由 `setup` 管理时，更新锁定提交后重新执行 `./build.sh setup` 或 `build.bat setup`，然后重新构建。如果更改了锁定的 Git 地址，先移开原有的 `fly/`，再执行 `setup`。
 - 本地开发可以通过 `FLY_ROOT`、应用根目录下的 `fly/` 链接或 SDK 目录、`.fly-root` 路径文件来选择 SDK。直接运行 CMake 时也可传入 `-DFLY_SDK_DIR=/path/to/fly`。版本不匹配时，选择 `HEAD` 与锁文件一致的工作树，或者清除本地路径设置、移开手动放置的 `fly/` 后再运行 `setup`。用过 `-DFLY_SDK_DIR` 时，也要更新或清除 CMake 缓存里的该项。版本检查只读取当前选择。
 
 手动选择的 SDK 可以包含未提交改动，`fly.lock` 只锁定它的 `HEAD`。没有 `fly.lock` 或 `commit` 为 `null` 的工程可使用本地 SDK 开发。通过 `setup` 安装 SDK 需要在锁文件中提供 Git 地址和完整提交哈希。
+
+从旧版迁移时，如果构建缓存或 VS Code 配置里的 `FLY_SDK_DIR` 是旧工具自动写入的，清除该项后再配置。应用可继续通过 `-DFLY_SDK_DIR=/path/to/fly` 显式固定 CMake 使用的路径。
 
 应用使用 `#include "board.h"` 调用板级接口。随板卡生成的头文件位于 `board/include/`，CMake 从 `board/board.cmake` 加载板级构建设置。配置和依赖分别位于应用的 `build/config/` 和 `build/deps/`，打包产物放在应用根目录的 `image/`。维护指南见[模板目录说明](templates/README.md)。
 
@@ -382,7 +384,7 @@ app_add_jlink_image(default
 
 要在同一个包中加入 bootloader，填写示例中的 `BOOT` 条目和对应的版本、烧录地址、分区容量和 BIN 路径。相对 BIN 路径以 `build/cmake/` 为基准，已有 BIN 可以用绝对路径。若 BIN 由当前 CMake 工程生成，将对应的构建目标加入 `DEPENDS`。各镜像的烧录地址和分区容量需与 Flash 布局一致，并确保分区互不重叠。若为 bootloader 调整应用的起始地址，同时更新应用链接脚本和板卡配置中的 `FLY_FLASH_ADDRESS`、`FLY_FLASH_SIZE`。
 
-OpenOCD 使用 `add_openocd_image()`，在应用根目录的 `CMakeLists.txt` 中指定配置文件及同样格式的 `FIRMWARE_LIST`。每个打包目标都会生成相应的烧录目标。J-Link 的当前包位于 `image/CURRENT/`，其中包含清单中的 BIN、`download.jlink` 和烧录脚本。启用 RTT 的工程也可在应用目录用 `./build.sh rttlog` 查看日志。
+OpenOCD 使用 `add_openocd_image()`，在应用根目录的 `CMakeLists.txt` 中指定配置文件及同样格式的 `FIRMWARE_LIST`。OpenOCD 的 RTT 日志还需要传入板卡的 `RTT_ADDR_AND_SIZE`，即搜索的起始地址和字节数。每个打包目标都会生成相应的烧录目标。J-Link 的当前包位于 `image/CURRENT/`，其中包含清单中的 BIN、`download.jlink` 和烧录脚本。启用 RTT 的工程也可在应用目录用 `./build.sh rttlog` 查看日志。
 
 ### 12. 在 VS Code 调试
 

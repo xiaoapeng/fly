@@ -20,7 +20,8 @@ def parse_args():
     parser.add_argument('--output-dir', required=True, help='Directory to output the generated image.')
     parser.add_argument('--symlink-name', default='CURRENT' ,required=False, help='Name of the current package link.')
     parser.add_argument('--config-file-list', nargs='+', type=str, required=True, help='OpenOCD/PE GDB Server configuration file(s) to use when debugging (OpenOCD -f option)')
-    parser.add_argument('--rtt-setting', nargs=2, type=lambda x: str(x), default=["0x20000000", "0x8000"], help='RTT setting values in hexadecimal')
+    parser.add_argument("--rtt-setting", nargs=2, metavar=("ADDRESS", "SIZE"),
+                        help="Generate RTT scripts using this target-specific memory range.")
 
     parser.add_argument("--firmware-parts", nargs="+", required=True, metavar=FIRMWARE_PART_FORMAT,
                         help="Firmware records with partition capacity in decimal or hexadecimal bytes.")
@@ -57,10 +58,6 @@ def write_probe_files(args_info, package):
         burn_script_option = f'{burn_script_option} -c "verify_image {firmware_part.bin_name}.bin {firmware_part.start_addr}"'
     burn_script_option = f'{burn_script_option} -c reset -c resume -c exit'
     
-    log_script_option = f'{config_option} -c "rtt server start 19021 0" -c "rtt setup {args_info.rtt_setting[0]} {args_info.rtt_setting[1]} \\"SEGGER RTT\\""  -c "rtt start" '
-
-    
-
     # # 生成windows烧写脚本
     with open(package / 'burn.bat', 'w') as f:
         f.write('@echo off\n')
@@ -81,6 +78,19 @@ def write_probe_files(args_info, package):
         f.write(')\n')
         f.write('\n')
         f.write('exit 0\n')
+
+    with open(package / 'burn.sh', 'w') as f:
+        f.write('#!/bin/sh\n')
+        f.write('CDPATH= cd -P -- "$(dirname -- "$0")" || exit 1\n')
+        f.write('echo "Download firmware using openocd.."\n')
+        f.write(f'exec openocd {burn_script_option}\n')
+    os.chmod(package / 'burn.sh', 0o755)
+
+    if args_info.rtt_setting is None:
+        return
+
+    log_script_option = f'{config_option} -c "rtt server start 19021 0" -c "rtt setup {args_info.rtt_setting[0]} {args_info.rtt_setting[1]} \\"SEGGER RTT\\""  -c "rtt start" '
+
     with open(package / 'log.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
@@ -150,14 +160,6 @@ try {{
 exit $status
 ''')
     os.chmod(package / 'log.ps1', 0o755)
-
-    # 生成wsl烧写脚本
-    with open(package / 'burn.sh', 'w') as f:
-        f.write('#!/bin/sh\n')
-        f.write('CDPATH= cd -P -- "$(dirname -- "$0")" || exit 1\n')
-        f.write('echo "Download firmware using openocd.."\n')
-        f.write(f'exec openocd {burn_script_option}\n')
-    os.chmod(package / 'burn.sh', 0o755)
 
     (package / 'log.sh').write_text(fr'''#!/bin/bash
 set -o pipefail

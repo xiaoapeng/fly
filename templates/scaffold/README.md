@@ -15,10 +15,13 @@ On Windows run `build.bat setup`. The installed SDK lives in the ignored
 `fly/` directory. Install and enable Git LFS before setup if you need the
 bundled J-Link and RTT tools.
 
-The build scripts check the selected SDK's `HEAD` against `fly.lock` before
-loading the SDK. Direct CMake use checks the pin at configuration and again
-before building the firmware. A mismatch stops the operation. A change to
-the remote branch tip leaves the locked commit in effect.
+The build scripts and CMake use the same application-side SDK resolver. It
+looks for `FLY_ROOT`, the application's `fly/` directory or link, and
+`.fly-root`, in that order. An explicit `FLY_SDK_DIR` takes priority when
+configuring CMake directly. The chosen path is recorded separately. The
+resolver checks the SDK's `HEAD` against `fly.lock` before loading the SDK.
+A mismatch stops the operation. A change to the remote branch tip leaves
+the locked commit in effect.
 
 - For an SDK installed by setup, rerun `./build.sh setup` or `build.bat setup`
   after updating the commit in `fly.lock`, then rebuild. If the Git URL
@@ -30,6 +33,10 @@ the remote branch tip leaves the locked commit in effect.
   `HEAD` or clear the local path overrides and move any manually supplied
   `fly/` aside before running setup. Update or clear any cached `FLY_SDK_DIR`
   used for direct CMake configuration. The version check is read-only.
+
+When upgrading, clear any `FLY_SDK_DIR` entry that an older tool generated
+in the CMake cache or VS Code settings. Keep explicit entries you use to
+select an SDK for CMake.
 
 Manually selected SDK checkouts can contain local edits when their `HEAD`
 matches the pin. A project without `fly.lock`, or with `commit` set to
@@ -69,8 +76,7 @@ Run these commands on boards with a firmware packaging target.
 ```
 
 On Windows use `build.bat` with the same subcommands and keep the project on a
-local filesystem that supports directory junctions, such as NTFS. The program's
-startup output is `@EXPECTED_LOG@`. Embedded builds produce the ELF at
+local filesystem that supports directory junctions, such as NTFS. @STARTUP_LOG_NOTE@Embedded builds produce the ELF at
 `build/cmake/fly_app` and the BIN at `build/cmake/fly_app.bin`. Packaged firmware
 and ZIP archives are under `image/` in the application root, with the current
 package at `image/CURRENT/`. Deleting `build/` or running

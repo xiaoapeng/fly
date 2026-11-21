@@ -65,9 +65,10 @@ The application's root `CMakeLists.txt` declares firmware, debug, and image targ
 
 ## Conventions
 
-- C: `snake_case` functions/variables, `UPPERCASE` macros. CMake target names use `<board>_<role>` form (e.g. `mcxn947_eth_demo_app`).
+- C: `snake_case` functions/variables, `UPPERCASE` macros. Generated applications use the `fly_app` firmware target.
 - Firmware target link order in this repo: `target_link_libraries(<exec> arch-mcxn947-core0 c rdimon m gcc)` then `target_link_package_lib(<exec>)` — keep that ordering when adding new projects.
-- Build flags come from a per-project `set(TARGET_FLAGS "-Wall" "-Wextra" "-Wconversion" "-Wsign-conversion" "-Wno-psabi" ...)` and are applied both to packages (`package_lib_compile_options`) and to the executable. Avoid introducing new compiler warnings.
+- The scaffold applies its warning options to the executable and passes them through `package_lib_compile_options()`. A package that needs an exception declares its own `FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS` target property.
+- Template names, overlays, and board requirements belong in template and board manifests. Shared tooling reads those declarations and applies the same rules to every template.
 
 ## PR & CI
 
