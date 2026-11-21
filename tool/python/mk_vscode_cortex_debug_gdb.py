@@ -25,7 +25,8 @@ def update_configuration(configurations, new_config):
 
 
 def launch_json_append(launch_json, config_name, chip_name, gdb_path, objdump_path,
-    elf_path_list, server_type, openocd_config_file_list, rtt_enabled, interface, ext_config_json):
+    elf_path_list, server_type, openocd_config_file_list, rtt_enabled, interface, ext_config_json,
+    flash_task=None):
     
 
     for elf_path in elf_path_list:
@@ -100,6 +101,13 @@ def launch_json_append(launch_json, config_name, chip_name, gdb_path, objdump_pa
 
         update_configuration(launch_json['configurations'], attach_all_config)
         update_configuration(launch_json['configurations'], launch_all_config)
+        if flash_task:
+            update_configuration(launch_json['configurations'], {
+                **attach_all_config,
+                'name': f'{all_config_name} (flash BIN and attach)',
+                'request': 'attach',
+                'preLaunchTask': flash_task,
+            })
 
 
 if __name__ == '__main__':
@@ -116,6 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--rtt-enabled', action='store_true', default=False, help='Enable RTT logging')
     parser.add_argument('--openocd-config-file-list', nargs='+', type=str, required=False, help='OpenOCD/PE GDB Server configuration file(s) to use when debugging (OpenOCD -f option)')
     parser.add_argument('--ext-config-json', type=str,  help='Path to external configuration JSON file')
+    parser.add_argument('--flash-task', help='VS Code task that flashes the packaged firmware before attaching')
     
     args = parser.parse_args()
 
@@ -129,7 +138,7 @@ if __name__ == '__main__':
     previous_content = json.dumps(launch_json, indent=4)
     launch_json_append(launch_json, args.config_name, args.chip_name, args.gdb_path, args.objdump_path,
                        args.elf_path_list, args.server_type, args.openocd_config_file_list,
-                       args.rtt_enabled, args.interface, args.ext_config_json)
+                       args.rtt_enabled, args.interface, args.ext_config_json, flash_task=args.flash_task)
 
     content = json.dumps(launch_json, indent=4)
     if content != previous_content or not launch_path.is_file():

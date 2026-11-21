@@ -118,11 +118,9 @@ def parse_args():
         try:
             bin_name, bin_version, start_addr,file_path = firmware_part.split(':', 3)
         except ValueError:
-            print('Invalid firmware part: %s' % firmware_part)
-            continue
-        if not os.path.isfile(file_path):
-            print('Invalid firmware part: %s' % firmware_part)
-            continue
+            parser.error(f'Invalid firmware part {firmware_part!r}. Expected name:version:address:file.')
+        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
+            parser.error(f'Firmware binary is missing or empty: {file_path}')
             
         bin_version_uint32,bin_version_str = _parse_version(bin_version)
         args_info.firmware_parts.append(FirmwareInfo(bin_name, bin_version_str, bin_version_uint32, start_addr, file_path))
@@ -177,11 +175,16 @@ if __name__ == '__main__':
         append_factory_data_to_bin(dst_bin_path, firmware_part.bin_version_uint32, 
             firmware_part.bin_name, args_info.firmware_name, 'git@' + git_field + ' ' + 'time@' + time_field)
 
+    jlink_flash_args = (
+        f'-ExitOnError 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} '
+        f'-JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink'
+    )
+
     # 生成windows烧写脚本
     with open(make_firmware_path + '/' + 'burn.bat', 'w') as f:
         f.write('@echo off\n')
         f.write('set "script_dir=%~dp0"\n')
-        f.write('cd /d "%script_dir%"\n\n')
+        f.write('cd /d "%script_dir%" || exit /b 1\n\n')
 
         # --- 平台检测逻辑 ---
         f.write(':: Detect Architecture\n')
@@ -199,7 +202,8 @@ if __name__ == '__main__':
 
         # --- 调用 JLink ---
         f.write('echo Using: %JLINK_EXE%\n')
-        f.write(f'"%JLINK_EXE%" -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink\n\n')
+        f.write(f'"%JLINK_EXE%" {jlink_flash_args}\n')
+        f.write('if not "%errorlevel%"=="0" exit /b %errorlevel%\n\n')
 
         f.write('if not defined nowait_option (\n')
         f.write('    echo "Execution completed, will automatically exit in 10 seconds."\n')
@@ -275,28 +279,28 @@ if __name__ == '__main__':
         f.write('    JLINK_DEVICE_CHECK="lsusb | grep -i \'J-Link\'"\n')
         f.write('    if eval "$JLINK_DEVICE_CHECK" >/dev/null 2>&1; then\n')
         f.write('        echo "[WSL] 检测到J-Link设备，使用本地JLinkExe下载..."\n')
-        f.write(f'        JLINK_CMD="$JLINK_LOCAL -NoGui 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write('        JLINK_EXE="$JLINK_LOCAL"\n')
         f.write('    else\n')
         f.write('        echo "[WSL] 未检测到J-Link设备，尝试使用tool/jlink/win-x64/JLink.exe下载..."\n')
-        f.write(f'        JLINK_CMD="$CUR_SH_DIR/tool/jlink/win-x64/JLink.exe -NoGui 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write('        JLINK_EXE="$CUR_SH_DIR/tool/jlink/win-x64/JLink.exe"\n')
         f.write('    fi\n')
         f.write('\n')
         f.write('# ====================== 4. 普通Linux逻辑：直接执行下载 ======================\n')
         f.write('elif [ "$OS_TYPE" = "Linux" ]; then\n')
         f.write('    echo "[Linux] 直接执行J-Link下载..."\n')
-        f.write(f'    JLINK_CMD="$JLINK_LOCAL -NoGui 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write('    JLINK_EXE="$JLINK_LOCAL"\n')
         f.write('\n')
         f.write('# ====================== 5. macOS逻辑：直接执行下载 ======================\n')
         f.write('elif [ "$OS_TYPE" = "macOS" ]; then\n')
         f.write('    echo "[macOS] 直接执行J-Link下载..."\n')
         f.write('    # 适配macOS ARM64（若JLinkExe路径非默认，可手动指定，如/Applications/SEGGER/JLink/JLinkExe）\n')
-        f.write(f'    JLINK_CMD="$JLINK_LOCAL -NoGui 1 -autoconnect 1 -device {args_info.chip_name} -if {args_info.interface_name} -JTAGConf {args_info.jtagconf} -speed {args_info.speed} -commandfile download.jlink"\n')
+        f.write('    JLINK_EXE="$JLINK_LOCAL"\n')
         f.write('fi\n')
         f.write('\n')
         f.write('# ====================== 6. 执行下载命令 ======================\n')
         f.write('cd "$CUR_SH_DIR"\n')
-        f.write('echo "执行命令：$JLINK_CMD"\n')
-        f.write('eval "$JLINK_CMD"\n')
+        f.write('echo "使用 $JLINK_EXE 下载固件"\n')
+        f.write(f'"$JLINK_EXE" -NoGui 1 {jlink_flash_args}\n')
         f.write('\n')
         f.write('exit 0\n')
         

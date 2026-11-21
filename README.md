@@ -367,6 +367,8 @@ OpenOCD 使用 `add_openocd_image()`，在同一个应用构建文件里指定�
 
 安装 Cortex-Debug、板卡对应的调试工具和交叉 GDB。支持 J-Link 调试的模板会在构建时根据 `app/CMakeLists.txt` 里的 `add_vscode_cortex_debug_gdb()` 生成应用根目录的 `.vscode/launch.json`。打开应用根目录，在「运行和调试」里选择生成的配置。
 
+要调试带 CRC 尾部的发布固件，首次构建后选择 **default-fly_app (flash BIN and attach)**。按 F5 会运行 **FLY: Flash**，烧录打包后的 BIN，再从同一次构建的 ELF 读取符号并附加。烧录结束时目标会复位并运行，因此附加时程序可能已执行过启动代码。
+
 FRDM-MCXN947 裸机模板构建后可查看 RTT 通道 0。板卡初始化完成后会输出 `boot ok`。另外两个 nanosig 模板在定时器工作后输出 `nanosig ready`。
 
 ### 13. clangd 代码补全
