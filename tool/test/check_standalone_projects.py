@@ -898,14 +898,20 @@ def check_registered_template(sdk, workspace):
         "id": "fixture-board", "label": "Fixture board", "chip": "Fixture chip", "core": "Fixture core",
         "arch_config": "CONFIG_ARCH_FIXTURE", "toolchain": "Fixture toolchain", "probe": "No probe",
         "fixture_number": 6100, "templates": ["fixture-template"],
+        "overlays": ["common/fixture-base", "common/fixture-profile"],
     }
+    board_manifest = "templates/boards/fixture-board/board.json"
     files = {
         "templates/apps/fixture-template/template.json": json.dumps(template),
         "templates/apps/fixture-template/defconfig": "CONFIG_FIXTURE_NUMBER=@FIXTURE_NUMBER@\n",
         "templates/apps/fixture-template/app/main.c": "/* selected template */\n",
         "templates/apps/common/fixture-layer/app/main.c": "/* shared overlay */\n",
         "templates/apps/common/fixture-layer/app/biz/fixture.c": "/* overlay marker */\n",
-        "templates/boards/fixture-board/board.json": json.dumps(board),
+        "templates/boards/common/fixture-base/board.cmake": "# base board\n",
+        "templates/boards/common/fixture-base/init.c": "/* shared init */\n",
+        "templates/boards/common/fixture-base/include/fixture.h": "/* base header */\n",
+        "templates/boards/common/fixture-profile/include/fixture.h": "/* profile header */\n",
+        board_manifest: json.dumps(board),
         "templates/boards/fixture-board/board.cmake": "# fixture board\n",
     }
     for name, content in files.items():
@@ -919,12 +925,31 @@ def check_registered_template(sdk, workspace):
         raise RuntimeError("The selected template did not override the shared overlay")
     if (project / "app/biz/fixture.c").read_text(encoding="utf-8") != "/* overlay marker */\n":
         raise RuntimeError("The manifest's overlay content did not reach the generated application")
+    for relative_path, source in {
+        "board.cmake": "templates/boards/fixture-board/board.cmake",
+        "init.c": "templates/boards/common/fixture-base/init.c",
+        "include/fixture.h": "templates/boards/common/fixture-profile/include/fixture.h",
+    }.items():
+        if (project / "board" / relative_path).read_text(encoding="utf-8") != files[source]:
+            raise RuntimeError(f"Unexpected board overlay content for board/{relative_path}")
     config = (project / "defconfig").read_text(encoding="utf-8").splitlines()
     if config != [f'{board["arch_config"]}=y', *template["expected_config"]]:
         raise RuntimeError("The generator did not render the manifest's board binding")
     if template["expected_log"] not in (project / "README.md").read_text(encoding="utf-8"):
         raise RuntimeError("The generated README did not use the manifest's expected log")
-    print("Data-only template registration, overlay and board binding: PASS", flush=True)
+
+    rejected = workspace / "invalid-board-app"
+    command = entrypoint(fixture, "fly", "new", rejected.name, "--board", board["id"],
+                         "--template", "fixture-template", "--output", str(rejected))
+    for overlay in ("common/missing-layer", "../apps/common/fixture-layer"):
+        (fixture / board_manifest).write_text(
+            json.dumps({**board, "overlays": [overlay]}), encoding="utf-8",
+        )
+        result = subprocess.run(command, cwd=fixture, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, timeout=30)
+        if result.returncode == 0 or rejected.exists() or overlay not in result.stdout:
+            raise RuntimeError(f"Board overlay {overlay!r} was not rejected cleanly:\n{result.stdout}")
+    print("Data-only template registration, app and board overlays, and board binding: PASS", flush=True)
 
 
 def check_board_build(sdk, workspace, board, template, build_type):

@@ -89,6 +89,16 @@ def contained_path(path, root, manifest):
     return resolved
 
 
+def load_overlays(metadata, root, manifest):
+    overlays = []
+    for name in manifest_strings(metadata, "overlays", manifest):
+        overlay = contained_path(root / relative_manifest_path(name, manifest), root, manifest)
+        if not overlay.is_dir():
+            raise ValueError(f"Overlay {name!r} is missing or is not a directory: {manifest}")
+        overlays.append(overlay)
+    return tuple(overlays)
+
+
 def load_template(manifest, apps_dir):
     directory = contained_path(manifest.parent, apps_dir, manifest)
     metadata = read_manifest(contained_path(manifest, directory, manifest))
@@ -98,12 +108,7 @@ def load_template(manifest, apps_dir):
     if "expected_log" in metadata and not nonempty_line(expected_log):
         raise ValueError(f"expected_log must be a nonempty string: {manifest}")
 
-    overlays = []
-    for name in manifest_strings(metadata, "overlays", manifest):
-        overlay = contained_path(apps_dir / relative_manifest_path(name, manifest), apps_dir, manifest)
-        if not overlay.is_dir():
-            raise ValueError(f"Template overlay {name!r} is missing: {manifest}")
-        overlays.append(overlay)
+    overlays = load_overlays(metadata, apps_dir, manifest)
     manifest_strings(metadata, "expected_config", manifest)
     for name in manifest_strings(metadata, "required_files", manifest):
         relative_manifest_path(name, manifest)
@@ -128,7 +133,7 @@ def load_template(manifest, apps_dir):
         raise ValueError(f"Board bindings must match defconfig placeholders ({differing}): {manifest}")
     return Template(
         manifest.parent.name, directory, metadata["label"], expected_log,
-        tuple(overlays), defconfig, bindings,
+        overlays, defconfig, bindings,
     )
 
 
@@ -175,6 +180,7 @@ def load_boards(templates_dir, templates):
             raise ValueError(f"Board manifest lists missing or unknown templates: {manifest}")
         for name in supported:
             render_defconfig(templates[name], board)
+        board["overlays"] = load_overlays(board, boards_dir, manifest)
         boards[board["id"]] = board
     if not boards:
         raise ValueError(f"No boards found in {templates_dir / 'boards'}")
@@ -295,7 +301,9 @@ def generate(sdk_dir, destination, name, board, template):
     destination.mkdir()
     try:
         shutil.copytree(templates_dir / "scaffold", destination, dirs_exist_ok=True)
-        shutil.copytree(templates_dir / "boards" / board["id"], destination / "board")
+        board_directory = templates_dir / "boards" / board["id"]
+        for layer in (*board["overlays"], board_directory):
+            shutil.copytree(layer, destination / "board", dirs_exist_ok=True)
         for layer in (*template.overlays, template.directory):
             copy_template_layer(layer, destination)
         write_vscode_scaffold(destination)
