@@ -23,7 +23,7 @@ CI 在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应
 
 ARM 覆盖 MCXN947、STM32F0/F1/F4/H7、GD32F10x 和 GD32E23x。CH58x 和 GD32VF103 的 RISC-V 交叉编译暂不纳入 CI。配置检查会对照 `arch/Kconfig` 确认每个受测架构都有裸机工程。
 
-FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证固件产物和当前包链接。实板烧录与 RTT 运行需要单独验证。
+FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证应用根目录 `image/` 下的固件产物和 `image/CURRENT/` 链接，并确认 `distclean` 后仍可访问固件包。实板烧录与 RTT 运行需要单独验证。
 
 ## 分支保护（必需检查 + rebase 合并）
 

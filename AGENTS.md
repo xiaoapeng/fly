@@ -36,17 +36,17 @@ Run these commands from an application's root with `./build.sh` or `build.bat`. 
 | `build [type] [-j N]` | Configure + compile. `-j` also works at the top level: `./build.sh -j 44`. | `./build.sh build Debug -j 8` |
 | `vscode [type]` | Configure CMake and write local VS Code and clangd settings | `./build.sh vscode Debug` |
 | `clean` | `cmake --build build/cmake --target clean` (keeps the generated configuration) | `./build.sh clean` |
-| `distclean` | Remove the application's `build/` | `./build.sh distclean` |
+| `distclean` | Remove the application's `build/` and keep packaged firmware under `image/` | `./build.sh distclean` |
 | `make_img [target]` | Generate firmware image package; requires `build/` to exist | `./build.sh make_img` |
 | `flash [target]` | Flash via J-Link/OpenOCD backend | `./build.sh flash` |
-| `rttlog` | Stream Segger RTT logs using the script in `build/image/CURRENT/` after packaging | `./build.sh rttlog` |
+| `rttlog` | Stream Segger RTT logs using the script in `image/CURRENT/` after packaging | `./build.sh rttlog` |
 | `package_update [name] [-l]` | Run a package update target in `build/cmake/`. `-l` lists packages | `./build.sh package_update -l` |
 | `package_mirror -l/-d/-e/-u` | Manage mirror sources (list / disable / enable / refresh benchmark) | `./build.sh package_mirror -l` |
 | `add_path_env <path>` | Prepend a toolchain/debugger `bin/` dir to FLY's PATH (stored in `.PATH.env.json`, gitignored) | `./build.sh add_path_env /opt/gcc-arm/bin` |
 
 ## Image Targets
 
-The generated `app/CMakeLists.txt` declares image targets via `add_jlink_image(<name> ...)` or `add_openocd_image(<name> ...)`. `<name>` resolves to the CMake targets `<name>_flash` and `<name>_make_img`. The default name is `default`. Pass a different name as the argument to `flash` or `make_img`.
+The application's root `CMakeLists.txt` declares firmware, debug, and image targets. `app/CMakeLists.txt` registers application sources and include paths. Image targets declared via `add_jlink_image(<name> ...)` or `add_openocd_image(<name> ...)` provide the CMake targets `<name>_flash` and `<name>_make_img`. The default name is `default`. Pass a different name as the argument to `flash` or `make_img`.
 
 ## Package System
 
@@ -61,7 +61,7 @@ The generated `app/CMakeLists.txt` declares image targets via `add_jlink_image(<
 - On Windows, `menuconfig` additionally needs `windows-curses` installed in the venv.
 - CMake build tool is auto-detected: `ninja` preferred, then `make` (Windows path). If neither is found, the script errors out.
 - Toolchain and debugger binaries are found on `PATH`. Use the application's `./build.sh add_path_env <dir-to-bin>` to prepend a directory on later builds. The setting is recorded in the SDK's ignored `.PATH.env.json`.
-- Application outputs are under `build/`, with config in `build/config/` and images in `build/image/`. VS Code reads the application's generated `.vscode/launch.json`.
+- Compiled outputs and generated configuration are under the application's `build/`. Packaged firmware and archives are under the application's `image/`. VS Code reads the application's generated `.vscode/launch.json`.
 
 ## Conventions
 

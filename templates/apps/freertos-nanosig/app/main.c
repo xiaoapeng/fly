@@ -1,10 +1,12 @@
+#include "biz/app_demo.h"
 #include "board.h"
+#include "mid/firmware_info.h"
+#include "runtime.h"
 
 #include <FreeRTOS.h>
 #include <task.h>
 
-#include <nanosig/nanosig.h>
-#include <nanosig/nanosig_timer.h>
+#include <nanosig/nanosig_status.h>
 
 static _Noreturn void stop(const char *message)
 {
@@ -15,41 +17,31 @@ static _Noreturn void stop(const char *message)
     }
 }
 
-static void on_ready(void *user_data, const void *payload)
-{
-    (void)user_data;
-    (void)payload;
-    board_log("nanosig ready\n");
-}
-
 static void run_app(void *argument)
 {
     (void)argument;
-    if (ns_init() != NS_OK) {
-        stop("nanosig initialization failed\n");
+    if (app_runtime_init() != NS_OK) {
+        stop("nanosig runtime initialization failed\n");
+    }
+    if (app_demo_init(app_runtime_get_loop()) != NS_OK) {
+        (void)app_runtime_deinit();
+        stop("nanosig demo initialization failed\n");
     }
 
-    ns_loop_t *loop;
-    if (ns_loop_create(&loop, NULL) != NS_OK) {
-        stop("nanosig loop creation failed\n");
+    const int run_status = app_runtime_run();
+    const int demo_status = app_demo_deinit();
+    const int runtime_status = app_runtime_deinit();
+    if (run_status != NS_OK || demo_status != NS_OK || runtime_status != NS_OK) {
+        stop("nanosig demo failed\n");
     }
-
-    /* The start-up timer and its connection live for the lifetime of the loop. */
-    ns_timer_t ready_timer;
-    ns_connection_t ready_connection;
-    if (ns_timer_init(&ready_timer, 100000u, NS_TIMER_ATTR_ONESHOT) != NS_OK ||
-        ns_signal_connect(&ready_timer.signal, on_ready, loop, NULL, &ready_connection) != NS_OK ||
-        ns_timer_start(&ready_timer) != NS_OK) {
-        stop("nanosig start-up timer failed\n");
-    }
-
-    (void)ns_loop_run(loop);
-    stop("nanosig loop stopped\n");
+    board_log("nanosig stopped\n");
+    vTaskDelete(NULL);
 }
 
 int main(void)
 {
     board_init();
+    fly_log_firmware_info();
     const configSTACK_DEPTH_TYPE app_stack_words = 1024u;
     if (xTaskCreate(run_app, "app", app_stack_words, NULL, tskIDLE_PRIORITY + 1u, NULL) != pdPASS) {
         stop("FreeRTOS task creation failed\n");

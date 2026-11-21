@@ -6,11 +6,22 @@
 | --- | --- | --- |
 | `scaffold/` | 共用的构建脚本、CMake、Kconfig 和 README 骨架 | 工程根目录 |
 | `apps/<模板>/` | 应用入口、调度器和包的默认配置 | `app/` 和 `defconfig` |
+| `apps/common/nanosig/` | 两个 nanosig 模板共用的运行时和定时器示例 | `app/` |
 | `boards/<板卡>/` | 板卡信息、初始化、链接脚本和烧录配置 | `board/` |
 
 新增运行方式时，在 `apps/` 添加应用入口和默认配置，并在生成器里注册模板名。新增板卡时，在 `boards/` 提供 `board.json`、`board.cmake` 和应用使用的板级接口，并在 `board.json` 中声明已经验证的模板组合。
 
-生成后的应用以根目录 `CMakeLists.txt` 为入口，调用 SDK 的 CMake 模块准备 Kconfig、工具链和依赖包。各模板的编译目标定义在 `app/CMakeLists.txt`。板卡可以提供 `board/defconfig` 作为默认硬件配置，例如启用 RTT。
+生成后的应用以根目录 `CMakeLists.txt` 为入口，调用 SDK 的 CMake 模块准备 Kconfig、工具链和依赖包。根目录的 CMake 文件定义固件、调试和打包目标。`app/CMakeLists.txt` 登记应用源码、公开头文件的搜索路径 `app/include/` 和可选的应用配置。
+
+板级头文件放在 `board/include/`。板卡清单 `board.json`、构建配置 `board.cmake` 和板卡自带的链接脚本放在 `board/`。板卡可以提供 `board/defconfig` 作为默认硬件配置，例如启用 RTT。
+
+使用应用构建脚本时，嵌入式 ELF 和 BIN 分别位于 `build/cmake/fly_app` 和 `build/cmake/fly_app.bin`。打包产物位于应用根目录的 `image/`，当前固件包通过 `image/CURRENT/` 访问。清理 `build/` 后仍可访问已打包的固件。
+
+根目录通过 `tool/cmake/app-image.cmake` 中的 `app_add_jlink_image()` 声明打包目标。应用模块将板卡的 `FLY_JLINK_DEVICE` 传给 SDK 的 `add_jlink_image()`。`FIRMWARE_LIST` 的每一项采用 `NAME:VERSION:ADDRESS:CAPACITY:BIN`。`APP` 条目的容量取自板卡的 `FLY_FLASH_SIZE`。加入 bootloader 时，追加 `"BOOT:${BOOT_VERSION}:${BOOT_FLASH_ADDRESS}:${BOOT_FLASH_SIZE}:${BOOT_BIN}"`，若工程需要生成该 BIN，再将相应目标加入 `DEPENDS`。分区的烧录地址和容量应与 Flash 布局一致，且分区互不重叠。
+
+分区容量使用十进制或 `0x` 十六进制字节数。打包工具校验包含对齐填充和元数据尾部的最终 BIN，超过容量就停止打包。`CONFIG_FACTORY_DATA_SUPPORTED` 控制板上读取和日志，打包始终检查容量。
+
+应用根目录调用 `tool/cmake/app-vscode.cmake` 中的 `app_add_vscode_debug(fly_app)`。应用模块检查板卡的 `FLY_JLINK_DEVICE` 以及 GDB 和 objdump，再将 RTT 等调试参数交给 SDK。宿主工程和未配置 J-Link 的板卡会跳过 J-Link 打包及调试目标。缺少 GDB 或 objdump 时，应用模块跳过调试配置生成。存在 `default_flash` 时，应用模块会启用先烧录 BIN 再附加的配置。
 
 ## 板卡与宿主平台
 
@@ -22,3 +33,24 @@
 | 宿主平台 | `host-linux-x64`、`host-macos-arm64`、`host-windows-x64` | `baremetal` |
 
 宿主配置使用原生工具链构建最小程序。CI 的覆盖范围和本地执行方法见 [CI 流程](../docs/CI.md)。
+
+三个嵌入式模板默认启用 `CONFIG_FACTORY_DATA_SUPPORTED`。共用的 `app/mid/firmware_info.c` 按板卡提供的 `FLY_FLASH_ADDRESS` 和 `FLY_FLASH_SIZE` 查找打包时追加的尾部。新增板卡时，这两个值应覆盖链接脚本中当前应用可用的 Flash 区域。宿主配置默认关闭该选项。
+
+## 应用目录
+
+| 源文件 | 公开头文件 | 职责 |
+| --- | --- | --- |
+| `app/main.c` | | 嵌入式应用入口，按顺序调用各模块的生命周期函数 |
+| `app/runtime.c` | `app/include/runtime.h` | nanosig 运行时，仅在 nanosig 模板生成 |
+| `app/biz/app_demo.c` | `app/include/biz/app_demo.h` | nanosig 定时器业务示例 |
+| `app/mid/firmware_info.c` | `app/include/mid/firmware_info.h` | 读取并记录固件尾部信息，各模板共用 |
+
+单文件业务和中间件直接放到 `app/biz/` 或 `app/mid/`。模块需要多个源文件时，再建模块子目录，私有头文件跟实现放在一起。应用的公开头文件统一从 `app/include/` 搜索，例如 `#include "biz/app_demo.h"` 和 `#include "mid/firmware_info.h"`。裸机模板用 `.gitkeep` 保留 `app/biz/` 和 `app/include/biz/`，便于直接添加业务。
+
+## nanosig 应用运行时
+
+`app/main.c` 中的裸机入口或 FreeRTOS 应用任务直接调用 `app_runtime_init()`，然后把 `app_runtime_get_loop()` 返回的原生 `ns_loop_t *` 传给 `app_demo_init()`。初始化成功后，`app_runtime_run()` 在裸机上轮询事件循环，在 FreeRTOS 应用任务中运行阻塞的事件循环。
+
+循环退出后，入口依次调用 `app_demo_deinit()` 和 `app_runtime_deinit()`。业务模块负责创建和释放自己的定时器、信号连接等资源。增加业务时依次初始化各模块，退出时按相反顺序释放，最后销毁运行时。业务需要独立启停时，由业务模块提供 `start` 和 `stop`，由入口在运行前后调用。示例 `app/biz/app_demo.c` 在定时器回调中打印 `nanosig ready` 并请求退出，运行和清理均成功后打印 `nanosig stopped`。
+
+模板将 nanosig 的原生调试输出接到 RTT 通道 0，示例用 `ns_sysln()` 打印 `nanosig ready`。默认日志等级是 System，可在 `menuconfig` 的 nanosig 菜单调整。回收完成的提示由板级日志输出。

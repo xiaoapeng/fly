@@ -1,6 +1,7 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(FLY_JLINK_DEVICE "GD32E230C8T6")
 set(FLY_FLASH_ADDRESS "0x08000000")
+set(FLY_FLASH_SIZE "0x00010000")
 
 function(fly_configure_board target)
     if(NOT CONFIG_ARCH_GD32E23X)
@@ -8,7 +9,7 @@ function(fly_configure_board target)
     endif()
 
     target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board.c")
-    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}")
+    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}/include")
     target_link_libraries(${target} arch-gd32e23x c m gcc)
     set(linker_script "${FLY_BOARD_DIR}/flash.ld")
     target_link_options(${target} PRIVATE "-T${linker_script}")
