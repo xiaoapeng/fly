@@ -1,0 +1,5 @@
+if(CONFIG_PACKAGE_SEGGER_RTT)
+    add_library(fly_rtt_sink OBJECT "${CMAKE_CURRENT_LIST_DIR}/sink.c")
+    target_include_directories(fly_rtt_sink PRIVATE "${FLY_WORKSPACE_DIR}/app/include")
+    target_link_libraries(fly_rtt_sink PRIVATE segger-rtt)
+endif()

@@ -2,7 +2,7 @@
 
 **@BOARD_LABEL@ / @BOARD_CORE@** · `@TEMPLATE_ID@`
 
-Build with **@TOOLCHAIN@**. The selected debug interface is **@PROBE@**.
+Build with **@TOOLCHAIN@**. The selected tool packages are **@PROBE@**.
 
 After cloning this project, use Git and Python 3 to install the exact FLY
 commit recorded in `fly.lock`.
@@ -12,8 +12,8 @@ commit recorded in `fly.lock`.
 ```
 
 On Windows run `build.bat setup`. The installed SDK lives in the ignored
-`fly/` directory. Install and enable Git LFS before setup if you need the
-bundled J-Link and RTT tools.
+`fly/` directory. Use the capability report to check tool requirements for
+the selected packages.
 
 The build scripts and CMake use the same application-side SDK resolver. It
 looks for `FLY_ROOT`, the application's `fly/` directory or link, and
@@ -67,88 +67,55 @@ cmake --build build/cmake
 When configuring directly with MinGW-w64 and Ninja on Windows, add `-G Ninja`
 on the first configure.
 
-Run these commands on boards with a firmware packaging target.
+## Packaging, running and debugging
 
 ```sh
 ./build.sh make_img
-./build.sh flash
-./build.sh rttlog
+./build.sh flash-run --list
+./build.sh log --list
+./build.sh debug --list
 ```
 
-On Windows use `build.bat` with the same subcommands and keep the project on a
-local filesystem that supports directory junctions, such as NTFS. @STARTUP_LOG_NOTE@Embedded builds produce the ELF at
-`build/cmake/fly_app` and the BIN at `build/cmake/fly_app.bin`. Packaged firmware
-and ZIP archives are under `image/` in the application root, with the current
-package at `image/CURRENT/`. Deleting `build/` or running
-`./build.sh distclean` leaves the packages under `image/` available.
+Embedded builds produce `build/cmake/fly_app` and `fly_app.bin`. Each common
+package has a manifest, final BIN, ELF and debug file under
+`image/<target>/<build-type>/<artifact-id>/`. The target and build type have
+their own `CURRENT.json`. Packages remain available after `distclean`.
+Use `./build.sh make_img --list` to find installed export actions and
+`./build.sh make_img --via PROVIDER` to run one.
 
-Packaging reuses a previous package when its inputs match and all packaged
-files have their recorded sizes. Missing or truncated firmware, flash
-scripts, or bundled files trigger a new package.
+Use `flash-run --via PROVIDER` to load and start the packaged firmware on
+hardware or in simulation. If more than one provider is enabled for an
+action, set a default in `fly.project.json` or select it explicitly. For an
+archived package, pass `--artifact /path/to/manifest.json` to `flash-run`,
+`log` or `debug` where the selected provider supports that input. Use
+`./build.sh capabilities` for the installed packages, actions, and tool status.
 
-If an earlier SDK saved packages under `build/image/`, copy the ZIP archives
-you want to keep to `image/` before cleaning. Packaging again with the updated
-SDK refreshes `image/CURRENT/`.
+Renode streams RTT during `flash-run` and saves it under `image/logs/renode/`.
+Press `Ctrl+C` to stop the simulation or pass `--duration-ms` for a timed run.
+In another terminal, `./build.sh log --via renode` follows the active run or
+replays the saved log after it ends.
 
-Set the firmware name and version in the root `CMakeLists.txt`. It includes
-`tool/cmake/app-image.cmake` and declares the images with
-`app_add_jlink_image()`. The application module passes the board's
-`FLY_JLINK_DEVICE` to the SDK's `add_jlink_image()` function. Each
-`FIRMWARE_LIST` entry uses `NAME:VERSION:ADDRESS:CAPACITY:BIN`. The default
-`APP` entry uses `FLY_FLASH_SIZE` from the board configuration. A capacity
-is a byte count in decimal or hexadecimal with a `0x` prefix. Packaging
-checks the final BIN, including alignment padding and the metadata trailer,
-and fails if it exceeds its partition capacity. This check runs regardless
-of `CONFIG_FACTORY_DATA_SUPPORTED`.
+The root CMake file declares partitions with `fly_add_firmware_image()`.
+Each `FIRMWARE_LIST` entry uses `NAME:VERSION:ADDRESS:CAPACITY:BIN`. To add a
+bootloader, append a BOOT entry and add its build target to `DEPENDS` where
+applicable. Use `SYMBOLS BOOT <target>` to include that target's ELF and debug
+file alongside its BIN. Relative BIN paths use the CMake build directory.
+The packager checks final size with padding and the CRC trailer, plus
+partition ranges and the ELF load address.
 
-To package a bootloader alongside the application, set its version, flash
-address, partition capacity, and BIN path, then add this entry to
-`FIRMWARE_LIST`.
+@STARTUP_LOG_NOTE@Embedded templates enable `CONFIG_FACTORY_DATA_SUPPORTED`.
+With a logging sink enabled, startup logs the firmware identity, version,
+address and CRC read from Flash. It reports `Firmware info unavailable`
+when it cannot find a valid trailer.
 
-```cmake
-"BOOT:${BOOT_VERSION}:${BOOT_FLASH_ADDRESS}:${BOOT_FLASH_SIZE}:${BOOT_BIN}"
-```
-
-Resolve relative BIN paths from the CMake build directory (`build/cmake/`
-with the build script). Add the bootloader target to `DEPENDS` if this build
-generates its BIN. Match each partition's address and capacity to the flash
-layout and keep the partitions from overlapping.
-
-Embedded templates enable `CONFIG_FACTORY_DATA_SUPPORTED` by default. After
-flashing the packaged BIN, the application validates the trailer in Flash and
-prints the firmware name and version, partition and address, aligned image
-length, trailer length, CRC32 and packaging details once on RTT channel 0.
-If no valid trailer is found, it prints `Firmware info unavailable` and
-continues starting. To disable the check and log, turn off the option in
-`menuconfig` and use `saveconfig` to update `defconfig`.
-
-The root `CMakeLists.txt` includes `tool/cmake/app-vscode.cmake` and calls
-`app_add_vscode_debug(fly_app)`. Edit `tool/cmake/app-vscode.cmake` to change
-application debug options such as RTT. The application module checks the
-board's `FLY_JLINK_DEVICE`, GDB, and objdump, then passes the options to the
-SDK's `add_vscode_cortex_debug_gdb()` function.
-
-Host projects and boards without J-Link configured skip J-Link packaging
-and debugging. The application module also skips debug configuration if
-GDB or objdump is missing. Embedded builds use objdump for disassembly
-listings. Open the project root in VS Code to use the generated
-`.vscode/launch.json` entries.
-
-When `default_flash` exists, the application module enables the flash task
-for **default-fly_app (flash BIN and attach)**. After the first build, select
-it to debug the packaged firmware. VS Code runs **FLY: Flash** to program the
-images in the package, then attaches using symbols from the application ELF.
-The target resets and runs before the debugger attaches.
-
-Open **Tasks: Run Task** and use **FLY: Setup** if the SDK needs installation.
-Run **FLY: Configure** to prepare local settings for clangd and CMake Tools
-before compiling, or use `./build.sh vscode Debug` (`build.bat vscode Debug`
-on Windows). **FLY: Build** also generates these settings. In CMake Tools,
-select the **FLY** kit and run **CMake: Configure** from the application
-workspace. On boards with packaging targets, select `default_make_img` or
-`default_flash` through **CMake: Build Target**.
-The **FLY: Build**, **FLY: Make image**, and **FLY: Flash** tasks call the
-application build script.
+Open the application root in VS Code. **FLY: Configure** generates local
+settings and the debug profiles available on this machine. Use
+`./build.sh vscode --artifact /path/to/manifest.json` to bind archived
+symbols and select the generated profile. **Flash and attach** performs an
+explicit flash of that archive before connecting. Use ordinary attach for
+the current build's ELF.
+For a plain CMake build, select `default_make_img` to publish the same
+common package. On Windows use `build.bat` with the same subcommands.
 
 ## Application layout
 
@@ -157,31 +124,20 @@ entry file in `board/board.cmake`.
 
 | Source | Public header | Purpose |
 | --- | --- | --- |
-| `app/runtime.c` | `app/include/runtime.h` | Runtime for the two nanosig templates |
-| `app/biz/heartbeat.c` | `app/include/biz/heartbeat.h` | Periodic heartbeat for the two nanosig templates |
-| `app/mid/firmware_info.c` | `app/include/mid/firmware_info.h` | Firmware trailer logging shared by the templates |
+| `app/mid/firmware_info.c` | `app/include/mid/firmware_info.h` | Firmware trailer information |
+| `app/mid/fly_log.c` | `app/include/mid/fly_log.h` | Common logging interface and fallback sink |
 
 Place single-source business modules directly in `app/biz/` and middleware
 modules in `app/mid/`. Give larger modules a subdirectory and keep their
 private headers next to their sources. `app/CMakeLists.txt` registers
 `app/include/` as the application's public header search path. Include
-headers as `"biz/heartbeat.h"`, `"mid/firmware_info.h"`, or `"runtime.h"`.
-The bare-metal template uses `.gitkeep` to keep `app/biz/` and
-`app/include/biz/` ready for business modules.
+headers from their subdirectory, for example `"mid/firmware_info.h"`.
 
-Board headers, when provided, live in `board/include/`. The board manifest
-`board.json`, build configuration `board.cmake`, and any board-specific
-linker scripts live in `board/`.
+Board headers live in `board/include/`, beside the board CMake file and
+linker script. Installed package manifests live under `tool/packs/` and
+the chosen package IDs are recorded in `fly.project.json`.
 
-In the nanosig templates, the bare-metal entry point or the FreeRTOS application
-task calls `app_runtime_init()` and passes the loop from `app_runtime_get_loop()`
-to `heartbeat_init()`. While the event loop runs, a nanosig periodic timer
-logs `heartbeat` once per second through RTT channel 0 at System level.
-After `app_runtime_run()` returns, the entry point calls `heartbeat_deinit()`
-to release the timer before `app_runtime_deinit()`. Each module manages its own
-resources. The entry point releases modules in reverse initialization order
-before shutting down the runtime. If a module needs separate start and stop
-operations, define them in the module and call them around the run step.
+The selected board determines the architecture and toolchain.
 
 Use `menuconfig` to experiment with Kconfig settings and `saveconfig` to
 persist the selected settings into `defconfig`.

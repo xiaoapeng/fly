@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "app/freertos-nanosig",
+  "kind": "app",
+  "label": "FreeRTOS + nanosig",
+  "files": [
+    {
+      "source": "app/configure.cmake",
+      "destination": "app/configure.cmake"
+    },
+    {
+      "source": "app/main.c",
+      "destination": "app/main.c"
+    }
+  ],
+  "provides": [
+    "app/freertos",
+    "app/nanosig"
+  ],
+  "cmake": "app/configure.cmake",
+  "dependencies": [
+    "support/nanosig-app"
+  ],
+  "requires": [
+    "board/log-hook",
+    "board/freertos-clock"
+  ],
+  "app": {
+    "config_defaults": [
+      "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y",
+      "CONFIG_PACKAGE_FREERTOS_TOTAL_HEAP_SIZE=32768",
+      "CONFIG_PACKAGE_FREERTOS_SYSTICK_CLOCK_HZ=@BOARD_CLOCK_HZ@",
+      "CONFIG_PACKAGE_NANOSIG=y"
+    ],
+    "firmware_target": "fly_app",
+    "expected_log": [
+      "heartbeat"
+    ],
+    "board_bindings": {
+      "BOARD_CLOCK_HZ": {
+        "field": "clock_hz",
+        "type": "positive_integer"
+      }
+    }
+  }
+}

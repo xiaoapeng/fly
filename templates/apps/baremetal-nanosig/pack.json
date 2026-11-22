@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "app/baremetal-nanosig",
+  "kind": "app",
+  "label": "Bare metal + nanosig",
+  "files": [
+    {
+      "source": "app/configure.cmake",
+      "destination": "app/configure.cmake"
+    },
+    {
+      "source": "app/main.c",
+      "destination": "app/main.c"
+    }
+  ],
+  "provides": [
+    "app/baremetal",
+    "app/nanosig"
+  ],
+  "cmake": "app/configure.cmake",
+  "dependencies": [
+    "support/nanosig-app"
+  ],
+  "requires": [
+    "board/log-hook",
+    "board/timebase"
+  ],
+  "app": {
+    "config_defaults": [
+      "CONFIG_PACKAGE_SCHEDULER_NONE=y",
+      "CONFIG_PACKAGE_NANOSIG=y"
+    ],
+    "firmware_target": "fly_app",
+    "expected_log": [
+      "heartbeat"
+    ]
+  }
+}

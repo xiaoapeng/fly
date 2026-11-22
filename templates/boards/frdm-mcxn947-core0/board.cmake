@@ -1,5 +1,4 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
-set(FLY_JLINK_DEVICE "MCXN947_M33_0")
 set(FLY_FLASH_ADDRESS "0x00000000")
 # Internal flash partition ends where the Core 1 image begins.
 set(FLY_FLASH_SIZE "0x000C0000")

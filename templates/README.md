@@ -1,42 +1,36 @@
 # 独立工程模板
 
-`./fly.sh new` 从三个目录组装一份独立工程。Windows 下使用 `fly.bat new`。
+运行 `./fly.sh new` 打开生成菜单。Windows 使用 `fly.bat new`。在 **Project path** 填写新工程目录，最后一级目录名用于生成工程名和固件名。命令行传入工程名、`--board` 和 `--template` 生成基础工程，再用一个或多个 `--pack` 选工具包。运行 `./fly.sh packs` 查看清单，可用 `--board` 和 `--template` 筛选。
 
-| 目录 | 内容 | 生成位置 |
-| --- | --- | --- |
-| `scaffold/` | 共用的构建脚本、CMake、Kconfig 和 README 骨架 | 工程根目录 |
-| `apps/<模板>/` | 应用入口、默认配置和 `template.json` 清单 | `app/` 和 `defconfig` |
-| `apps/common/nanosig/` | 两个 nanosig 模板共用的运行时和定时器示例 | `app/` |
-| `boards/<板卡>/` | 板卡信息、初始化、链接脚本和烧录配置 | `board/` |
-| `boards/common/stm32/` | STM32 板卡共用的初始化、日志适配和默认链接脚本 | `board/` |
+| 目录 | 内容 |
+| --- | --- |
+| `scaffold/` | 共用构建脚本、CMake、Kconfig 和应用骨架 |
+| `boards/<板卡>/` | 芯片、CPU 核、内存范围、板级初始化和链接布局 |
+| `apps/<模板>/` | 应用入口、组件配置及可用的板卡能力要求 |
+| `boards/shared/<包>/` | 多块板卡共用的板级源码和链接脚本 |
+| `apps/shared/<包>/` | 多个 APP 模板共享的实现 |
+| `tools/<工具>/` | 工具声明的动作、依赖探测、运行脚本、模型和 VS Code 片段 |
+| `logging/<实现>/` | 工具包按需引入的固件侧日志实现 |
 
-新增模板时，在 `apps/<模板>/` 放置默认配置、应用源码和 `template.json`。生成器发现清单，使用目录名作为模板 ID。
+生成器递归查找 `pack.json`，由清单中的 `id` 和 `kind` 确定包的身份和类别，同一个 ID 只能声明一次。每个清单还需登记 `schema_version`、`label` 和 `files`，并按需声明能力、依赖、兼容组合和动作。`support` 类别的包由依赖引入，目录按职责组织。文件写入应用前校验路径及所有权，同一目标路径只能由一个包提供。
 
-- `label` 指定显示名称。可选的 `expected_log` 用于生成启动提示。可选的 `overlays` 按顺序列出需要复制的公共目录，路径以 `apps/` 为起点。
-- `board_bindings` 可将默认配置中的 `@TOKEN@` 绑定到板卡清单字段。每个绑定声明 `field` 和 `type`，类型支持 `positive_integer`、`integer` 和 `string`。生成器复制前校验字段和值。
-- `expected_config` 和 `required_files` 供生成回归检查使用，分别列出配置行与生成工程中的相对文件路径。
+应用仓的 `fly.project.json` 记录选包及动作默认值，包清单按 ID 安装到 `tool/packs/`。J-Link 和 Renode 的包 ID 分别是 `tool/jlink` 和 `tool/renode`，在生成菜单 **Tools** 各选一次。新增探针或仿真器时，把工具探测、器件映射、启动命令和模型放进它自己的工具包，按需声明 `flash-run`、`log`、`debug` 或 `export`。公共脚本按 `(action, provider)` 分派并逐项检查本机的工具状态，应用中用 `./build.sh capabilities` 查看结果。
 
-新增板卡时，在 `boards/` 提供 `board.json`、`board.cmake` 和应用使用的板级接口。用 `board.json` 的 `templates` 声明已验证的模板组合。宿主板卡还通过 `host_platform` 指定对应的 CI 平台。
+J-Link 工具包的 `assets/` 存放 SDK 随附的 Git LFS 二进制。生成应用时只复制清单 `files` 中列出的文件，J-Link 在运行和按需导出离线 ZIP 时从 SDK 读取这些资源。
 
-板卡清单的可选 `overlays` 字段按顺序列出相对 `boards/` 的共享目录。生成器先把这些目录复制到应用的 `board/`，再复制具体板卡的目录。同名文件以最后复制的为准。STM32 板卡通过 `"overlays": ["common/stm32"]` 复用同一份板级源码和脚本。
+板卡与 APP 通过 `provides` 和 `requires` 声明能力，工具包可声明器件表和仿真模型的适用范围。多个工具提供同一动作时，**Default providers by action** 才为该动作显示默认项，初始保留 **Automatic**。
 
-生成后的应用以根目录 `CMakeLists.txt` 为入口，调用 SDK 的 CMake 模块准备 Kconfig、工具链和依赖包。根目录的 CMake 文件定义固件、调试和打包目标。`app/CMakeLists.txt` 登记应用源码、公开头文件的搜索路径 `app/include/` 和可选的应用配置。
+板卡的 `board.arch` 引用 SDK 中的 `arch.json` ID。各架构目录提供自己的 `gcc-config.cmake`、`CMakeLists.txt` 和可选的能力 `Kconfig`。Kconfig 和 CMake 使用同一个板卡选定的架构。
 
-板级头文件放在 `board/include/`。板卡清单 `board.json`、构建配置 `board.cmake` 和板卡自带的链接脚本放在 `board/`。板卡可以提供 `board/defconfig` 作为默认硬件配置，例如启用 RTT。
+板级接口和头文件位于 `board/`、`board/include/`。根 CMake 创建固件目标，按板卡、依赖、APP 和工具包的顺序装配。APP 配置可用 `board_bindings` 将 `@TOKEN@` 绑定到板卡数据，请声明所需类型。日志通过 `fly_log_write` 输出。依赖 `support/rtt` 的工具包会启用 RTT 日志，用户可以在应用 Kconfig 中关掉日志实现。
 
-STM32 的 `board/board.cmake` 声明芯片目标和 Flash/RAM 布局，`board/flash.ld.in` 使用这些参数生成链接脚本。日志的实现位于应用的 `board/log.c`，默认用 RTT，关闭 `CONFIG_PACKAGE_SEGGER_RTT` 时日志调用为空。需要串口日志时，可在应用仓实现自己的 `board_log()`。CMSIS、HAL 和芯片启动代码由 SDK 提供。
+`fly_add_firmware_image()` 是应用根 `CMakeLists.txt` 声明通用固件包的入口。每条 `FIRMWARE_LIST` 使用 `NAME:VERSION:ADDRESS:CAPACITY:BIN`。加入 Bootloader 时追加 BOOT 条目，需要编译的目标放入 `DEPENDS`，再用 `SYMBOLS BOOT <目标>` 打包同次构建的 ELF 与调试文件。公共包位于 `image/<target>/<build-type>/<artifact-id>/`，内含 CRC 尾部的最终 BIN 和 `manifest.json`。各工具包在自己的清单中声明 `export`，并复用其中的文件。
 
-已有 STM32 工程升级 SDK 时，先用同款板卡的新模板更新 `board/`，合回应用自定义的内存布局和板级配置，再更新 `fly.lock`。
+烧写与仿真共用 `flash-run` 动作。用 `./build.sh flash-run --list` 查看提供者，指定 `--via jlink` 或 `--via renode` 后加载并启动固件。两边都可传入同一 `--artifact`，按清单校验最终固件。Renode 当前覆盖 FRDM-MCXN947 Core 0 三个 APP 的启动、CRC 和适用的 nanosig 心跳。
 
-使用应用构建脚本时，嵌入式 ELF 和 BIN 分别位于 `build/cmake/fly_app` 和 `build/cmake/fly_app.bin`。打包产物位于应用根目录的 `image/`，当前固件包通过 `image/CURRENT/` 访问。清理 `build/` 后仍可访问已打包的固件。
+Renode 默认持续运行并实时输出 RTT，按 `Ctrl+C` 停止。`--duration-ms` 可指定结束时的虚拟时间。运行中的 `./build.sh log --via renode` 会跟随同一份 RTT，结束后可用同一命令回看 `image/logs/renode/` 中的记录。
 
-根目录通过 `tool/cmake/app-image.cmake` 中的 `app_add_jlink_image()` 声明打包目标。应用模块将板卡的 `FLY_JLINK_DEVICE` 传给 SDK 的 `add_jlink_image()`。`FIRMWARE_LIST` 的每一项采用 `NAME:VERSION:ADDRESS:CAPACITY:BIN`。`APP` 条目的容量取自板卡的 `FLY_FLASH_SIZE`。加入 bootloader 时，追加 `"BOOT:${BOOT_VERSION}:${BOOT_FLASH_ADDRESS}:${BOOT_FLASH_SIZE}:${BOOT_BIN}"`，若工程需要生成该 BIN，再将相应目标加入 `DEPENDS`。分区的烧录地址和容量应与 Flash 布局一致，且分区互不重叠。
-
-分区容量使用十进制或 `0x` 十六进制字节数。打包工具校验包含对齐填充和元数据尾部的最终 BIN，超过容量就停止打包。`CONFIG_FACTORY_DATA_SUPPORTED` 控制板上读取和日志，打包始终检查容量。
-
-OpenOCD 的 RTT 搜索范围由板卡或应用通过 `RTT_ADDR_AND_SIZE` 传给打包目标。省略该范围时，包包含烧录脚本。
-
-应用根目录调用 `tool/cmake/app-vscode.cmake` 中的 `app_add_vscode_debug(fly_app)`。应用模块检查板卡的 `FLY_JLINK_DEVICE` 以及 GDB 和 objdump，再将 RTT 等调试参数交给 SDK。宿主工程和未配置 J-Link 的板卡会跳过 J-Link 打包及调试目标。缺少 GDB 或 objdump 时，应用模块跳过调试配置生成。存在 `default_flash` 时，应用模块会启用先烧录 BIN 再附加的配置。
+配置应用时按已选工具包声明的调试配置生成 VS Code 配置。运行 `./build.sh vscode --artifact /path/to/manifest.json` 可绑定历史归档。
 
 ## 板卡与宿主平台
 
@@ -66,6 +60,6 @@ OpenOCD 的 RTT 搜索范围由板卡或应用通过 `RTT_ADDR_AND_SIZE` 传给�
 
 `app/main.c` 中的裸机入口或 FreeRTOS 应用任务直接调用 `app_runtime_init()`，然后把 `app_runtime_get_loop()` 返回的原生 `ns_loop_t *` 传给 `heartbeat_init()`。初始化成功后，`app_runtime_run()` 在裸机上轮询事件循环，在 FreeRTOS 应用任务中运行阻塞的事件循环。
 
-事件循环运行期间，`app/biz/heartbeat.c` 用 nanosig 周期定时器每秒调用一次 `ns_sysln("heartbeat")`。模板将 nanosig 的原生日志接到 RTT 通道 0，默认日志等级为 System，可在 `menuconfig` 的 nanosig 菜单调整。
+事件循环运行期间，`app/biz/heartbeat.c` 用 nanosig 周期定时器每秒调用一次 `ns_sysln("heartbeat")`。模板将 nanosig 的原生日志接到所选日志实现，默认日志等级为 System，可在 `menuconfig` 的 nanosig 菜单调整。
 
 循环退出时，入口先调用 `heartbeat_deinit()` 释放心跳定时器，再调用 `app_runtime_deinit()`。新增业务时，由各模块管理自己的定时器、信号连接等资源，入口按初始化的相反顺序释放模块。业务需要独立启停时，由模块提供 `start` 和 `stop`，入口在运行前后调用。

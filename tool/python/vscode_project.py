@@ -3,6 +3,10 @@ import os
 import sys
 from pathlib import Path
 
+from action_protocol import read_json, write_json
+from project_actions import action_command
+from template_packs import load_project
+
 
 COMPILER_CACHE_KEYS = ('CMAKE_C_COMPILER', 'CMAKE_CXX_COMPILER', 'CMAKE_ASM_COMPILER')
 TOOL_CACHE_KEYS = (*COMPILER_CACHE_KEYS, 'CMAKE_MAKE_PROGRAM', 'Python3_EXECUTABLE')
@@ -22,11 +26,11 @@ def _update_json(path, generated, merge):
         snippet = path.with_name(f'fly-{path.name}')
         snippet.write_text(json.dumps(generated, indent=4, ensure_ascii=False) + '\n', encoding='utf-8')
         print(f'Kept {path}. Merge the FLY entries from {snippet}.', file=sys.stderr)
-        return
+        return False
 
     if previous != updated:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(updated, indent=4, ensure_ascii=False) + '\n', encoding='utf-8')
+        write_json(path, updated)
+    return True
 
 
 def _merge_named_entries(existing, generated, key):
@@ -44,19 +48,53 @@ def _merge_named_entries(existing, generated, key):
     return [*merged, *pending.values()]
 
 
-def _merge_tasks(previous, generated):
-    if not isinstance(previous, dict):
-        raise ValueError('Expected a task configuration object')
+def write_owned_entries(path, version, kind, key, generated, owners, group):
+    try:
+        state = read_json(owners)
+    except (OSError, ValueError):
+        state = {}
+    if not isinstance(state, dict):
+        state = {}
+    previous_owned = state.get(group, [])
+    if not isinstance(previous_owned, list):
+        previous_owned = []
+    accepted = []
 
-    tasks = _merge_named_entries(previous.get('tasks', []), generated['tasks'], 'label')
-    for task in tasks:
-        group = task.get('group')
-        if (task.get('label') != 'FLY: Build' and isinstance(group, dict)
-                and group.get('kind') == 'build' and group.get('isDefault')):
-            tasks = [dict(task, group='build') if task.get('label') == 'FLY: Build' else task
-                     for task in tasks]
-            break
-    return {'version': '2.0.0', **previous, 'tasks': tasks}
+    def merge(previous, _):
+        if not isinstance(previous, dict) or not isinstance(previous.get(kind, []), list):
+            raise ValueError(f'Expected a {kind} configuration')
+        retained = [entry for entry in previous.get(kind, []) if entry not in previous_owned]
+        names = {entry[key] for entry in retained
+                 if isinstance(entry, dict) and isinstance(entry.get(key), str)}
+        for item in generated:
+            if item[key] in names:
+                print(f'Kept user {kind} entry {item[key]!r} in {path}.', file=sys.stderr)
+                continue
+            if item[key] == 'FLY: Build' and any(
+                    isinstance(entry.get('group'), dict) and entry['group'].get('kind') == 'build'
+                    and entry['group'].get('isDefault') for entry in retained if isinstance(entry, dict)):
+                item = dict(item, group='build')
+            accepted.append(item)
+        return {'version': version, **previous, kind: [*retained, *accepted]}
+
+    proposal = {'version': version, kind: generated}
+    if not path.exists():
+        accepted.extend(generated)
+    if _update_json(path, proposal, merge):
+        state[group] = accepted
+        write_json(owners, state)
+
+
+def workspace_task(label, arguments):
+    return {
+        'label': label,
+        'type': 'process',
+        'command': f'{WORKSPACE_FOLDER}/build.sh',
+        'args': list(arguments),
+        'windows': {'command': 'cmd.exe', 'args': ['/d', '/c', 'build.bat', *arguments]},
+        'options': {'cwd': WORKSPACE_FOLDER},
+        'problemMatcher': [],
+    }
 
 
 def _write_tasks(project):
@@ -64,23 +102,23 @@ def _write_tasks(project):
     if not ((project / 'build.sh').is_file() and (project / 'build.bat').is_file()):
         return
 
-    tasks = []
-    for label, command in (('Setup', 'setup'), ('Configure', 'vscode'), ('Build', 'build'),
-                           ('Make image', 'make_img'), ('Flash', 'flash')):
-        task = {
-            'label': f'FLY: {label}',
-            'type': 'process',
-            'command': f'{WORKSPACE_FOLDER}/build.sh',
-            'args': [command],
-            'windows': {'command': 'cmd.exe', 'args': ['/d', '/c', 'build.bat', command]},
-            'options': {'cwd': WORKSPACE_FOLDER},
-            'problemMatcher': [],
-        }
-        if command == 'build':
-            task['group'] = {'kind': 'build', 'isDefault': True}
-        tasks.append(task)
+    composition = load_project(project)
+    tasks = [
+        workspace_task('FLY: Setup', ('setup',)),
+        workspace_task('FLY: Configure', ('vscode',)),
+        dict(workspace_task('FLY: Build', ('build',)), group={'kind': 'build', 'isDefault': True}),
+    ]
+    if composition.board.data['board']['target_kind'] == 'mcu':
+        tasks.append(workspace_task('FLY: Make image', ('make_img',)))
+    for name, provider in composition.actions:
+        if name == 'debug':
+            continue
+        tasks.append(workspace_task(f'FLY: {name.capitalize()} ({provider})',
+                                    (action_command(name), '--via', provider)))
 
-    _update_json(project / '.vscode' / 'tasks.json', {'version': '2.0.0', 'tasks': tasks}, _merge_tasks)
+    vscode = project / '.vscode'
+    write_owned_entries(vscode / 'tasks.json', '2.0.0', 'tasks', 'label', tasks,
+                        vscode / 'fly-owned.json', 'base-tasks')
 
 
 def _cmake_settings(build_dir):

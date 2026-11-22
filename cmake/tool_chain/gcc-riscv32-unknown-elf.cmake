@@ -6,7 +6,7 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION  1)
 set(CMAKE_SYSTEM_PROCESSOR  riscv32)
 
-find_gcc_toolchain(${CROSS_COMPILE_PREFIX})
+_fly_find_gcc_toolchain(${CROSS_COMPILE_PREFIX})
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # search for program/library/include in the build host directories

@@ -46,6 +46,8 @@ jobs:
         run: |
           python3 -m venv .venv
           .venv/bin/python -m pip install kconfiglib requests
+      - name: Validate action and firmware protocols
+        run: .venv/bin/python -m unittest discover -s tool/test -p "test_*.py"
       - name: Build generated ARM projects and package FRDM templates
         run: .venv/bin/python tool/test/check_standalone_projects.py --matrix arm
 

@@ -3,18 +3,27 @@
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stderr
+from io import StringIO
 import json
 import os
 from pathlib import Path
-import re
+import platform
 import shutil
-import signal
 import struct
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 from zipfile import ZipFile
 from zlib import crc32
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
+
+from arch_registry import discover as discover_architectures
+from project_new import select_interactively, write_menu
+from template_packs import discover as discover_packs, from_registry
 
 
 FRDM_BOARD = "frdm-mcxn947-core0"
@@ -22,7 +31,6 @@ FRDM_NANOSIG_SMOKES = ("baremetal-nanosig", "freertos-nanosig")
 FRDM_SMOKES = ("baremetal", *FRDM_NANOSIG_SMOKES)
 FACTORY_DATA_ENABLED = "CONFIG_FACTORY_DATA_SUPPORTED=y"
 FACTORY_DATA_DISABLED = "# CONFIG_FACTORY_DATA_SUPPORTED is not set"
-OPENOCD_TEST_RTT = ("0x10002000", "0x1800")
 
 
 def entrypoint(directory, name, *args):
@@ -51,32 +59,24 @@ def commit(repo, message, *, allow_empty=False):
 
 
 def template_manifest(sdk, template):
-    manifest = sdk / "templates/apps" / template / "template.json"
+    manifest = sdk / "templates/apps" / template / "pack.json"
     return json.loads(manifest.read_text(encoding="utf-8"))
 
 
-def generate(sdk, project, name, board, template):
-    run(entrypoint(sdk, "fly", "new", name, "--board", board,
-                   "--template", template, "--output", str(project)), sdk)
+def generate(sdk, project, name, board, template, *pack_options):
+    run(entrypoint(sdk, "fly", "new", name, "--board", board, "--template", template,
+                   "--output", str(project), *pack_options), sdk)
     cmake = (project / "CMakeLists.txt").read_text(encoding="utf-8")
-    tool_settings = ("FLY_JLINK_DEVICE", "CMAKE_GDB", "CMAKE_OBJDUMP")
-    if (any(setting in cmake for setting in tool_settings)
-            or re.search(r"\b(?:add_jlink_image|add_vscode_cortex_debug_gdb)\s*\(", cmake)):
-        raise RuntimeError(f"{project.name} must configure image and debug targets through its wrappers")
-    for filename, call, settings in (
-        ("app-image.cmake", "app_add_jlink_image(", ("FLY_JLINK_DEVICE",)),
-        ("app-vscode.cmake", "app_add_vscode_debug(fly_app)", tool_settings),
-    ):
-        relative_path = f"tool/cmake/{filename}"
-        wrapper = project / relative_path
-        if not wrapper.is_file() or relative_path not in cmake or call not in cmake:
-            raise RuntimeError(f"{project.name} is missing its {relative_path} wrapper or call")
-        wrapper_cmake = wrapper.read_text(encoding="utf-8")
-        if any(setting not in wrapper_cmake for setting in settings):
-            raise RuntimeError(f"{project.name} must check availability in {relative_path}")
-    for relative_path in template_manifest(sdk, template).get("required_files", ()):
-        if not (project / relative_path).is_file():
-            raise RuntimeError(f"{project.name} is missing {relative_path}")
+    manifest = json.loads((project / "fly.project.json").read_text(encoding="utf-8"))
+    if manifest["schema_version"] != 1 or manifest["packs"][:2] != [f"board/{board}", f"app/{template}"]:
+        raise RuntimeError(f"{project.name} selected the wrong board or APP pack")
+    if any(tool in cmake for tool in ("FLY_JLINK_DEVICE", "add_jlink_image", "add_openocd_image", "RENODE")):
+        raise RuntimeError(f"{project.name} coupled the application skeleton to a specific tool")
+    if "fly_add_firmware_image(" not in cmake or "fly_add_firmware_payload(" in cmake:
+        raise RuntimeError(f"{project.name} must declare its firmware with fly_add_firmware_image()")
+    for item in template_manifest(sdk, template)["files"]:
+        if not (project / item["destination"]).is_file():
+            raise RuntimeError(f"{project.name} is missing {item['destination']}")
 
     misplaced_headers = sorted(header.name for header in (project / "app").glob("*.h"))
     if misplaced_headers:
@@ -90,11 +90,6 @@ def generate(sdk, project, name, board, template):
     )
     if misplaced_headers:
         raise RuntimeError(f"{project.name} has headers outside board/include/: {misplaced_headers}")
-    board_source = sdk / "templates/boards" / board
-    for source_header in (board_source / "include").rglob("*.h"):
-        relative_path = source_header.relative_to(board_source)
-        if not (board_dir / relative_path).is_file():
-            raise RuntimeError(f"{project.name} is missing board/{relative_path.as_posix()}")
 
 
 def check_frdm_layout(project, template):
@@ -292,259 +287,6 @@ app_add_sdk_check(app_target)
     print("Native CMake validates explicit, managed and reselected SDK pins: PASS", flush=True)
 
 
-def check_openocd_script(sdk, workspace):
-    project = workspace / "OpenOCD app"
-    project.mkdir()
-    run(["git", "init", "-q"], project)
-    (project / "firmware.bin").write_bytes(b"\x00" * 16)
-    config = project / "board.cfg"
-    config.touch()
-    images = project / "image output"
-    run([sys.executable, "-B", str(sdk / "tool/python/mk_openocd_img.py"),
-         "--firmware-name", "openocd-check", "--output-dir", str(images),
-         "--config-file-list", str(config),
-         "--firmware-parts", "APP:0.1.0:0x00000000:0x1000:firmware.bin"], project)
-    if any((images / "CURRENT").glob("log.*")):
-        raise RuntimeError("OpenOCD generated RTT scripts without a board-specific RTT range")
-    tools = project / "test tools"
-    tools.mkdir()
-    probe = tools / "openocd"
-    probe.write_text("#!/bin/sh\ntest -s APP.bin || exit 38\nexit 37\n", encoding="utf-8")
-    probe.chmod(0o755)
-    env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"])
-    result = subprocess.run(["bash", str(images / "CURRENT/burn.sh")], cwd=project,
-                            env=env, capture_output=True, text=True, timeout=30)
-    if result.returncode != 37:
-        raise RuntimeError(f"OpenOCD script failed to run in the package and return its status:\n"
-                           f"{result.stdout}{result.stderr}")
-    print("OpenOCD package with spaced paths and failed probe: PASS", flush=True)
-
-
-def check_jlink_requires_binary(sdk, workspace):
-    images = workspace / "J-Link images"
-    empty = workspace / "empty firmware.bin"
-    empty.touch()
-    for binary in (workspace / "missing firmware.bin", empty):
-        command = [sys.executable, "-B", str(sdk / "tool/python/mk_jlink_img.py"),
-                   "--firmware-name", "jlink-check", "--jlink-path", str(sdk / "tool/jlink"),
-                   "--output-dir", str(images), "--chip-name", "MCXN947_M33_0",
-                   "--speed", "4000", "--jtagconf=-1,-1", "--nm", sys.executable,
-                   "--firmware-parts", f"APP:0.1.0:0x00000000:0x1000:{binary}"]
-        result = subprocess.run(command, cwd=workspace, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0 or "Firmware binary is missing or empty" not in result.stderr or images.exists():
-            raise RuntimeError(f"J-Link packager accepted {binary.name} or published a package:\n"
-                               f"{result.stdout}{result.stderr}")
-    print("J-Link refuses missing or empty firmware: PASS", flush=True)
-
-
-def check_packaged_partition(package, archive, name, raw, version, revision, *, firmware_name="packager-check"):
-    binary_name = f"{name}.bin"
-    binary = (package / binary_name).read_bytes()
-    tail = struct.Struct("<IIIIII12s32s64s")
-    offset = (len(raw) + 7) & ~7
-    magic_a, magic_b, firmware_size, tail_size, expected_crc, packed_version, part, firmware, description = (
-        tail.unpack_from(binary, offset)
-    )
-    if ((magic_a, magic_b, firmware_size, tail_size, packed_version) !=
-            (0xAA5555AA, 0x88777788, offset, tail.size, version)
-            or part.rstrip(b"\0") != name.encode("ascii")
-            or firmware.rstrip(b"\0") != firmware_name.encode("ascii")
-            or not description.startswith(f"git@{revision[:10]} time@".encode("ascii"))):
-        raise RuntimeError(f"Unexpected {name} metadata in {package}")
-    padded_input = raw + b"\xff" * (offset - len(raw))
-    checksum_input = binary[:offset + 16] + b"\xff" * 4 + binary[offset + 20:offset + tail_size]
-    if (binary[:offset] != padded_input or crc32(checksum_input) != expected_crc
-            or len(binary) % 16 or binary[offset + tail_size:] != b"\xff" * (len(binary) - offset - tail_size)):
-        raise RuntimeError(f"Unexpected {name} data, padding or CRC in {package}")
-    if archive.read(binary_name) != binary:
-        raise RuntimeError(f"Archive and published package disagree on {binary_name}")
-
-
-def check_partition_overflow(command, project, current, cache, partition, *, packed_size, capacity):
-    previous = current.resolve(strict=True)
-    previous_key = cache.read_bytes()
-    published_files = set(cache.parent.iterdir())
-    result = subprocess.run(command, cwd=project, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, timeout=90)
-    diagnostic = (partition, "exceeds capacity", f"{packed_size} bytes", f"{capacity} bytes")
-    if result.returncode == 0 or not any(all(marker in line for marker in diagnostic)
-                                         for line in result.stdout.splitlines()):
-        raise RuntimeError(f"Packing {partition} did not report its final BIN exceeding capacity:\n"
-                           f"{result.stdout[-6000:]}")
-    if (current.resolve(strict=True) != previous or cache.read_bytes() != previous_key
-            or set(cache.parent.iterdir()) != published_files):
-        raise RuntimeError("Partition overflow changed the published package, CURRENT or cache")
-
-
-def check_image_packagers(sdk, workspace):
-    project = workspace / "Dual partition app"
-    project.mkdir()
-    run(["git", "init", "-q"], project)
-    revision = commit(project, "Known packaging revision", allow_empty=True)
-    sources = workspace / "Partition inputs"
-    sources.mkdir()
-    # The extra colon exercises the same fixed-field split as an absolute Windows drive path.
-    boot = sources / ("boot raw.bin" if os.name == "nt" else "boot drive:raw.bin")
-    app = sources / "app raw.bin"
-    boot_data, app_data = b"BOOT image!", b"original APP firmware"
-    boot.write_bytes(boot_data)
-    app.write_bytes(app_data)
-    board_config = sources / "custom board.cfg"
-    board_config.write_text("# test board config\n", encoding="utf-8")
-    jlink_tools = workspace / "Minimal J-Link tools"
-    jlink_tools.mkdir()
-    backends = {
-        "jlink": ["--jlink-path", str(jlink_tools), "--chip-name", "MCXN947_M33_0",
-                  "--speed", "4000", "--jtagconf=-1,-1", "--nm", sys.executable],
-        "openocd": ["--config-file-list", str(board_config), "--rtt-setting", *OPENOCD_TEST_RTT],
-    }
-    packages = {}
-    for backend, options in backends.items():
-        images = workspace / f"{backend} image output"
-        current = images / f"{backend}_CURRENT"
-        cache = images / "cache"
-        base_command = [sys.executable, "-B", str(sdk / f"tool/python/mk_{backend}_img.py"),
-                        "--firmware-name", "packager-check", "--output-dir", str(images),
-                        "--symlink-name", current.name, "--cache-file", str(cache),
-                        *options, "--firmware-parts"]
-        app.write_bytes(app_data)
-        old_spec = f"APP:r2.7:0x08004000:{os.path.relpath(app, project)}"
-        result = subprocess.run([*base_command, old_spec], cwd=project, capture_output=True,
-                                text=True, timeout=30)
-        if (result.returncode == 0 or images.exists()
-                or "Expected NAME:VERSION:ADDRESS:CAPACITY:BIN" not in result.stderr):
-            raise RuntimeError(f"{backend} did not reject a four-field firmware record:\n"
-                               f"{result.stdout}{result.stderr}")
-
-        app_spec = f"APP:r2.7:0x08004000:160:{app}"
-        command = [*base_command, f"BOOT:v1.2.3:0x08000000:0xA0:{boot}", app_spec]
-        run(command, project)
-        package = current.resolve(strict=True)
-        prefix = f"packager-check_{backend}_BOOTv1.2.3_APPv2.7.0_"
-        if not package.name.startswith(prefix) or not package.name.endswith(revision[:10]):
-            raise RuntimeError(f"Unexpected name for {backend} package: {package.name}")
-        burn_command = "download.jlink" if backend == "jlink" else "burn.sh"
-        burn = (package / burn_command).read_text(encoding="utf-8")
-        for partition, address in (("BOOT", "0x08000000"), ("APP", "0x08004000")):
-            if f"{partition}.bin {address}" not in burn:
-                raise RuntimeError(f"{backend} burn script has incorrect {partition} address")
-            if (package / f"{partition}.bin").stat().st_size != 160:
-                raise RuntimeError(f"{backend} did not package {partition} at its exact capacity")
-        with ZipFile(package.with_name(package.name + ".zip")) as archive:
-            check_packaged_partition(package, archive, "BOOT", boot_data, 0x030201, revision)
-            check_packaged_partition(package, archive, "APP", app_data, 0x000702, revision)
-        if boot.read_bytes() != boot_data or app.read_bytes() != app_data:
-            raise RuntimeError(f"{backend} packaging changed an input binary")
-
-        # The raw BOOT fits at 159 bytes, but its metadata and final padding need 160.
-        check_partition_overflow([*base_command, f"BOOT:v1.2.3:0x08000000:159:{boot}", app_spec],
-                                 project, current, cache, "BOOT", packed_size=160, capacity=159)
-        archives = set(images.glob("*.zip"))
-        output = run(command, project)
-        if ("package is up to date" not in output or current.resolve(strict=True) != package
-                or set(images.glob("*.zip")) != archives):
-            raise RuntimeError(f"{backend} packaging did not reuse the unchanged image")
-
-        before = app.stat()
-        changed_app = b"modified APP firmware"
-        app.write_bytes(changed_app)
-        os.utime(app, ns=(before.st_atime_ns, before.st_mtime_ns))
-        output = run(command, project)
-        if "package is up to date" in output:
-            raise RuntimeError(f"{backend} reused a changed image with the same input timestamp")
-        updated = current.resolve(strict=True)
-        if updated == package:
-            raise RuntimeError(f"{backend} replaced a previously published package")
-        with ZipFile(package.with_name(package.name + ".zip")) as archive:
-            check_packaged_partition(package, archive, "APP", app_data, 0x000702, revision)
-        with ZipFile(updated.with_name(updated.name + ".zip")) as archive:
-            check_packaged_partition(updated, archive, "APP", changed_app, 0x000702, revision)
-
-        scripts = {name: (updated / name).read_bytes() for name in {burn_command, "burn.sh", "burn.bat"}}
-        for name in ("APP.bin", "BOOT.bin", burn_command, "burn.bat"):
-            damaged = updated / name
-            if name == "burn.bat":
-                damaged.write_bytes(scripts[name][:8])
-            else:
-                damaged.unlink()
-            output = run(command, project)
-            repaired = current.resolve(strict=True)
-            if repaired == updated or "package is up to date" in output:
-                raise RuntimeError(f"{backend} reused a package with damaged {name}:\n{output}")
-            with ZipFile(repaired.with_name(repaired.name + ".zip")) as archive:
-                check_packaged_partition(repaired, archive, "APP", changed_app, 0x000702, revision)
-                check_packaged_partition(repaired, archive, "BOOT", boot_data, 0x030201, revision)
-                for script, contents in scripts.items():
-                    if (repaired / script).read_bytes() != contents or archive.read(script) != contents:
-                        raise RuntimeError(f"{backend} did not restore {script} in the package and archive")
-            updated = repaired
-        packages[backend] = updated
-        print(f"{backend}: dual partition format, capacity, archive, alias and cache repair PASS", flush=True)
-    return packages
-
-
-def write_test_tool(path, script):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("#!/bin/sh\n" + script, encoding="utf-8")
-    path.chmod(0o755)
-
-
-def check_image_rtt_failures(sdk, workspace, packages):
-    if sys.platform not in ("darwin", "linux"):
-        return
-    project = workspace / "Packaged RTT app"
-    generate(sdk, project, "rtt-check", FRDM_BOARD, "baremetal")
-    current = project / "image/CURRENT"
-    current.parent.mkdir()
-    link = [sys.executable, "-B", str(sdk / "tool/python/image_directory_link.py"), str(current)]
-    command = entrypoint(project, "build", "rttlog")
-
-    jlink = packages["jlink"]
-    for executable in ("macos/rtt-shell", "linux-x64/rtt-shell", "linux-x86/rtt-shell", "win-x64/rtt-shell.exe"):
-        write_test_tool(jlink / "tool/jlink" / executable, "printf '%s\\n' 'RTT test viewer'\nexit 23\n")
-    run([*link, str(jlink)], project)
-    result = subprocess.run(command, cwd=project, capture_output=True, text=True, timeout=15)
-    if result.returncode != 23 or "RTT test viewer" not in result.stdout:
-        raise RuntimeError(f"rttlog did not propagate the J-Link viewer exit 23 (got {result.returncode}):\n"
-                           f"{result.stdout}{result.stderr}")
-
-    openocd = packages["openocd"]
-    if f"rtt setup {' '.join(OPENOCD_TEST_RTT)}" not in (openocd / "log.sh").read_text(encoding="utf-8"):
-        raise RuntimeError("OpenOCD did not use the explicit RTT range")
-    tools = workspace / "RTT test tools"
-    probe = tools / "openocd"
-    telnet = tools / "telnet"
-    write_test_tool(probe, "exit 37\n")
-    write_test_tool(telnet, "exit 42\n")
-    env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"])
-    run([*link, str(openocd)], project)
-    result = subprocess.run(command, cwd=project, env=env, capture_output=True, text=True, timeout=15)
-    if result.returncode != 37:
-        raise RuntimeError(f"rttlog did not propagate the OpenOCD startup exit 37 (got {result.returncode}):\n"
-                           f"{result.stdout}{result.stderr}")
-
-    write_test_tool(probe, "printf '%s\\n' \"$$\" > test-probe.pid\nexec sleep 30 >/dev/null 2>&1\n")
-    pid_file = openocd / "test-probe.pid"
-    probe_leaked = False
-    try:
-        result = subprocess.run(command, cwd=project, env=env, capture_output=True, text=True, timeout=15)
-    finally:
-        if pid_file.is_file():
-            pid = int(pid_file.read_text(encoding="ascii"))
-            try:
-                os.kill(pid, 0)
-                probe_leaked = True
-                os.kill(pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-    if result.returncode != 42 or not pid_file.is_file() or probe_leaked:
-        raise RuntimeError(f"rttlog did not propagate exit 42 and clean up the owned OpenOCD process "
-                           f"(exit {result.returncode}, leaked {probe_leaked}):\n{result.stdout}{result.stderr}")
-    if (project / "build").exists():
-        raise RuntimeError("rttlog created build output while opening an existing package")
-    print("Packaged J-Link and OpenOCD RTT failures propagate through rttlog: PASS", flush=True)
-
-
 def check_image_links(sdk, workspace):
     images = workspace / "image output"
     images.mkdir()
@@ -562,23 +304,51 @@ def check_image_links(sdk, workspace):
     print("Firmware directory aliases: PASS", flush=True)
 
 
+def current_package(project, build_type, target="default"):
+    output = project / "image" / target / build_type
+    pointer = json.loads((output / "CURRENT.json").read_text(encoding="utf-8"))
+    package = output / pointer["artifact_id"]
+    manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
+    if manifest["artifact_id"] != pointer["artifact_id"]:
+        raise RuntimeError("The current pointer does not match its firmware manifest")
+    return package, manifest
+
+
+def check_partition(package, archive, part, raw):
+    binary = (package / part["bin"]["path"]).read_bytes()
+    if not binary or archive.read(part["bin"]["path"]) != binary:
+        raise RuntimeError(f"The archive does not contain the published {part['name']} bytes")
+    trailer = part["trailer"]
+    header = struct.Struct("<IIIIII12s32s64s")
+    offset = trailer["offset"]
+    checksum_end = offset + trailer["size"]
+    crc_offset = offset + 16
+    checksum_input = binary[:crc_offset] + b"\xff" * 4 + binary[crc_offset + 4:checksum_end]
+    stored_crc = header.unpack_from(binary, offset)[4]
+    if (binary[:len(raw)] != raw or stored_crc != int(trailer["crc32"], 16)
+            or crc32(checksum_input) != stored_crc or len(binary) > part["capacity"]):
+        raise RuntimeError(f"{part['name']} no longer matches the raw output, CRC, or capacity")
+
+
 def check_image(project, name, version, revision, build_type):
-    image_dir = project / "image"
-    package = (image_dir / "CURRENT").resolve(strict=True)
-    if image_dir.resolve() not in package.parents or (project / "build/image").exists():
-        raise RuntimeError(f"{project.name} did not keep its firmware package under image/")
-    if not package.name.startswith(f"{name}_{build_type}_jlink_APPv{version}_"):
-        raise RuntimeError(f"Image did not use application name and version: {package.name}")
-    if not package.name.endswith(revision[:10]):
-        raise RuntimeError(f"Image did not use application HEAD {revision}: {package.name}")
-    firmware = package / "APP.bin"
-    if not firmware.is_file() or not firmware.stat().st_size:
-        raise RuntimeError(f"Firmware binary is missing or empty for {package.name}")
-    if not package.with_name(package.name + ".zip").is_file():
-        raise RuntimeError(f"Image archive is missing for {package.name}")
+    package, manifest = current_package(project, build_type)
+    if (project / "build/image").exists() or manifest["firmware_name"] != name:
+        raise RuntimeError("Packaging did not use the application's image directory and firmware name")
+    if (project / "image/exports").exists():
+        raise RuntimeError("Default packaging unexpectedly created a tool-specific export")
+    if manifest["source"]["git_commit"] != revision:
+        raise RuntimeError(f"Image did not use application HEAD {revision}")
+    app, = manifest["partitions"]
+    if app["name"] != "APP" or app["version"] != f"v{version}" or not app["symbols"]:
+        raise RuntimeError("Application partition version or ELF is missing")
+    with ZipFile(package.with_suffix(".zip")) as archive:
+        check_partition(package, archive, app, (project / "build/cmake/fly_app.bin").read_bytes())
+        for item in app["symbols"].values():
+            if item and archive.read(item["path"]) != (package / item["path"]).read_bytes():
+                raise RuntimeError("The archive does not contain the published symbols")
 
 
-def check_bundle_image(project, name, build_type):
+def check_bundle_image(project, build_type):
     boot = b"BOOT image built by CMake"
     (project / "boot fixture.bin").write_bytes(boot)
     cmake = project / "CMakeLists.txt"
@@ -591,62 +361,49 @@ add_custom_command(OUTPUT "${boot_bin}"
     VERBATIM
 )
 add_custom_target(test_bootloader DEPENDS "${boot_bin}")
-app_add_jlink_image(bundle
+fly_add_firmware_image(bundle
     IMAGE_NAME "${FLY_FIRMWARE_NAME}"
+    BOARD_ID "${FLY_BOARD_ID}" CHIP "${FLY_BOARD_CHIP}" CORE_ID "${FLY_BOARD_CORE_ID}"
     FIRMWARE_LIST
         "APP:${FLY_FIRMWARE_VERSION}:${FLY_FLASH_ADDRESS}:${FLY_FLASH_SIZE}:fly_app.bin"
-        "BOOT:1.2.3:0x000C0000:${TEST_BOOT_CAPACITY}:${boot_bin}"
+        "BOOT:1.2.3:0x00100000:${TEST_BOOT_CAPACITY}:${boot_bin}"
+    SYMBOLS APP fly_app
     DEPENDS fly_app test_bootloader
 )
 ''', encoding="utf-8")
-    revision = commit(project, "Add a generated bootloader to a root-level image target")
     command = entrypoint(project, "build", "make_img", "bundle")
     run(command, project)
-
-    current = project / "image/CURRENT"
-    package = current.resolve(strict=True)
-    firmware_name = f"{name}_{build_type}"
-    downloads = (package / "download.jlink").read_text(encoding="utf-8").splitlines()
-    if [line for line in downloads if line.startswith("loadfile ")] != [
-        "loadfile APP.bin 0x00000000", "loadfile BOOT.bin 0x000C0000",
-    ]:
-        raise RuntimeError("The application image did not use distinct APP and BOOT addresses")
-    app = (project / "build/cmake/fly_app.bin").read_bytes()
-    with ZipFile(package.with_name(package.name + ".zip")) as archive:
-        check_packaged_partition(package, archive, "APP", app, 0x070200, revision, firmware_name=firmware_name)
-        check_packaged_partition(package, archive, "BOOT", boot, 0x030201, revision, firmware_name=firmware_name)
-    if (package / "BOOT.bin").stat().st_size != 176:
-        raise RuntimeError("The application image did not fill BOOT's exact capacity")
+    package, manifest = current_package(project, build_type, "bundle")
+    app, boot_part = manifest["partitions"]
+    if (app["name"], app["address"], boot_part["name"], boot_part["address"], boot_part["symbols"]) != (
+            "APP", "0x0", "BOOT", "0x100000", None):
+        raise RuntimeError("The two partitions did not retain their starting addresses and symbol ownership")
+    with ZipFile(package.with_suffix(".zip")) as archive:
+        check_partition(package, archive, app, (project / "build/cmake/fly_app.bin").read_bytes())
+        check_partition(package, archive, boot_part, boot)
+    if boot_part["bin"]["size"] != 176:
+        raise RuntimeError("BOOT did not fill its exact capacity")
     run(["cmake", "-S", str(project), "-B", str(project / "build/cmake"), "-DTEST_BOOT_CAPACITY=175"], project)
-    check_partition_overflow(command, project, current, package.parent / ".bundle_package_key", "BOOT",
-                             packed_size=176, capacity=175)
+    failed = subprocess.run(command, cwd=project, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+    if failed.returncode == 0 or "exceeds capacity 175 bytes" not in failed.stdout:
+        raise RuntimeError(f"The BOOT capacity failure was not reported correctly:\n{failed.stdout}")
+    if current_package(project, build_type, "bundle") != (package, manifest):
+        raise RuntimeError("Capacity failure changed the previous complete package")
     print("Application-root APP and BOOT package and capacity checks: PASS", flush=True)
 
 
-def check_image_after_distclean(project):
-    current = project / "image/CURRENT"
-    package = current.resolve(strict=True)
-    firmware = (current / "APP.bin").read_bytes()
-
+def check_image_after_distclean(project, build_type):
+    package, manifest = current_package(project, build_type)
+    firmware = (package / "APP.bin").read_bytes()
     run(entrypoint(project, "build", "distclean"), project)
     if (project / "build").exists():
         raise RuntimeError("distclean did not remove the application build directory")
-    if current.resolve(strict=True) != package or (current / "APP.bin").read_bytes() != firmware:
+    if current_package(project, build_type) != (package, manifest) or (package / "APP.bin").read_bytes() != firmware:
         raise RuntimeError("distclean changed the current firmware package")
-    with ZipFile(package.with_name(package.name + ".zip")) as archive:
+    with ZipFile(package.with_suffix(".zip")) as archive:
         if archive.read("APP.bin") != firmware:
             raise RuntimeError("The archive did not retain the current firmware binary")
-
-    # Exercise the package path without starting a probe.
-    marker = "RTT package script ran"
-    if os.name == "nt":
-        (current / "log.bat").write_bytes(f"@echo off\r\necho {marker}\r\n".encode("ascii"))
-    else:
-        (current / "log.sh").write_text(f"printf '%s\\n' '{marker}'\n", encoding="utf-8")
-    output = run(entrypoint(project, "build", "rttlog"), project)
-    if marker not in output or (project / "build").exists():
-        raise RuntimeError("rttlog did not use the preserved package independently of build/")
-    print("Published firmware and RTT entry after distclean: PASS", flush=True)
+    print("Published firmware and symbols after distclean: PASS", flush=True)
 
 
 def check_vscode(project):
@@ -673,7 +430,7 @@ def check_vscode(project):
     run(["git", "check-ignore", "--", ".vscode/cmake-kits.json"], project)
 
 
-def check_build_outputs(sdk, project, *, host=False):
+def check_build_outputs(sdk, project, *, host=False, target="fly_app"):
     cmake_dir = project / "build/cmake"
     cache = (cmake_dir / "CMakeCache.txt").read_text(encoding="utf-8")
     cache_paths = {}
@@ -683,10 +440,10 @@ def check_build_outputs(sdk, project, *, host=False):
             cache_paths[key.split(":", 1)[0]] = Path(value).resolve()
     if cache_paths.get("CMAKE_HOME_DIRECTORY") != project.resolve():
         raise RuntimeError(f"{project.name} did not configure from its own CMakeLists.txt")
-    if cache_paths.get("FLY_RESOLVED_SDK_DIR") != sdk:
+    if cache_paths.get("FLY_RESOLVED_SDK_DIR") != sdk.resolve():
         raise RuntimeError(f"{project.name} did not use the current SDK checkout")
 
-    executable_name = "fly_app.exe" if host and os.name == "nt" else "fly_app"
+    executable_name = f"{target}.exe" if host and os.name == "nt" else target
     outputs = [
         project / "build/config/.config",
         project / "build/config/.config.cmake",
@@ -695,7 +452,7 @@ def check_build_outputs(sdk, project, *, host=False):
         cmake_dir / executable_name,
     ]
     if not host:
-        outputs.append(cmake_dir / "fly_app.bin")
+        outputs.append(cmake_dir / f"{target}.bin")
     for path in outputs:
         if not path.is_file() or not path.stat().st_size:
             raise RuntimeError(f"{project.name} did not produce {path.relative_to(project)}")
@@ -710,83 +467,50 @@ def check_firmware_info_messages(project, *, enabled):
             raise RuntimeError(f"{project.name} must {expectation} the firmware log message {marker!r}")
 
 
-def check_optional_app_targets(sdk, workspace):
-    project = workspace / "Optional application targets"
-    project.mkdir()
-    (project / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.21)
-project(test_app_targets NONE)
-include("${FLY_TEST_SDK_DIR}/cmake/jlink-make-image.cmake")
-include("${FLY_TEST_SDK_DIR}/cmake/vscode-cortex-debug-gdb.cmake")
-include("${FLY_TEST_SDK_DIR}/templates/scaffold/tool/cmake/app-image.cmake")
-include("${FLY_TEST_SDK_DIR}/templates/scaffold/tool/cmake/app-vscode.cmake")
-
-set(FLY_FLASH_ADDRESS "0x00000000")
-set(FLY_FLASH_SIZE "0x40000")
-app_add_jlink_image(no_device IMAGE_NAME test FIRMWARE_LIST "APP:0.1.0:0x00000000:0x40000:fly_app.bin")
-if(TARGET no_device_make_img OR TARGET no_device_flash)
-    message(FATAL_ERROR "Unexpected J-Link image targets without a board device")
-endif()
-
-function(check_unavailable name device gdb objdump)
-    set(FLY_JLINK_DEVICE "${device}")
-    set(CMAKE_GDB "${gdb}")
-    set(CMAKE_OBJDUMP "${objdump}")
-    app_add_vscode_debug(fly_app)
-    if(TARGET default_make_vscode_jlink_gnu_gdb)
-        message(FATAL_ERROR "Unexpected debug target for ${name}")
-    endif()
-endfunction()
-
-check_unavailable(no_device "" "${CMAKE_COMMAND}" "${CMAKE_COMMAND}")
-check_unavailable(no_gdb MCXN947_M33_0 "CMAKE_GDB-NOTFOUND" "${CMAKE_COMMAND}")
-check_unavailable(no_objdump MCXN947_M33_0 "${CMAKE_COMMAND}" "CMAKE_OBJDUMP-NOTFOUND")
-''', encoding="utf-8")
-    run(["cmake", "-S", str(project), "-B", str(project / "build"), f"-DFLY_TEST_SDK_DIR:PATH={sdk}"], project)
-    print("Application wrappers skip image and debug targets when board or tools are unavailable: PASS", flush=True)
-
-
-def check_debug_launch(project):
-    launch = json.loads((project / ".vscode/launch.json").read_text(encoding="utf-8"))
-    expected_requests = {
-        "default-fly_app": "launch",
-        "default-fly_app (attach)": "attach",
-        "default-fly_app (flash BIN and attach)": "attach",
-    }
-    entries = [entry for entry in launch["configurations"] if entry["name"] in expected_requests]
-    profiles = {entry["name"]: entry for entry in entries}
-    if profiles.keys() != expected_requests.keys() or len(entries) != len(profiles):
-        raise RuntimeError(f"{project.name} did not generate each FLY debug profile exactly once")
-
-    elf = (project / "build/cmake/fly_app").resolve()
-    for name, request in expected_requests.items():
-        profile = profiles[name]
-        if profile["request"] != request or Path(profile["executable"]) != elf:
-            raise RuntimeError(f"{project.name} generated an invalid {name} profile for {elf}")
-
-    flash_attach = profiles["default-fly_app (flash BIN and attach)"]
-    normal_attach = profiles["default-fly_app (attach)"]
-    if flash_attach.get("preLaunchTask") != "FLY: Flash" or flash_attach["device"] != normal_attach["device"]:
-        raise RuntimeError(f"{project.name} must flash the packaged BIN before attaching to the same device")
-    if "preLaunchTask" in normal_attach or "preLaunchTask" in profiles["default-fly_app"]:
-        raise RuntimeError(f"{project.name} must limit packaged BIN flashing to its optional debug profile")
-    run(["git", "check-ignore", "--", ".vscode/launch.json"], project)
-
-
 def check_frdm_project(sdk, workspace, template, build_type):
     project = workspace / template
     name = f"test-{template}"
-    generate(sdk, project, name, FRDM_BOARD, template)
+    tools = ["tool/jlink"]
+    if template == "baremetal":
+        tools.append("tool/renode")
+    options = [argument for tool in tools for argument in ("--pack", tool)]
+    generate(sdk, project, name, FRDM_BOARD, template, *options)
+    selected = json.loads((project / "fly.project.json").read_text(encoding="utf-8"))["packs"]
+    if selected[2:] != tools or not all((project / "tool/packs" / tool / "pack.json").is_file() for tool in tools):
+        raise RuntimeError("New applications must install one manifest per selected tool")
+    asset_names = {path.name for path in (sdk / "templates/tools/jlink/assets").rglob("*") if path.is_file()}
+    if not asset_names:
+        raise RuntimeError("The SDK J-Link tool pack is missing its bundled assets")
+    copied_assets = sorted(path.relative_to(project).as_posix()
+                           for path in project.rglob("*") if path.is_file() and path.name in asset_names)
+    if copied_assets:
+        raise RuntimeError(f"{project.name} copied SDK J-Link binaries: {copied_assets}")
     check_frdm_layout(project, template)
     git_root = run(["git", "rev-parse", "--show-toplevel"], project).strip()
     if Path(git_root).resolve() != project.resolve():
         raise RuntimeError(f"{project} was not initialized as its own Git repository")
 
     tasks = json.loads((project / ".vscode/tasks.json").read_text(encoding="utf-8"))["tasks"]
-    if {task["label"]: task["args"] for task in tasks} != {
+    task_commands = {task["label"]: task["args"] for task in tasks}
+    base_tasks = {
         "FLY: Setup": ["setup"], "FLY: Configure": ["vscode"], "FLY: Build": ["build"],
-        "FLY: Make image": ["make_img"], "FLY: Flash": ["flash"],
-    }:
-        raise RuntimeError("New applications must include portable VS Code tasks")
+        "FLY: Make image": ["make_img"],
+    }
+    providers = [tool.split("/")[1] for tool in tools]
+    if (any(task_commands.get(name) != args for name, args in base_tasks.items())
+            or any(["flash-run", "--via", provider] not in task_commands.values() for provider in providers)):
+        raise RuntimeError("New applications must include portable tasks and their discovered flash-run tasks")
+    listing = run(entrypoint(project, "build", "flash-run", "--list"), project)
+    if any(f"flash-run default --via {provider}" not in listing for provider in providers):
+        raise RuntimeError(f"flash-run did not list the selected tool providers:\n{listing}")
+    if ("(default)" in listing) != (len(providers) == 1):
+        raise RuntimeError(f"flash-run did not select a default only for a single tool provider:\n{listing}")
+    if template == "baremetal":
+        for removed in ("flash", "run"):
+            rejected = subprocess.run(entrypoint(project, "build", removed, "--list"), cwd=project,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+            if rejected.returncode != 2 or "invalid choice" not in rejected.stdout:
+                raise RuntimeError(f"The retired {removed} CLI command was accepted:\n{rejected.stdout}")
     settings = json.loads((project / ".vscode/settings.json").read_text(encoding="utf-8"))
     if (settings["cmake.configureOnOpen"] is not False
             or settings["cmake.sourceDirectory"] != "${workspaceFolder}"
@@ -817,10 +541,9 @@ def check_frdm_project(sdk, workspace, template, build_type):
             raise RuntimeError("Refreshing VS Code discarded an explicit user SDK override")
         settings_path.write_text(previous, encoding="utf-8")
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
-    cmake_cache = check_build_outputs(sdk, project)
+    check_build_outputs(sdk, project)
     check_firmware_info_messages(project, enabled=True)
-    expected_log = template_manifest(sdk, template).get("expected_log")
-    if expected_log:
+    for expected_log in template_manifest(sdk, template)["app"]["expected_log"]:
         binary = (project / "build/cmake/fly_app.bin").read_bytes()
         message = expected_log.encode("utf-8")
         if all(message + ending not in binary for ending in (b"\0", b"\n\0")):
@@ -832,9 +555,6 @@ def check_frdm_project(sdk, workspace, template, build_type):
         run(["git", "check-ignore", "--", directory], project)
     check_vscode(project)
     check_image(project, name, "0.1.0", revision, build_type)
-    if any(line.startswith("CMAKE_GDB:INTERNAL=") and not line.endswith("-NOTFOUND")
-           for line in cmake_cache.splitlines()):
-        check_debug_launch(project)
     if template == "baremetal":
         revision = commit(project, "Change application revision", allow_empty=True)
         run(make_img, project)
@@ -853,102 +573,277 @@ def check_frdm_project(sdk, workspace, template, build_type):
         run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
         check_firmware_info_messages(project, enabled=False)
         print("baremetal: factory-data opt-out PASS", flush=True)
-        check_bundle_image(project, name, build_type)
-        check_image_after_distclean(project)
-    print(f"{template}: build and J-Link package PASS", flush=True)
+        check_bundle_image(project, build_type)
+        check_image_after_distclean(project, build_type)
+    print(f"{template}: build and common firmware package PASS", flush=True)
 
 
 def check_generated_config(sdk, workspace, board, template):
     name = f"{board['id']}-{template}"
     project = workspace / name
     generate(sdk, project, name, board["id"], template)
+    selected = json.loads((project / "fly.project.json").read_text(encoding="utf-8"))
+    if selected["packs"] != [f"board/{board['id']}", f"app/{template}"]:
+        raise RuntimeError(f"{name} got tool packs without selecting them")
+    tasks = json.loads((project / ".vscode/tasks.json").read_text(encoding="utf-8"))["tasks"]
+    if any(task["args"][:1] == ["flash-run"] for task in tasks):
+        raise RuntimeError(f"{name} advertised a flash-run task without a provider")
     output = run(entrypoint(project, "build", "loadconfig", "defconfig"), project)
     if any("warning:" in line.lower() for line in output.splitlines()):
         raise RuntimeError(f"{name} generated Kconfig warnings:\n{output}")
 
     config = (project / "build/config/.config").read_text(encoding="utf-8").splitlines()
-    expected = [f'{board["arch_config"]}=y', *template_manifest(sdk, template).get("expected_config", ())]
-    board_config = sdk / "templates/boards" / board["id"] / "defconfig"
-    if board_config.is_file():
-        expected.extend(line for line in board_config.read_text(encoding="utf-8").splitlines()
-                        if re.fullmatch(r"CONFIG_[A-Z0-9_]+=.*|# CONFIG_[A-Z0-9_]+ is not set", line))
+    expected = (project / "defconfig").read_text(encoding="utf-8").splitlines() + [f"{board['config_symbol']}=y"]
     for assignment in expected:
         if assignment not in config:
             raise RuntimeError(f"{name} is missing Kconfig line {assignment!r}")
     print(f"{name}: Kconfig PASS", flush=True)
 
 
-def check_registered_template(sdk, workspace):
+def check_registered_template(sdk, workspace, *, build_type=None):
     fixture = workspace / "SDK with an added template"
     fixture.mkdir()
     for launcher in ("fly.sh", "fly.bat"):
         shutil.copy2(sdk / launcher, fixture / launcher)
-    for directory in ("templates", "tool/python"):
+    for directory in ("templates", "tool/python", "cmake"):
         shutil.copytree(sdk / directory, fixture / directory, ignore=shutil.ignore_patterns("__pycache__"))
-    template = {
-        "label": "Data-only fixture template",
-        "expected_log": "fixture says hello",
-        "overlays": ["common/fixture-layer"],
-        "board_bindings": {"FIXTURE_NUMBER": {"field": "fixture_number", "type": "positive_integer"}},
-        "expected_config": ["CONFIG_FIXTURE_NUMBER=6100"],
-        "required_files": ["app/main.c", "app/biz/fixture.c"],
-    }
-    board = {
-        "id": "fixture-board", "label": "Fixture board", "chip": "Fixture chip", "core": "Fixture core",
-        "arch_config": "CONFIG_ARCH_FIXTURE", "toolchain": "Fixture toolchain", "probe": "No probe",
-        "fixture_number": 6100, "templates": ["fixture-template"],
-        "overlays": ["common/fixture-base", "common/fixture-profile"],
-    }
-    board_manifest = "templates/boards/fixture-board/board.json"
-    files = {
-        "templates/apps/fixture-template/template.json": json.dumps(template),
-        "templates/apps/fixture-template/defconfig": "CONFIG_FIXTURE_NUMBER=@FIXTURE_NUMBER@\n",
-        "templates/apps/fixture-template/app/main.c": "/* selected template */\n",
-        "templates/apps/common/fixture-layer/app/main.c": "/* shared overlay */\n",
-        "templates/apps/common/fixture-layer/app/biz/fixture.c": "/* overlay marker */\n",
-        "templates/boards/common/fixture-base/board.cmake": "# base board\n",
-        "templates/boards/common/fixture-base/init.c": "/* shared init */\n",
-        "templates/boards/common/fixture-base/include/fixture.h": "/* base header */\n",
-        "templates/boards/common/fixture-profile/include/fixture.h": "/* profile header */\n",
-        board_manifest: json.dumps(board),
-        "templates/boards/fixture-board/board.cmake": "# fixture board\n",
-    }
-    for name, content in files.items():
-        destination = fixture / name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(content, encoding="utf-8")
+    arch_dir = fixture / "arch/experimental/fixture"
+    arch_dir.mkdir(parents=True)
+    for name in ("CMakeLists.txt", "Kconfig"):
+        shutil.copy2(sdk / "arch" / name, fixture / "arch" / name)
+    for native in discover_architectures(sdk / "arch").values():
+        source = sdk / "arch" / native.relative_path
+        target = fixture / "arch" / native.relative_path
+        target.mkdir(parents=True)
+        for name in ("arch.json", "Kconfig", "CMakeLists.txt", "gcc-config.cmake"):
+            if (source / name).is_file():
+                shutil.copy2(source / name, target / name)
+    # This architecture is present solely through its own manifest.
+    declaration = {"schema_version": 1, "id": "fixture-arch", "config": "CONFIG_ARCH_FIXTURE"}
+    toolchain_config = "# Configuration-only fixture\n"
+    if build_type:
+        declaration["host_system"] = platform.system()
+        native = next(arch for arch in discover_architectures(sdk / "arch").values()
+                      if arch.host_system == platform.system())
+        toolchain_config = (sdk / "arch" / native.relative_path / "gcc-config.cmake").read_text(encoding="utf-8")
+    (arch_dir / "arch.json").write_text(json.dumps(declaration), encoding="utf-8")
+    (arch_dir / "gcc-config.cmake").write_text(toolchain_config, encoding="utf-8")
+    (arch_dir / "CMakeLists.txt").write_text("add_library(fixture_arch INTERFACE)\n", encoding="utf-8")
+    (arch_dir / "Kconfig").write_text("config ARCH_FIXTURE_CAPABILITY\n    bool\n    default y\n", encoding="utf-8")
+    (fixture / "package").mkdir()
+    (fixture / "package/Kconfig").write_text("config FIXTURE_NUMBER\n    int \"Fixture number\"\n",
+                                            encoding="utf-8")
+    (fixture / "package/CMakeLists.txt").write_text('include("${FLY_TOP_DIR}/cmake/package.cmake")\n',
+                                                   encoding="utf-8")
+    def pack(kind, name, files, *, source_dir=None, **metadata):
+        if source_dir is None:
+            root = {"app": "apps", "board": "boards", "tool": "tools"}[kind]
+            source_dir = f"{root}/{name}"
+        source = fixture / "templates" / source_dir
+        source.mkdir(parents=True)
+        for filename, (destination, content) in files.items():
+            path = source / filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        manifest = {
+            "schema_version": 1, "id": f"{kind}/{name}", "kind": kind, "label": name,
+            "files": [{"source": filename, "destination": destination}
+                      for filename, (destination, _) in files.items()], **metadata,
+        }
+        path = source / "pack.json"
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        return path, manifest
 
+    support_path, support = pack("support", "fixture-board-shared", {
+        "init.c": ("board/init.c", "/* shared init */\n"),
+        "include/fixture.h": ("board/include/fixture.h", "/* shared header */\n"),
+    }, source_dir="boards/shared/custom/family")
+    board_path, board = pack("board", "fixture-board", {
+        "board.cmake": ("board/board.cmake",
+                        ("set(FLY_BOARD_HOST TRUE)\n" if build_type else "") +
+                        "function(fly_configure_board target)\n"
+                        "    if(NOT CONFIG_ARCH_FIXTURE_CAPABILITY OR NOT TARGET fixture_arch)\n"
+                        '        message(FATAL_ERROR "The discovered architecture was not loaded")\n'
+                        "    endif()\n"
+                        "    target_link_libraries(${target} fixture_arch)\n"
+                        "endfunction()\n"),
+    }, cmake="board/board.cmake", dependencies=["support/fixture-board-shared"], board={
+        "target_kind": "host" if build_type else "mcu", "chip": None if build_type else "Fixture",
+        "core": {"id": "native" if build_type else "core0", "architecture": "fixture-core"},
+        "arch": "fixture-arch", "toolchain": "fixture-gcc", "clock_hz": 6100,
+        "memories": [] if build_type else [{"id": "flash", "kind": "flash", "address": 0, "size": 256}],
+    })
+    pack("app", "fixture-template", {
+        "main.c": ("app/main.c", "int main(void) { return 0; }\n"),
+        "biz/fixture.c": ("app/biz/fixture.c", "/* fixture business */\n"),
+    }, app={
+        "firmware_target": "fixture_firmware", "expected_log": ["fixture says hello"],
+        "config_defaults": ["CONFIG_FIXTURE_NUMBER=@FIXTURE_NUMBER@"],
+        "board_bindings": {"FIXTURE_NUMBER": {"field": "clock_hz", "type": "positive_integer"}},
+    })
+    flash_id, companion_id = "tool/fixture-flash", "tool/fixture-with-companion"
+    flash_handler = f"tool/packs/{flash_id}/fixture.py"
+    pack("tool", "fixture-flash", {"fixture.py": (flash_handler, "# fixture\n")},
+         provides=["test/fixture-transport"],
+         actions=[{"name": "flash-run", "provider": "fixture-flash", "help": "Fixture flash-run",
+                   "handler": flash_handler, "inputs": ["artifact"]}])
+    handler = f"tool/packs/{companion_id}/fixture.py"
+    pack("tool", "fixture-with-companion", {"fixture.py": (handler, "# fixture\n")},
+         source_dir="experiment/nested/companion",
+         requires=["test/fixture-transport"], actions=[
+             {"name": "flash-run", "provider": "fixture-with-companion", "help": "Fixture alternative flash-run",
+              "handler": handler, "inputs": ["artifact"]},
+             {"name": "log", "provider": "fixture-with-companion", "help": "Fixture log",
+              "handler": handler, "inputs": ["none"]},
+         ])
+    pack("tool", "fixture-impossible", {}, requires=["test/no-provider"])
+    pack("board", "fixture-unavailable", {}, board=board["board"], requires=["test/no-provider"])
+    catalogue = run(entrypoint(fixture, "fly", "packs", "--board", "fixture-board",
+                               "--template", "fixture-template"), fixture)
+    if any(name not in catalogue for name in (flash_id, "test/fixture-transport", companion_id)):
+        raise RuntimeError(f"The catalogue did not discover the compatible packs and capabilities:\n{catalogue}")
+    if "tool/fixture-impossible" in catalogue:
+        raise RuntimeError("The catalogue advertised an impossible tool")
+    from kconfiglib import Kconfig
+
+    menu = workspace / "discovery-menu.Kconfig"
+    registry = discover_packs(fixture / "templates")
+    scaffold = fixture / "templates/scaffold"
+    symbols, defaults = write_menu(menu, registry, scaffold)
+    fixture_provider = next(symbol for symbol, action_provider in defaults.items()
+                            if action_provider == ("flash-run", "fixture-flash"))
+    default_path = workspace.resolve() / "suggested $(projects)" / "fixture-app"
+    with patch.dict(os.environ, {"FLY_NEW_INITIAL_PATH": str(default_path)}):
+        kconf = Kconfig(str(menu))
+    kconf.syms[symbols["board/fixture-board"]].set_value(2)
+    kconf.syms[symbols["app/fixture-template"]].set_value(2)
+    for pack_id, visible in ((flash_id, True), (companion_id, True),
+                             ("tool/fixture-impossible", False), ("board/fixture-unavailable", False)):
+        if bool(kconf.syms[symbols[pack_id]].visibility) != visible:
+            raise RuntimeError(f"The generation menu advertised incorrect availability for {pack_id}")
+    default_provider = kconf.syms[fixture_provider]
+    flash_choice = default_provider.choice
+    if flash_choice.visibility:
+        raise RuntimeError("The menu showed a default choice with zero selected providers")
+    flash_pack = kconf.syms[symbols[flash_id]]
+    companion_pack = kconf.syms[symbols[companion_id]]
+    if flash_pack.nodes[0].parent is not companion_pack.nodes[0].parent:
+        raise RuntimeError("The generation menu put the tools in separate groups")
+    flash_pack.set_value(2)
+    if flash_choice.visibility:
+        raise RuntimeError("The menu showed a default choice with one selected provider")
+    companion_pack.set_value(2)
+    if not flash_choice.visibility or flash_choice.selection.nodes[0].prompt[0] != "Automatic":
+        raise RuntimeError("The menu did not show an Automatic default with two selected providers")
+    for symbol, (action, _) in defaults.items():
+        if action == "log" and kconf.syms[symbol].choice.visibility:
+            raise RuntimeError("The menu showed a default choice for an unrelated single-provider action")
+    saved_versions = []
+    custom_path = Path("custom projects") / "fixture-revised"
+    expected_path = (Path.cwd() / custom_path).parent.resolve() / custom_path.name
+
+    def save_menu(config):
+        saved = Path(os.environ["KCONFIG_CONFIG"])
+        if saved_versions:
+            config.load_config(str(saved))
+            config.syms[symbols[flash_id]].set_value(2)
+            config.syms[fixture_provider].set_value(2)
+        else:
+            project_path = config.syms["NEW_PATH"]
+            if project_path.nodes[0].prompt[0] != "Project path" or project_path.str_value != str(default_path):
+                raise RuntimeError("The menu did not show the supplied project path as its default")
+            project_path.set_value(str(custom_path))
+            config.syms[symbols["board/fixture-board"]].set_value(2)
+            config.syms[symbols["app/fixture-template"]].set_value(2)
+            config.syms[symbols[companion_id]].set_value(2)
+        config.write_config(str(saved))
+        saved_versions.append(saved)
+
+    diagnostic = StringIO()
+    mock_menu = SimpleNamespace(menuconfig=save_menu)
+    with patch.dict(sys.modules, {"menuconfig": mock_menu}), patch("builtins.input", return_value=""):
+        with redirect_stderr(diagnostic):
+            selection = select_interactively(registry, scaffold, default_path=default_path)
+    expected_packs = {"board/fixture-board", "app/fixture-template", flash_id, companion_id}
+    if (len(saved_versions) != 2 or saved_versions[0] != saved_versions[1]
+            or "test/fixture-transport" not in diagnostic.getvalue()
+            or selection is None or selection[0] != expected_path or set(selection[1]) != expected_packs
+            or selection[2] != {"flash-run": "fixture-flash"}):
+        raise RuntimeError("The menu did not preserve an incomplete selection while letting the user fix it")
+
+    def save_with_one_provider(config):
+        for pack_id in expected_packs:
+            config.syms[symbols[pack_id]].set_value(2)
+        config.syms[fixture_provider].set_value(2)
+        config.syms[symbols[companion_id]].set_value(0)
+        config.write_config(os.environ["KCONFIG_CONFIG"])
+
+    with patch.dict(sys.modules, {"menuconfig": SimpleNamespace(menuconfig=save_with_one_provider)}):
+        selection = select_interactively(registry, scaffold, default_path=default_path)
+    if selection is None or selection[2]:
+        raise RuntimeError("The menu persisted an explicit default after its choice was hidden")
+    if selection[0] != default_path:
+        raise RuntimeError("The menu did not preserve the suggested destination when accepting it unchanged")
     project = workspace / "fixture-app"
-    generate(fixture, project, "fixture-app", board["id"], "fixture-template")
-    if (project / "app/main.c").read_text(encoding="utf-8") != files["templates/apps/fixture-template/app/main.c"]:
-        raise RuntimeError("The selected template did not override the shared overlay")
-    if (project / "app/biz/fixture.c").read_text(encoding="utf-8") != "/* overlay marker */\n":
-        raise RuntimeError("The manifest's overlay content did not reach the generated application")
-    for relative_path, source in {
-        "board.cmake": "templates/boards/fixture-board/board.cmake",
-        "init.c": "templates/boards/common/fixture-base/init.c",
-        "include/fixture.h": "templates/boards/common/fixture-profile/include/fixture.h",
-    }.items():
-        if (project / "board" / relative_path).read_text(encoding="utf-8") != files[source]:
-            raise RuntimeError(f"Unexpected board overlay content for board/{relative_path}")
+    generate(fixture, project, "fixture-app", "fixture-board", "fixture-template", "--pack", flash_id,
+             "--default", "flash-run=fixture-flash")
+    if (project / "board/init.c").read_text(encoding="utf-8") != "/* shared init */\n":
+        raise RuntimeError("The board file dependency was not copied")
     config = (project / "defconfig").read_text(encoding="utf-8").splitlines()
-    if config != [f'{board["arch_config"]}=y', *template["expected_config"]]:
-        raise RuntimeError("The generator did not render the manifest's board binding")
-    if template["expected_log"] not in (project / "README.md").read_text(encoding="utf-8"):
+    if config != ["CONFIG_FIXTURE_NUMBER=6100"]:
+        raise RuntimeError("The generator did not render the pack's board binding")
+    selected = json.loads((project / "fly.project.json").read_text(encoding="utf-8"))
+    if selected["defaults"] != {"flash-run": "fixture-flash"} or flash_id not in selected["packs"]:
+        raise RuntimeError("The arbitrary tool pack and default were not recorded")
+    catalogue = json.loads(run(entrypoint(project, "build", "capabilities", "--json"), project))
+    if ("test/fixture-transport" not in catalogue["capabilities"]
+            or ("flash-run", "fixture-flash") not in {(item["name"], item["provider"]) for item in catalogue["actions"]}):
+        raise RuntimeError("The project capability report did not discover the arbitrary pack")
+    tasks = json.loads((project / ".vscode/tasks.json").read_text(encoding="utf-8"))["tasks"]
+    if not any(task["args"] == ["flash-run", "--via", "fixture-flash"] for task in tasks):
+        raise RuntimeError("VS Code did not discover the installed anonymous provider")
+    if "fixture says hello" not in (project / "README.md").read_text(encoding="utf-8"):
         raise RuntimeError("The generated README did not use the manifest's expected log")
+    run(entrypoint(project, "build", "loadconfig", "defconfig"), project)
+    config = (project / "build/config/.config").read_text(encoding="utf-8")
+    if not all(line in config for line in (
+            'CONFIG_ARCH="experimental/fixture"', "CONFIG_ARCH_FIXTURE=y", "CONFIG_ARCH_FIXTURE_CAPABILITY=y")):
+        raise RuntimeError(f"The discovered architecture was not activated:\n{config}")
+    if build_type:
+        run(entrypoint(project, "build", "build", build_type), project)
+        check_build_outputs(fixture, project, host=True, target="fixture_firmware")
+        print("New architecture and board discovered, configured and built: PASS", flush=True)
 
     rejected = workspace / "invalid-board-app"
-    command = entrypoint(fixture, "fly", "new", rejected.name, "--board", board["id"],
+    command = entrypoint(fixture, "fly", "new", rejected.name, "--board", "fixture-board",
                          "--template", "fixture-template", "--output", str(rejected))
-    for overlay in ("common/missing-layer", "../apps/common/fixture-layer"):
-        (fixture / board_manifest).write_text(
-            json.dumps({**board, "overlays": [overlay]}), encoding="utf-8",
-        )
+    def reject(path, updates, diagnostic):
+        path.write_text(json.dumps(updates), encoding="utf-8")
         result = subprocess.run(command, cwd=fixture, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, timeout=30)
-        if result.returncode == 0 or rejected.exists() or overlay not in result.stdout:
-            raise RuntimeError(f"Board overlay {overlay!r} was not rejected cleanly:\n{result.stdout}")
-    print("Data-only template registration, app and board overlays, and board binding: PASS", flush=True)
+        if result.returncode == 0 or rejected.exists() or diagnostic not in result.stdout:
+            raise RuntimeError(f"Invalid pack did not report {diagnostic!r} cleanly:\n{result.stdout}")
+    reject(board_path, {**board, "board": {**board["board"], "arch": "unknown-architecture"}}, "unknown-architecture")
+    board_path.write_text(json.dumps(board), encoding="utf-8")
+    wrong_config = project / "wrong.config"
+    wrong_config.write_text("CONFIG_ARCH_MCXN947=y\n", encoding="utf-8")
+    result = subprocess.run(entrypoint(project, "build", "loadconfig", "wrong.config"), cwd=project,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+    if result.returncode == 0 or "CONFIG_ARCH_MCXN947" not in result.stdout:
+        raise RuntimeError(f"Incompatible architecture configuration was accepted:\n{result.stdout}")
+    reject(board_path, {**board, "dependencies": ["support/absent"]}, "Unknown pack")
+    board_path.write_text(json.dumps(board), encoding="utf-8")
+    reject(support_path, {**support, "dependencies": ["board/fixture-board"]}, "Dependency cycle")
+    reject(support_path, {**support, "files": [{"source": "../outside", "destination": "board/init.c"}]},
+           "Invalid file source")
+    reject(support_path, {**support, "files": [{"source": "init.c", "destination": "CMakeLists.txt"}]},
+           "Destination would overwrite")
+    support_path.write_text(json.dumps(support), encoding="utf-8")
+    duplicate_path = fixture / "templates" / "duplicate" / "pack.json"
+    duplicate_path.parent.mkdir()
+    reject(duplicate_path, support, "Duplicate pack ID")
+    reject(duplicate_path, {**support, "id": "support/con"}, "Pack ID must use a portable path")
+    print("Arbitrary pack registration, shared files, board binding and invalid combinations: PASS", flush=True)
 
 
 def check_board_build(sdk, workspace, board, template, build_type):
@@ -956,7 +851,7 @@ def check_board_build(sdk, workspace, board, template, build_type):
     project = workspace / name
     generate(sdk, project, name, board["id"], template)
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
-    check_build_outputs(sdk, project, host=bool(board.get("host_platform")))
+    check_build_outputs(sdk, project, host=board["target_kind"] == "host")
     print(f"{name}: {build_type} compile and link PASS", flush=True)
 
 
@@ -964,11 +859,6 @@ def check_frdm_templates(sdk, workspace, build_type):
     check_image_links(sdk, workspace)
     check_sdk_setup(sdk, workspace)
     check_native_sdk_pin(sdk, workspace)
-    check_optional_app_targets(sdk, workspace)
-    check_openocd_script(sdk, workspace)
-    check_jlink_requires_binary(sdk, workspace)
-    packages = check_image_packagers(sdk, workspace)
-    check_image_rtt_failures(sdk, workspace, packages)
     with ThreadPoolExecutor(max_workers=len(FRDM_SMOKES)) as pool:
         futures = [pool.submit(check_frdm_project, sdk, workspace, template, build_type) for template in FRDM_SMOKES]
         for future in futures:
@@ -977,8 +867,21 @@ def check_frdm_templates(sdk, workspace, build_type):
 
 
 def check_matrix(sdk, workspace, matrix, build_type):
-    boards = [json.loads(path.read_text(encoding="utf-8"))
-              for path in sorted((sdk / "templates/boards").glob("*/board.json"))]
+    registry = discover_packs(sdk / "templates")
+    architectures = discover_architectures(sdk / "arch")
+    boards = []
+    for pack in (pack for pack in registry.values() if pack.kind == "board"):
+        profiles = []
+        for app in (app for app in registry.values() if app.kind == "app"):
+            try:
+                from_registry(registry, [pack.id, app.id], {})
+            except ValueError:
+                continue
+            profiles.append(app.id.split("/", 1)[1])
+        board = pack.data["board"]
+        arch = architectures[board["arch"]]
+        boards.append(dict(board, id=pack.id.split("/", 1)[1], templates=profiles,
+                           config_symbol=arch.config, host_system=arch.host_system))
     if not boards:
         raise RuntimeError("No board manifests found")
     if matrix == "config":
@@ -988,8 +891,10 @@ def check_matrix(sdk, workspace, matrix, build_type):
         check_registered_template(sdk, workspace)
         return
 
-    platform = sys.platform if matrix == "host" else None
-    selected = [board for board in boards if board.get("host_platform") == platform]
+    kind = "host" if matrix == "host" else "mcu"
+    selected = [board for board in boards if board["target_kind"] == kind]
+    if kind == "host":
+        selected = [board for board in selected if board["host_system"] == platform.system()]
     if not selected:
         raise RuntimeError(f"No boards registered for the {matrix} matrix on {sys.platform}")
     smoke_coverage = check_frdm_templates(sdk, workspace, build_type) if matrix == "arm" else set()
@@ -997,6 +902,8 @@ def check_matrix(sdk, workspace, matrix, build_type):
         for template in board["templates"]:
             if (board["id"], template) not in smoke_coverage:
                 check_board_build(sdk, workspace, board, template, build_type)
+    if matrix == "host":
+        check_registered_template(sdk, workspace, build_type=build_type)
 
 
 def main():

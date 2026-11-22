@@ -23,7 +23,7 @@
 | 1 | OS 包物理位置 | 整体搬入 `scheduler/eventhub-os/` 与 `scheduler/freertos/`，连同子目录与 CMakeLists |
 | 2 | 用户交互 | 单一 `choice PACKAGE_SCHEDULER`，按所选 leg 用 `if PACKAGE_SCHEDULER_* \n rsource "..." \n endif` 条件引入对应子 Kconfig |
 | 3 | 标识符模型 | **完全删除 `PACKAGE_EVENTHUB_OS` / `PACKAGE_FREERTOS`**；其他包/CMake 一律依赖 choice 成员 `PACKAGE_SCHEDULER_EVENTHUB_OS` / `PACKAGE_SCHEDULER_FREERTOS` |
-| 4 | FreeRTOS 自拉取 | 在 `scheduler/freertos/CMakeLists.txt` 内 `fetch_git_project` |
+| 4 | FreeRTOS 自拉取 | 在 `scheduler/freertos/CMakeLists.txt` 内 `fly_fetch_git_project` |
 | 5 | scheduler/CMakeLists | `add_subdirectory(eventhub-os)` + `add_subdirectory(freertos)`，由子包内部 `if(CONFIG_PACKAGE_SCHEDULER_*)` 自行 gate |
 | 6 | docs | 同步更新三份文档路径；删除已过时的 `docs/plans/freertos-migration.md` |
 
@@ -35,10 +35,10 @@ package/scheduler/
 ├── Kconfig                 # menu "Scheduler / OS model" { choice + if … rsource … }
 ├── eventhub-os/            # ← 从 package/eventhub-os/ 整体搬入
 │   ├── Kconfig             # 仅 if PACKAGE_SCHEDULER_EVENTHUB_OS 包住 global timer 信号
-│   └── CMakeLists.txt      # fetch_git_project(eventhub) + package_lib_add（gate 改为 SCHEDULER_*）
+│   └── CMakeLists.txt      # fly_fetch_git_project(eventhub) + fly_register_package_library（gate 改为 SCHEDULER_*）
 └── freertos/               # ← 从 package/freertos/ 整体搬入
     ├── Kconfig             # 仅 if PACKAGE_SCHEDULER_FREERTOS 包住 version/heap/tick/…
-    ├── CMakeLists.txt      # fetch_git_project + 4-target split（gate 改为 SCHEDULER_*）
+    ├── CMakeLists.txt      # fly_fetch_git_project + 4-target split（gate 改为 SCHEDULER_*）
     ├── README.md
     └── inc/FreeRTOSConfig.h
 ```

@@ -10,7 +10,7 @@ endif()
 
 message("Fetching nanosig @ ${CONFIG_PACKAGE_NANOSIG_GIT_COMMIT}...")
 
-fetch_git_project(
+fly_fetch_git_project(
     nanosig
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -90,6 +90,6 @@ target_compile_definitions(nanosig PRIVATE
 
 set_property(TARGET nanosig PROPERTY FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS
     -Wconversion -Wsign-conversion)
-package_lib_add(nanosig)
+fly_register_package_library(nanosig)
 
 endif()

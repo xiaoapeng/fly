@@ -10,7 +10,7 @@ endif()
 
 message("Fetching FreeRTOS-Kernel @ ${CONFIG_PACKAGE_FREERTOS_GIT_TAG}...")
 
-fetch_git_project(
+fly_fetch_git_project(
     freertos-kernel
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -59,8 +59,8 @@ endif()
 # 1) config (INTERFACE). Include ORDER matters for the OBJECT libs below:
 #    package inc/ (FreeRTOSConfig.h) BEFORE kernel include/ (portable headers)
 #    so the packaged template wins; no other directory may shadow it for
-#    these libs. This target is not passed to package_lib_add() because
-#    package_lib_compile_options() applies
+#    these libs. This target is not passed to fly_register_package_library() because
+#    fly_add_package_compile_options() applies
 #    `target_compile_options(<lib> PRIVATE ...)` to every registered lib
 #    (cmake/package.cmake), which is a hard configure error for INTERFACE
 #    targets. The executable reaches it through the PUBLIC chain
@@ -118,11 +118,11 @@ set_property(TARGET freertos-heap freertos-kernel freertos-port
 
 # Register only the OBJECT libs. freertos-config is an INTERFACE target
 # and must not enter FLY_ALL_PACKAGE_LIB_LIST because
-# package_lib_compile_options() would apply PRIVATE compile options,
+# fly_add_package_compile_options() would apply PRIVATE compile options,
 # which is a hard configure error for INTERFACE targets.
-package_lib_add(freertos-heap)
-package_lib_add(freertos-kernel)
-package_lib_add(freertos-port)
-package_lib_add(freertos-assert)
+fly_register_package_library(freertos-heap)
+fly_register_package_library(freertos-kernel)
+fly_register_package_library(freertos-port)
+fly_register_package_library(freertos-assert)
 
 endif()

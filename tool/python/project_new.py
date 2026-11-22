@@ -1,9 +1,10 @@
-"""Generate an independent FLY project from a supported board and template."""
+"""Generate an independent FLY application by composing local template packs."""
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from importlib.util import find_spec
+from itertools import combinations
 import json
 import os
 from pathlib import Path
@@ -11,235 +12,259 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from urllib.parse import urlsplit
 
+from build_environment import prepare_python
+from mk_mcu_firmware_factory_data import FC_FIRMWARE_NAME_MAX_SIZE
+from template_packs import (
+    ACTIONS, DEFCONFIG_TOKEN, WINDOWS_RESERVED, AvailablePacks, assignment, board_values,
+    dependency_order, discover, from_registry, local_path, project_pack_path, require,
+)
 from vscode_project import write_vscode_scaffold
 
 
 PROJECT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
-RESERVED_NAME = re.compile(r"(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])", re.IGNORECASE)
 GIT_COMMIT = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 SSH_ORIGIN = re.compile(r"[\w.-]+@([\w.-]+):([^\s]+)")
-DEFCONFIG_TOKEN = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)@")
 
 
-def nonempty_line(value):
-    return isinstance(value, str) and bool(value.strip()) and not any(char in value for char in "\r\n\0")
+def add_target_options(parser, registry):
+    parser.add_argument("--board", choices=[p.id.split("/")[1] for p in registry.values() if p.kind == "board"])
+    parser.add_argument("--template", choices=[p.id.split("/")[1] for p in registry.values() if p.kind == "app"])
 
 
-BOARD_FIELD_TYPES = {
-    "integer": lambda value: type(value) is int,
-    "positive_integer": lambda value: type(value) is int and value > 0,
-    "string": nonempty_line,
-}
-
-
-@dataclass(frozen=True)
-class Template:
-    id: str
-    directory: Path
-    label: str
-    expected_log: str
-    overlays: tuple[Path, ...]
-    defconfig: str
-    board_bindings: dict[str, tuple[str, str]]
-
-
-def add_parser(subparsers, templates):
+def add_parser(subparsers, registry):
     parser = subparsers.add_parser("new", help="Generate an independent FLY project.")
-    parser.add_argument("name", nargs="?", help="Project name.")
-    parser.add_argument("--board", help="Board ID from the SDK board manifests.")
-    parser.add_argument("--template", choices=templates, help="Application template.")
-    parser.add_argument(
-        "--output", type=Path,
-        help="Destination directory (defaults to ../fly-project/<name> next to FLY).",
-    )
+    parser.add_argument("name", nargs="?", help="Project name. Omit all selections to open the project menu.")
+    add_target_options(parser, registry)
+    tools = parser.add_mutually_exclusive_group()
+    tools.add_argument("--pack", action="append", choices=[p.id for p in registry.values() if p.kind == "tool"],
+                       help="Choose a tool pack. Repeat to select more.")
+    tools.add_argument("--no-tools", action="store_true", help="Generate without any tool packs.")
+    parser.add_argument("--default", metavar="ACTION=PROVIDER", action="append", default=[],
+                        help="Set an explicit provider default. Repeat for different actions.")
+    parser.add_argument("--output", type=Path,
+                        help="Destination directory (default: FLY's sibling fly-project directory). "
+                             "In the interactive menu this is the initial project path.")
+    catalog = subparsers.add_parser("packs", help="List discovered packs, capabilities and actions.")
+    add_target_options(catalog, registry)
 
 
-def read_manifest(path):
-    try:
-        metadata = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        raise ValueError(f"Invalid JSON in {path}: {error}") from error
-    if not isinstance(metadata, dict):
-        raise ValueError(f"Manifest must be an object: {path}")
-    return metadata
+def parse_defaults(items):
+    defaults = {}
+    for item in items:
+        action, sep, provider = item.partition("=")
+        if not sep or action not in ACTIONS or not provider or action in defaults:
+            raise ValueError(f"Expected a unique ACTION=PROVIDER default, got {item!r}")
+        defaults[action] = provider
+    return defaults
 
 
-def manifest_strings(metadata, key, path):
-    items = metadata.get(key, [])
-    if not isinstance(items, list) or not all(map(nonempty_line, items)):
-        raise ValueError(f"{key} must be a list of nonempty strings: {path}")
-    return items
-
-
-def relative_manifest_path(value, manifest):
-    parts = value.split("/")
-    if any(part in ("", ".", "..") for part in parts) or any(char in value for char in ("\\", ":", "\0")):
-        raise ValueError(f"Expected a relative path within the template tree, got {value!r}: {manifest}")
-    return Path(*parts)
-
-
-def contained_path(path, root, manifest):
-    resolved = path.resolve()
-    try:
-        resolved.relative_to(root.resolve())
-    except ValueError as error:
-        raise ValueError(f"Path {path} escapes {root}: {manifest}") from error
-    return resolved
-
-
-def load_overlays(metadata, root, manifest):
-    overlays = []
-    for name in manifest_strings(metadata, "overlays", manifest):
-        overlay = contained_path(root / relative_manifest_path(name, manifest), root, manifest)
-        if not overlay.is_dir():
-            raise ValueError(f"Overlay {name!r} is missing or is not a directory: {manifest}")
-        overlays.append(overlay)
-    return tuple(overlays)
-
-
-def load_template(manifest, apps_dir):
-    directory = contained_path(manifest.parent, apps_dir, manifest)
-    metadata = read_manifest(contained_path(manifest, directory, manifest))
-    if not nonempty_line(metadata.get("label")):
-        raise ValueError(f"Template manifest needs a nonempty label: {manifest}")
-    expected_log = metadata.get("expected_log", "")
-    if "expected_log" in metadata and not nonempty_line(expected_log):
-        raise ValueError(f"expected_log must be a nonempty string: {manifest}")
-
-    overlays = load_overlays(metadata, apps_dir, manifest)
-    manifest_strings(metadata, "expected_config", manifest)
-    for name in manifest_strings(metadata, "required_files", manifest):
-        relative_manifest_path(name, manifest)
-
-    defconfig_path = contained_path(directory / "defconfig", directory, manifest)
-    if not defconfig_path.is_file():
-        raise ValueError(f"Template is missing its defconfig: {manifest}")
-    defconfig = defconfig_path.read_text(encoding="utf-8")
-    raw_bindings = metadata.get("board_bindings", {})
-    if not isinstance(raw_bindings, dict):
-        raise ValueError(f"board_bindings must be an object: {manifest}")
-    bindings = {}
-    for token, binding in raw_bindings.items():
-        field = binding.get("field") if isinstance(binding, dict) else None
-        kind = binding.get("type") if isinstance(binding, dict) else None
-        if not nonempty_line(field) or not isinstance(kind, str) or kind not in BOARD_FIELD_TYPES:
-            raise ValueError(f"Invalid board binding for @{token}@: {manifest}")
-        bindings[token] = (field, kind)
-    tokens = set(DEFCONFIG_TOKEN.findall(defconfig))
-    if tokens != bindings.keys():
-        differing = ", ".join(f"@{token}@" for token in sorted(tokens ^ bindings.keys()))
-        raise ValueError(f"Board bindings must match defconfig placeholders ({differing}): {manifest}")
-    return Template(
-        manifest.parent.name, directory, metadata["label"], expected_log,
-        overlays, defconfig, bindings,
-    )
-
-
-def load_templates(templates_dir):
-    apps_dir = templates_dir / "apps"
-    templates = {}
-    for manifest in sorted(apps_dir.glob("*/template.json")):
-        name = manifest.parent.name
-        if not PROJECT_NAME.fullmatch(name) or RESERVED_NAME.fullmatch(name):
-            raise ValueError(f"Invalid template ID: {manifest}")
-        templates[name] = load_template(manifest, apps_dir)
-    if not templates:
-        raise ValueError(f"No templates found in {apps_dir}")
-    return templates
-
-
-def render_defconfig(template, board):
-    values = {}
-    for token, (field, kind) in template.board_bindings.items():
-        value = board.get(field)
-        if not BOARD_FIELD_TYPES[kind](value):
-            description = kind.replace("_", " ")
-            raise ValueError(f"Board {board['id']!r} needs {description} field {field!r} for @{token}@")
-        values[token] = str(value)
-    return DEFCONFIG_TOKEN.sub(lambda match: values[match[1]], template.defconfig)
-
-
-def load_boards(templates_dir, templates):
-    boards = {}
-    boards_dir = templates_dir / "boards"
-    for manifest in sorted(boards_dir.glob("*/board.json")):
-        board = read_manifest(contained_path(manifest, boards_dir, manifest))
-        for key in ("id", "label", "chip", "core", "arch_config", "toolchain", "probe"):
-            if not isinstance(board.get(key), str) or not board[key]:
-                raise ValueError(f"Board manifest needs {key}: {manifest}")
-        if board["id"] != manifest.parent.name:
-            raise ValueError(f"Board ID must match its directory: {manifest}")
-        if not re.fullmatch(r"CONFIG_ARCH_[A-Z0-9_]+", board["arch_config"]):
-            raise ValueError(f"Invalid architecture symbol: {manifest}")
-        supported = board.get("templates")
-        if not isinstance(supported, list) or not supported or not all(
-            isinstance(name, str) and name in templates for name in supported
-        ):
-            raise ValueError(f"Board manifest lists missing or unknown templates: {manifest}")
-        for name in supported:
-            render_defconfig(templates[name], board)
-        board["overlays"] = load_overlays(board, boards_dir, manifest)
-        boards[board["id"]] = board
-    if not boards:
-        raise ValueError(f"No boards found in {templates_dir / 'boards'}")
-    return boards
-
-
-def choose(title, options):
-    if len(options) == 1:
-        return next(iter(options))
-    numbered = {str(index): key for index, key in enumerate(options, start=1)}
-    print(title)
-    for index, key in numbered.items():
-        print(f"  {index}. {options[key]} ({key})")
-    while True:
-        selected = input("Enter a number or ID: ").strip()
-        if selected in options:
-            return selected
-        if selected in numbered:
-            return numbered[selected]
-        print("Select one of the listed options.")
-
-
-def select_project(boards, templates, args):
-    if not sys.stdin.isatty() and not all((args.name, args.board, args.template)):
-        raise ValueError("Non-interactive generation needs <name>, --board and --template.")
-    name = args.name if args.name is not None else input("Project name: ").strip()
-    if not PROJECT_NAME.fullmatch(name) or RESERVED_NAME.fullmatch(name):
-        raise ValueError("Use a portable project name with letters, digits, '-' or '_', starting with a letter or digit.")
-
-    candidates = {
-        board_id: board for board_id, board in boards.items()
-        if args.template is None or args.template in board["templates"]
-    }
-    if args.board is not None:
-        if args.board not in boards:
-            raise ValueError(f"Unknown board {args.board!r}. Available boards: {', '.join(boards)}")
-        if args.board not in candidates:
-            supported = ", ".join(boards[args.board]["templates"])
-            raise ValueError(f"{args.board} supports these templates: {supported}")
-        board = boards[args.board]
-    else:
-        if not candidates:
-            raise ValueError(f"No boards support {args.template}.")
-        chips = dict.fromkeys(board["chip"] for board in candidates.values())
-        chip = choose("Select a chip", {chip: chip for chip in chips})
-        board_id = choose(
-            "Select a board",
-            {
-                board_id: f'{board["label"]} / {board["core"]}'
-                for board_id, board in candidates.items() if board["chip"] == chip
-            },
+def list_packs(registry, args, scaffold):
+    packs = registry.values()
+    if args.board or args.template:
+        available = AvailablePacks(registry, lambda composition: project_inputs(scaffold, composition))
+        pairs = [
+            (board.id, app.id)
+            for board in packs if board.kind == "board" and (not args.board or board.id == f"board/{args.board}")
+            for app in packs if app.kind == "app" and (not args.template or app.id == f"app/{args.template}")
+            if available.is_available(board.id, app.id)
+        ]
+        if not pairs:
+            print("No compatible board and application combination.", file=sys.stderr)
+            return 1
+        ids = {item for pair in pairs for item in pair}
+        ids.update(
+            tool for tool in available.tools if any(available.is_available(*pair, tool) for pair in pairs)
         )
-        board = candidates[board_id]
+        ids.update(pack.id for pack in dependency_order(registry.__getitem__, sorted(ids)))
+        packs = (pack for pack in packs if pack.id in ids)
+    for pack in packs:
+        print(f"{pack.id} — {pack.label}")
+        for key in ("provides", "requires", "dependencies"):
+            if pack.data.get(key):
+                print(f"  {key}: {', '.join(pack.data[key])}")
+        for action in pack.data.get("actions", ()):
+            print(f"  {action['name']} --via {action['provider']}: {action['help']}")
+    return 0
 
-    template = args.template or choose(
-        "Select an application template",
-        {key: templates[key].label for key in board["templates"]},
-    )
-    return name, board, templates[template]
+
+def project_destination(path):
+    if not str(path).strip():
+        raise ValueError("Enter a project path.")
+    try:
+        output = Path(path).expanduser()
+    except RuntimeError as error:
+        raise ValueError(str(error)) from error
+    if not output.name or output.name == "..":
+        raise ValueError("The project path must name a new directory.")
+    return output.parent.resolve() / output.name
+
+
+def project_name_from_path(destination):
+    name = destination.name
+    if not PROJECT_NAME.fullmatch(name):
+        name = re.sub(r"[^A-Za-z0-9_-]+", "-", name).strip("-_")
+    name = name[:FC_FIRMWARE_NAME_MAX_SIZE]
+    return name if name and not WINDOWS_RESERVED.fullmatch(name) else "fly-app"
+
+
+def write_menu(path, registry, scaffold):
+    def quote(label):
+        return json.dumps(label, ensure_ascii=False)
+
+    # Read the initial path as data so Kconfig does not expand macros in it.
+    lines = ['mainmenu "FLY New Application"', '', 'config FLY_NEW_INITIAL_PATH', '    string',
+             '    option env="FLY_NEW_INITIAL_PATH"', '', 'config NEW_PATH', '    string "Project path"',
+             '    default FLY_NEW_INITIAL_PATH', '    help',
+             "      Use an absolute path, a path relative to the current directory, or ~/path.", ""]
+    choices = [key for key, pack in registry.items() if pack.kind != "support"]
+    symbols = {key: f"FLY_NEW_PACK_{index}" for index, key in enumerate(choices)}
+    boards = [pack for pack in registry.values() if pack.kind == "board"]
+    apps = [pack for pack in registry.values() if pack.kind == "app"]
+
+    def condition(pairs):
+        return " || ".join(f"({symbols[b]} && {symbols[a]})" for b, a in pairs) or "n"
+
+    def add_help(pack, actions=()):
+        details = [
+            f"{label}: {', '.join(pack.data[key])}"
+            for key, label in (("provides", "Provides"), ("requires", "Requires"))
+            if pack.data.get(key)
+        ]
+        details.extend(action["help"] for action in actions)
+        if details:
+            lines.extend(("    help", *(f"      {hint}" for hint in details)))
+
+    def choice(title, packs, filters=None):
+        lines.extend(("choice", f"    prompt {quote(title)}"))
+        for pack in packs:
+            label = pack.label
+            if pack.kind == "board":
+                label += f" ({pack.data['board']['core']['id']})"
+            lines.extend((f"config {symbols[pack.id]}", f"    bool {quote(label)}"))
+            if filters:
+                lines.append(f"    depends on {filters(pack)}")
+            add_help(pack)
+        lines.extend(("endchoice", ""))
+
+    available = AvailablePacks(registry, lambda composition: project_inputs(scaffold, composition))
+    valid_applications = {}
+    for board in boards:
+        for app in apps:
+            if available.is_available(board.id, app.id):
+                valid_applications.setdefault(app.id, []).append(board.id)
+
+    valid_boards = {board for compatible_boards in valid_applications.values() for board in compatible_boards}
+    if not valid_boards:
+        raise ValueError("No compatible board and application combination.")
+    choice("Board", boards, lambda board: "y" if board.id in valid_boards else "n")
+    choice("Application", apps, lambda app: " || ".join(
+        symbols[board] for board in valid_applications.get(app.id, ())
+    ) or "n")
+
+    providers = {}
+    prior_tools = {}
+    tool_options = []
+    for pack in (pack for pack in registry.values() if pack.kind == "tool"):
+        valid_pairs = [
+            (board, app) for app, compatible_boards in valid_applications.items()
+            for board in compatible_boards if available.is_available(board, app, pack.id)
+        ]
+        depends = f"({condition(valid_pairs)})"
+        for earlier, earlier_pairs in prior_tools.items():
+            invalid = [
+                pair for pair in valid_pairs
+                if pair in earlier_pairs and not available.is_available(*pair, earlier, pack.id)
+            ]
+            if invalid:
+                depends += f" && !({symbols[earlier]} && ({condition(invalid)}))"
+        prior_tools[pack.id] = set(valid_pairs)
+        tool_options.append((pack, depends))
+    if tool_options:
+        tool_pairs = sorted(set().union(*prior_tools.values()))
+        lines.extend(('menu "Tools"', f"    visible if {condition(tool_pairs)}"))
+        for pack, depends in tool_options:
+            lines.extend((f"config {symbols[pack.id]}", f"    bool {quote(pack.label)}", f"    depends on {depends}"))
+            actions = [action for dependency in dependency_order(registry.__getitem__, [pack.id])
+                       for action in dependency.data.get("actions", ())] if prior_tools[pack.id] else []
+            add_help(pack, actions)
+            for action in actions:
+                providers.setdefault(action["name"], {}).setdefault(action["provider"], []).append(symbols[pack.id])
+        lines.extend(("endmenu", ""))
+    defaults = {}
+    default_choices = []
+    visible_choices = []
+    for index, (action, action_providers) in enumerate(sorted(providers.items())):
+        if len(action_providers) < 2:
+            continue
+        selected = {provider: f"({' || '.join(packs)})"
+                    for provider, packs in sorted(action_providers.items())}
+        multiple_selected = " || ".join(f"({left} && {right})"
+                                        for left, right in combinations(selected.values(), 2))
+        visible_choices.append(f"({multiple_selected})")
+        auto = f"FLY_NEW_AUTO_{index}"
+        default_choices.extend((
+            "choice", f'    prompt "Default provider for {action}"',
+            f"    depends on {multiple_selected}", f"    default {auto}",
+            f"config {auto}", '    bool "Automatic"',
+            "    help", "      Leave the default unset and choose with --via when running this action.",
+        ))
+        for j, (provider, dependency) in enumerate(selected.items()):
+            symbol = f"FLY_NEW_DEFAULT_{index}_{j}"
+            defaults[symbol] = action, provider
+            default_choices.extend((f"config {symbol}", f"    bool {quote(provider)}", f"    depends on {dependency}"))
+        default_choices.extend(("endchoice", ""))
+    if default_choices:
+        lines.extend(('menu "Default providers by action"', f"    visible if {' || '.join(visible_choices)}",
+                      *default_choices, "endmenu", ""))
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return symbols, defaults
+
+
+def select_interactively(registry, scaffold, default_path=None):
+    try:
+        import kconfiglib
+        import menuconfig
+    except ImportError as error:
+        raise ValueError(f"Project menu unavailable ({error}). On Windows install windows-curses for this Python.") from error
+
+    if default_path is None:
+        default_path = scaffold.parents[2] / "fly-project" / "my-app"
+    with tempfile.TemporaryDirectory(prefix="fly-new-") as temp:
+        config = Path(temp) / "Kconfig"
+        saved = Path(temp) / ".config"
+        symbols, available_defaults = write_menu(config, registry, scaffold)
+        menu_env = {"KCONFIG_CONFIG": str(saved), "FLY_NEW_INITIAL_PATH": str(default_path)}
+        previous = {key: os.environ.get(key) for key in menu_env}
+        os.environ.update(menu_env)
+        try:
+            while True:
+                menuconfig.menuconfig(kconfiglib.Kconfig(str(config), suppress_traceback=True))
+                if not saved.is_file():
+                    return None
+                selected = kconfiglib.Kconfig(str(config), suppress_traceback=True)
+                selected.load_config(str(saved))
+                packs = [pack_id for pack_id, symbol in symbols.items() if selected.syms[symbol].tri_value == 2]
+                defaults = {action: provider for symbol, (action, provider) in available_defaults.items()
+                            if selected.syms[symbol].tri_value == 2}
+                try:
+                    destination = project_destination(selected.syms["NEW_PATH"].str_value)
+                    project_inputs(scaffold, from_registry(registry, packs, defaults))
+                except (OSError, ValueError) as error:
+                    print(f"Invalid project configuration: {error}", file=sys.stderr)
+                    if input("Return to the project menu to revise the selection? [Y/n] ").strip().lower() not in (
+                            "", "y", "yes"):
+                        return None
+                else:
+                    return destination, packs, defaults
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
 
 def shareable_origin(origin):
@@ -284,59 +309,105 @@ def sdk_lock(sdk_dir):
     return {"url": origin, "commit": commit}
 
 
-def copy_template_layer(source, destination):
-    def ignore_manifest(directory, _names):
-        return ("template.json",) if Path(directory) == source else ()
+def pack_files(scaffold, composition):
+    files = list(scaffold.rglob("*"))
+    destination_names = {item.relative_to(scaffold).as_posix().casefold() for item in files if item.is_file()}
+    reserved = {
+        "defconfig", "fly", "fly.lock", "fly.project.json", ".fly-root", ".git",
+        ".vscode/settings.json", ".vscode/tasks.json",
+        *(project_pack_path(pack.id) for pack in composition.packs),
+    }
+    destination_names.update(reserved)
+    for item in files:
+        local_path(scaffold, item.relative_to(scaffold).as_posix(), scaffold)
+    for pack in composition.packs:
+        for item in pack.data["files"]:
+            relative = item["destination"]
+            destination = Path(relative.casefold())
+            require(relative.casefold() not in destination_names and
+                    not any(ancestor.as_posix() in destination_names for ancestor in destination.parents) and
+                    not any(relative_name.startswith(destination.as_posix() + "/") for relative_name in destination_names),
+                    pack.path, f"Destination would overwrite a scaffold file or another pack: {relative}")
+            source = local_path(pack.path.parent, item["source"], pack.path)
+            require(source.is_file(), pack.path, f"Pack source file missing: {item['source']}")
+            destination_names.add(destination.as_posix())
+            yield relative, source
 
-    shutil.copytree(source, destination, dirs_exist_ok=True, ignore=ignore_manifest)
+
+def render_defconfig(composition, files):
+    template = composition.app.data["app"]
+    lines = []
+    if "board/defconfig" in files:
+        lines.extend(files["board/defconfig"].read_text(encoding="utf-8").splitlines())
+
+    support_defaults = {}
+    for pack in composition.packs:
+        for line in pack.data.get("config_defaults", []):
+            symbol = assignment(line)
+            require(symbol not in support_defaults or line == support_defaults[symbol], pack.path,
+                    f"Conflicting support defaults for {symbol}")
+            support_defaults[symbol] = line
+    lines.extend(support_defaults.values())
+    template_config = "\n".join(template["config_defaults"])
+    values = board_values(composition.board, composition.app)
+    lines.extend(DEFCONFIG_TOKEN.sub(lambda match: values[match[1]], template_config).splitlines())
+    resolved = {}
+    for line in lines:
+        symbol = assignment(line)
+        if symbol:
+            resolved[symbol] = line
+        elif line.strip() and not line.startswith("#"):
+            raise ValueError(f"Invalid board defconfig entry: {line}")
+    return "\n".join(resolved.values()) + "\n"
 
 
-def generate(sdk_dir, destination, name, board, template):
-    templates_dir = sdk_dir / "templates"
-    selected = render_defconfig(template, board)
+def project_inputs(scaffold, composition):
+    copies = dict(pack_files(scaffold, composition))
+    return copies, render_defconfig(composition, copies)
+
+
+def write_json(path, content):
+    path.write_text(json.dumps(content, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def generate(sdk_dir, destination, name, composition, selection, defaults, copies, config):
     lock = sdk_lock(sdk_dir)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    # Reserve this name before copying. Concurrent generators or an existing
-    # directory, file, or symlink cannot be overwritten.
+    # Reserve the name before writing so another generator's output stays intact.
     destination.mkdir()
     try:
-        shutil.copytree(templates_dir / "scaffold", destination, dirs_exist_ok=True)
-        board_directory = templates_dir / "boards" / board["id"]
-        for layer in (*board["overlays"], board_directory):
-            shutil.copytree(layer, destination / "board", dirs_exist_ok=True)
-        for layer in (*template.overlays, template.directory):
-            copy_template_layer(layer, destination)
+        shutil.copytree(sdk_dir / "templates/scaffold", destination, dirs_exist_ok=True)
+        for relative, source in copies.items():
+            path = destination / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, path)
+        for pack in composition.packs:
+            path = destination / project_pack_path(pack.id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(pack.path, path)
+        write_json(destination / "fly.project.json", {"schema_version": 1, "packs": selection, "defaults": defaults})
         write_vscode_scaffold(destination)
-        defconfig = destination / "defconfig"
-        board_config = destination / "board/defconfig"
-        board_defaults = board_config.read_text(encoding="utf-8").rstrip() + "\n" if board_config.is_file() else ""
-        defconfig.write_text(f'{board["arch_config"]}=y\n{board_defaults}{selected}', encoding="utf-8")
-
+        (destination / "defconfig").write_text(config, encoding="utf-8")
         cmake_file = destination / "CMakeLists.txt"
-        cmake_file.write_text(
-            cmake_file.read_text(encoding="utf-8").replace("@PROJECT_NAME@", name),
-            encoding="utf-8",
-        )
+        cmake_file.write_text(cmake_file.read_text(encoding="utf-8").replace("@PROJECT_NAME@", name), encoding="utf-8")
 
         readme = destination / "README.md"
         content = readme.read_text(encoding="utf-8")
-        startup_log_note = ""
-        if template.expected_log:
-            startup_log_note = f"The program's\nstartup output is `{template.expected_log}`. "
+        board = composition.board.data["board"]
+        outputs = composition.app.data["app"]["expected_log"]
+        examples = ", ".join(f"`{line}`" for line in outputs)
+        startup_log_note = f"When logging is enabled, expected output includes {examples}. " if examples else ""
+        selected_tools = [pack.label for pack in composition.packs if pack.kind == "tool"]
         fields = {
-            "@PROJECT_NAME@": name,
-            "@BOARD_LABEL@": board["label"],
-            "@BOARD_CORE@": board["core"],
-            "@TOOLCHAIN@": board["toolchain"],
-            "@PROBE@": board["probe"],
-            "@TEMPLATE_ID@": template.id,
-            "@STARTUP_LOG_NOTE@": startup_log_note,
+            "@PROJECT_NAME@": name, "@BOARD_LABEL@": composition.board.label, "@BOARD_CORE@": board["core"]["id"],
+            "@TOOLCHAIN@": board["toolchain"], "@PROBE@": ", ".join(selected_tools) or "none",
+            "@TEMPLATE_ID@": composition.app.id.split("/")[1], "@STARTUP_LOG_NOTE@": startup_log_note,
         }
         for token, value in fields.items():
             content = content.replace(token, value)
         readme.write_text(content, encoding="utf-8")
 
-        (destination / "fly.lock").write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
+        write_json(destination / "fly.lock", lock)
         if os.name == "nt":
             (destination / ".fly-root").write_text(f"{sdk_dir}\n", encoding="utf-8")
         else:
@@ -351,14 +422,44 @@ def generate(sdk_dir, destination, name, board, template):
     return lock
 
 
-def run(sdk_dir, templates, args):
-    sdk_dir = Path(sdk_dir).resolve()
+def run(sdk_dir, registry, args):
+    scaffold = sdk_dir / "templates/scaffold"
+    empty_selections = not any((args.name, args.board, args.template, args.pack, args.no_tools, args.default))
+    interactive = empty_selections and sys.stdin.isatty() and sys.stdout.isatty()
     try:
-        boards = load_boards(sdk_dir / "templates", templates)
-        name, board, template = select_project(boards, templates, args)
-        output = args.output.expanduser() if args.output is not None else sdk_dir.parent / "fly-project" / name
-        destination = output.parent.resolve() / output.name
-        lock = generate(sdk_dir, destination, name, board, template)
+        if interactive:
+            if find_spec("kconfiglib") is None:
+                interpreter = prepare_python(sdk_dir / ".cache/new")
+                if interpreter is not None:
+                    return subprocess.call([str(interpreter), "-B", __file__, *sys.argv[1:]])
+            picked = select_interactively(registry, scaffold, args.output)
+            if picked is None:
+                print("Project generation cancelled.")
+                return 0
+            destination, selection, defaults = picked
+            name = project_name_from_path(destination)
+        else:
+            required = {"<name>": args.name, "--board": args.board, "--template": args.template}
+            missing = [key for key, value in required.items() if value is None]
+            if missing:
+                raise ValueError(f"Missing {', '.join(missing)}. Run 'fly.sh new' in a terminal to use menuconfig.")
+            name = args.name
+            if not PROJECT_NAME.fullmatch(name) or WINDOWS_RESERVED.fullmatch(name):
+                raise ValueError("Use a portable project name with letters, digits, '-' or '_', starting with a letter or digit.")
+            output = args.output if args.output is not None else sdk_dir.parent / "fly-project" / name
+            destination = project_destination(output)
+            board, app = f"board/{args.board}", f"app/{args.template}"
+            selection = [board, app, *(args.pack or [])]
+            defaults = parse_defaults(args.default)
+        composition = from_registry(registry, selection, defaults)
+        copies, config = project_inputs(scaffold, composition)
+        if interactive:
+            print(f"Project: {name}\nDestination: {destination}\nPacks: {', '.join(selection)}")
+            print(f"Defaults: {', '.join(f'{k}={v}' for k, v in defaults.items()) or 'automatic'}")
+            if input("Create this project? [y/N] ").strip().lower() not in ("y", "yes"):
+                print("Project generation cancelled.")
+                return 0
+        lock = generate(sdk_dir, destination, name, composition, selection, defaults, copies, config)
     except FileExistsError as exc:
         print(f"Cannot create project because a path already exists: {exc.filename}", file=sys.stderr)
         return 1
@@ -370,19 +471,9 @@ def run(sdk_dir, templates, args):
         return 130
 
     print(f"Created {destination}")
-    print(f'{board["label"]} / {board["core"]} | {template.label}')
-    if lock["commit"] is None:
-        print(
-            "FLY HEAD does not support application-root CMake. "
-            "Set fly.lock to a published FLY commit before sharing this project.",
-            file=sys.stderr,
-        )
-    elif git_output(sdk_dir, "status", "--porcelain"):
-        print(
-            "fly.lock records FLY HEAD, while generated files can include local changes. "
-            "Before sharing, publish a compatible FLY commit and update fly.lock.",
-            file=sys.stderr,
-        )
+    print(f"{composition.board.label} | {composition.app.label}")
+    if lock["commit"] is None or git_output(sdk_dir, "status", "--porcelain"):
+        print("Before sharing this project, publish a compatible FLY commit and update fly.lock.", file=sys.stderr)
     if lock["url"] is None:
         print("Set a shareable FLY repository URL in fly.lock before sharing this project.", file=sys.stderr)
     print("To build, run ./build.sh (or build.bat on Windows) from the new project.")
@@ -392,13 +483,18 @@ def run(sdk_dir, templates, args):
 def main():
     sdk_dir = Path(__file__).resolve().parents[2]
     try:
-        templates = load_templates(sdk_dir / "templates")
+        registry = discover(sdk_dir / "templates")
+        if not {"board", "app"} <= {pack.kind for pack in registry.values()}:
+            raise ValueError("At least one board and one application pack are required.")
     except (ValueError, OSError) as error:
         print(f"Cannot load templates: {error}", file=sys.stderr)
         return 1
     parser = argparse.ArgumentParser(prog="fly", description=__doc__)
-    add_parser(parser.add_subparsers(dest="command", required=True), templates)
-    return run(sdk_dir, templates, parser.parse_args())
+    add_parser(parser.add_subparsers(dest="command", required=True), registry)
+    args = parser.parse_args()
+    if args.command == "packs":
+        return list_packs(registry, args, sdk_dir / "templates/scaffold")
+    return run(sdk_dir, registry, args)
 
 
 if __name__ == "__main__":

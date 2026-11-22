@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "board/host-windows-x64",
+  "kind": "board",
+  "label": "Windows host (x86-64)",
+  "files": [
+    {
+      "source": "app_main.c",
+      "destination": "board/app_main.c"
+    },
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "defconfig",
+      "destination": "board/defconfig"
+    }
+  ],
+  "provides": [
+    "cpu/x64"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "host",
+    "chip": null,
+    "core": {
+      "id": "native",
+      "architecture": "x64"
+    },
+    "toolchain": "mingw-w64-gcc",
+    "clock_hz": null,
+    "memories": [],
+    "arch": "x64-windows"
+  }
+}

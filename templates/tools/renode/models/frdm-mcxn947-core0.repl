@@ -1,0 +1,71 @@
+// FRDM-MCXN947 Core 0 startup model. Per NXP's MCXN947 Core 0 register maps
+// and board clock initialization, SCG and SPC respond immediately to setup.
+// The clock, power, flash controller, and other on-board peripherals aren't modeled.
+cpu: CPU.CortexM @ sysbus
+    cpuType: "cortex-m33"
+    nvic: nvic
+
+nvic: IRQControllers.NVIC @ sysbus 0xE000E000
+    systickFrequency: 150000000
+    -> cpu@0
+
+flash: Memory.MappedMemory @ sysbus 0x00000000
+    size: 0x200000
+
+sramx: Memory.MappedMemory @ sysbus 0x04000000
+    size: 0x18000
+
+sram: Memory.MappedMemory @ sysbus 0x20000000
+    size: 0x60000
+
+syscon_regs: Memory.MappedMemory @ sysbus 0x40000000
+    size: 0x1000
+
+gdet0_regs: Memory.MappedMemory @ sysbus 0x40024000
+    size: 0x1000
+
+gdet1_regs: Memory.MappedMemory @ sysbus 0x40025000
+    size: 0x1000
+
+itrc_regs: Memory.MappedMemory @ sysbus 0x40026000
+    size: 0x1000
+
+fmu_regs: Memory.MappedMemory @ sysbus 0x40043000
+    size: 0x1000
+
+scg: Python.PythonPeripheral @ sysbus 0x40044000
+    size: 0x1000
+    initable: true
+    script: '''
+CSR, RCCR, FIRCCSR, APLLCSR = 0x10, 0x14, 0x300, 0x500
+SCS_MASK, READY = 0x0F000000, 0x01000000
+if request.IsInit:
+    regs = {}
+elif request.IsRead:
+    request.Value = regs.get(request.Offset, 0)
+elif request.IsWrite:
+    offset = request.Offset
+    value = request.Value
+    if offset == RCCR:
+        regs[CSR] = value & SCS_MASK
+    elif offset in (FIRCCSR, APLLCSR):
+        value = (value & ~READY) | (READY if value & 0x1 else 0)
+    regs[offset] = value
+'''
+
+spc: Python.PythonPeripheral @ sysbus 0x40045000
+    size: 0x1000
+    initable: true
+    script: '''
+SRAMCTL, REQ, ACK = 0x40, 0x40000000, 0x80000000
+if request.IsInit:
+    regs = {}
+elif request.IsRead:
+    request.Value = regs.get(request.Offset, 0)
+elif request.IsWrite:
+    offset = request.Offset
+    value = request.Value
+    if offset == SRAMCTL:
+        value = (value & ~ACK) | (ACK if value & REQ else 0)
+    regs[offset] = value
+'''

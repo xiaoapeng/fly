@@ -40,7 +40,7 @@ choice PACKAGE_SCHEDULER
 
 ## 4. FreeRTOS 链接与中断
 
-`freertos-config` 是 `INTERFACE` 目标，提供配置头文件、内核头文件和编译定义。`freertos-heap`、`freertos-kernel`、`freertos-port` 和 `freertos-assert` 是通过 `package_lib_add()` 注册的 `OBJECT` 目标。应用调用 `target_link_package_lib()` 加入这些目标，并沿 `PUBLIC` 依赖获得配置。 [FreeRTOS 构建定义](../../package/scheduler/freertos/CMakeLists.txt)
+`freertos-config` 是 `INTERFACE` 目标，提供配置头文件、内核头文件和编译定义。`freertos-heap`、`freertos-kernel`、`freertos-port` 和 `freertos-assert` 是通过 `fly_register_package_library()` 注册的 `OBJECT` 目标。应用调用 `fly_link_package_libraries()` 加入这些目标，并沿 `PUBLIC` 依赖获得配置。 [FreeRTOS 构建定义](../../package/scheduler/freertos/CMakeLists.txt)
 
 FRDM-MCXN947 的裸机 nanosig 模板把板卡的 SysTick 时基加入构建。FreeRTOS 模板由 FreeRTOS port 接管 SysTick。 [裸机时基配置](../../templates/apps/baremetal-nanosig/app/configure.cmake)
 

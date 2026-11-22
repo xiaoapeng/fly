@@ -14,7 +14,7 @@
 | `package/scheduler/eventhub-os/` | eventhub-os 子包，CMake gate `if(CONFIG_PACKAGE_SCHEDULER_EVENTHUB_OS)` | 不被其他 OS 包直接引用；只对 `PACKAGE_SCHEDULER_EVENTHUB_OS` 选择响应 |
 | `package/scheduler/freertos/` | FreeRTOS kernel 包，CMake gate `if(CONFIG_PACKAGE_SCHEDULER_FREERTOS)` | 不引用具体架构名、不引用 eventhub-os；通过 4 个 target 串接 |
 | `arch/mcxn947/Kconfig` | 仅声明通用硬件事实（CPU family/core/FPU/ABI/TrustZone/NVIC） | 不出现 FreeRTOS 专用符号 |
-| `arch/Kconfig` | 加 `rsource "*/Kconfig"`（单层 glob，匹配 `arch/<vendor>/Kconfig`） | 必须在 scheduler registry 创建**之前**就位，否则 `ARCH_*` 不可见；多 family 厂商（如 stm32）由 `arch/<vendor>/Kconfig` 内自己的 `rsource "*/Kconfig"` 承接 |
+| `arch/Kconfig` | 加载板卡所引用架构目录的能力声明 | 应用先解析 `board.arch`，再载入所选架构的 Kconfig 和调度器配置，让调度器依赖能读取 `ARCH_*` |
 | `project/mcxn947/freertos-demo/` | 自包含 demo，`board/` 自建、2 任务（tick RTT + LED） | 不复用 mcxn947-demo/board/；不维护项目本地 `FreeRTOSConfig.h` |
 | `auto-generate/autoconf.h` | kconfiglib 渲染的 `#define CONFIG_<sym> <val>`，全局 include path | 模板通过 `#ifndef/#ifdef/#else` 三层桥接 user-tunable 宏 |
 
@@ -27,7 +27,7 @@ OBJECT     freertos-kernel    ←  tasks/queue/list/event_groups/stream_buffer.c
 OBJECT     freertos-port      ←  portable/GCC/ARM_CM33_NTZ/non_secure/{port.c,portasm.c}
 ```
 
-注册顺序 `heap→kernel→port`；`freertos-config` 经 PUBLIC 链被 executable 拉到（不是 PRIVATE chain）。`cmake/package.cmake` 的 `package_lib_compile_options` 用 `target_compile_options(${lib} PRIVATE ...)`，INTERFACE 上写 PRIVATE 会硬错误 → `freertos-config` 不可 `package_lib_add`。
+注册顺序 `heap→kernel→port`；`freertos-config` 经 PUBLIC 链被 executable 拉到（不是 PRIVATE chain）。`cmake/package.cmake` 的 `fly_add_package_compile_options` 用 `target_compile_options(${lib} PRIVATE ...)`，INTERFACE 上写 PRIVATE 会硬错误 → `freertos-config` 不可 `fly_register_package_library`。
 
 四个 target 现在注册于 `package/scheduler/freertos/CMakeLists.txt`；其它 OS 子包（eventhub-os 等）各自包内独立 CMake，不与此共享。
 
@@ -97,7 +97,7 @@ endif
 ## 9. 风险
 
 - 默认 `NONE` 与既有 eventhub 行为不兼容 → 必须一次性原子迁移所有 legacy 项目 + defconfig；中间状态不允许 build/flash。
-- Upstream `-Wconversion/-Wsign-conversion` → 三个 OBJECT lib 在 `package_lib_compile_options` 之后追加 `-Wno-*`，later flags win。
+- Upstream `-Wconversion/-Wsign-conversion` → 三个 OBJECT lib 在 `fly_add_package_compile_options` 之后追加 `-Wno-*`，later flags win。
 - 手工 dual-pin scheduler leg → Kconfig 归一为声明顺序靠后的 leg；不依赖跨 OS guard。
 - 网络/工具链前置 → 沙箱内 `github.com` 不可解析，需切换到有网环境或配置 `FLY_MIRROR_SOURCE_JSON_FILE`。
 

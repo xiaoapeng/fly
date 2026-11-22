@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "id": "tool/renode",
+  "kind": "tool",
+  "label": "Renode 启动验证、日志和 GDB",
+  "dependencies": [
+    "support/rtt"
+  ],
+  "files": [
+    {
+      "source": "actions.py",
+      "destination": "tool/packs/tool/renode/actions.py"
+    },
+    {
+      "source": "rtt_monitor.py",
+      "destination": "tool/packs/tool/renode/rtt_monitor.py"
+    },
+    {
+      "source": "run_log.py",
+      "destination": "tool/packs/tool/renode/run_log.py"
+    },
+    {
+      "source": "vscode-attach.json",
+      "destination": "tool/packs/tool/renode/vscode-attach.json"
+    },
+    {
+      "source": "models/frdm-mcxn947-core0.repl",
+      "destination": "tool/packs/tool/renode/models/frdm-mcxn947-core0.repl"
+    }
+  ],
+  "requires": [
+    "board/log-hook"
+  ],
+  "models": [
+    {
+      "board": "board/frdm-mcxn947-core0",
+      "apps": [
+        "app/baremetal",
+        "app/baremetal-nanosig",
+        "app/freertos-nanosig"
+      ],
+      "path": "tool/packs/tool/renode/models/frdm-mcxn947-core0.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Core 0 启动、CRC、RTT 与适用的心跳验证",
+        "时钟和 SRAM 供电握手立即完成",
+        "无 Core 1、NPU、USB、网络或完整外设"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "flash-run",
+      "provider": "renode",
+      "handler": "tool/packs/tool/renode/actions.py",
+      "inputs": [
+        "artifact"
+      ],
+      "help": "加载最终 BIN，边运行边显示和保存 RTT，可用 Ctrl+C 停止",
+      "tool_check": "tool/packs/tool/renode/actions.py"
+    },
+    {
+      "name": "log",
+      "provider": "renode",
+      "handler": "tool/packs/tool/renode/actions.py",
+      "inputs": [
+        "artifact"
+      ],
+      "help": "实时跟随选定固件的仿真 RTT，结束后可回看",
+      "tool_check": "tool/packs/tool/renode/actions.py"
+    },
+    {
+      "name": "debug",
+      "provider": "renode",
+      "handler": "tool/packs/tool/renode/actions.py",
+      "inputs": [
+        "artifact"
+      ],
+      "help": "启动暂停的仿真并用归档 ELF 调试",
+      "tool_check": "tool/packs/tool/renode/actions.py",
+      "debug_profiles": [
+        {
+          "id": "archive",
+          "input": "artifact",
+          "mode": "start",
+          "server": "owned",
+          "after_connect": [
+            "monitor start"
+          ],
+          "vscode_fragment": "tool/packs/tool/renode/vscode-attach.json"
+        }
+      ]
+    }
+  ]
+}

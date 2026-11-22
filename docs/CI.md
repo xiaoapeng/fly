@@ -21,9 +21,9 @@ CI 在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应
 | `host-macos` | macOS arm64 | 用 Apple Clang 构建生成的 macOS 应用 |
 | `host-windows` | Windows x64 | 用 MinGW-w64 构建生成的 Windows 应用，另测批处理入口、SDK 锁定安装和 NTFS 目录链接 |
 
-ARM 覆盖 MCXN947、STM32F0/F1/F4/H7、GD32F10x 和 GD32E23x。CH58x 和 GD32VF103 的 RISC-V 交叉编译暂不纳入 CI。配置检查会对照 `arch/Kconfig` 确认每个受测架构都有裸机工程。
+ARM 覆盖 MCXN947、STM32F0/F1/F4/H7、GD32F10x 和 GD32E23x。CH58x 和 GD32VF103 的 RISC-V 交叉编译暂不纳入 CI。配置检查会根据板卡和架构清单验证板卡绑定、工具链选择和 APP 所需的 Kconfig 配置。
 
-FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证应用根目录 `image/` 下的固件产物和 `image/CURRENT/` 链接，并确认 `distclean` 后仍可访问固件包。实板烧录与 RTT 运行需要单独验证。
+FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证应用根目录 `image/` 下的固件产物和 各目标与构建类型的 `CURRENT.json`，并确认 `distclean` 后仍可访问固件包。实板烧录与 RTT 运行需要单独验证。
 
 ## 分支保护（必需检查 + rebase 合并）
 
@@ -80,7 +80,7 @@ python3 tool/test/check_standalone_projects.py --matrix host
 python3 tool/test/check_standalone_projects.py
 ```
 
-新增板卡时，在 `templates/boards/` 中登记板卡和支持的模板。检查从 `board.json` 发现受测配置，并为各受测架构验证裸机模板覆盖。
+新增板卡时，在 `templates/boards/` 中登记板卡包。检查用生成器的包解析器发现板卡和 APP 的兼容组合，并从架构声明读取宿主平台，并为各受测架构验证裸机模板覆盖。
 
 - [回归脚本说明](../tool/test/README.md)
 - [Kconfig 规则](reference/kconfig-rules.md)

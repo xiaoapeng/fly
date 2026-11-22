@@ -6,7 +6,7 @@ include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching eventhub_os...")
 
-fetch_git_project(
+fly_fetch_git_project(
     eventhub
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -14,8 +14,8 @@ fetch_git_project(
     GIT_TAG        main
 )
 
-fetch_git_project_add(eventhub)
-package_lib_add(eventhub)
-package_lib_add(eventhub-components)
+fly_add_git_project_subdirectory(eventhub)
+fly_register_package_library(eventhub)
+fly_register_package_library(eventhub-components)
 
 endif()

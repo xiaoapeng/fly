@@ -1,6 +1,6 @@
 # package/scheduler/freertos — FreeRTOS-Kernel v1 integration
 
-This sub-package (living under `package/scheduler/freertos/`) fetches [FreeRTOS-Kernel](https://github.com/FreeRTOS/FreeRTOS-Kernel) into `dl/freertos-kernel-src/`, builds the curated `V11.1.0` tag by default, and exposes a 4-target split that links into the application via `target_link_package_lib()`. It is gated by `if(CONFIG_PACKAGE_SCHEDULER_FREERTOS)` in its own `CMakeLists.txt` and is only loaded by the scheduler choice at the Kconfig layer.
+This sub-package (living under `package/scheduler/freertos/`) fetches [FreeRTOS-Kernel](https://github.com/FreeRTOS/FreeRTOS-Kernel) into `dl/freertos-kernel-src/`, builds the curated `V11.1.0` tag by default, and exposes a 4-target split that links into the application via `fly_link_package_libraries()`. It is gated by `if(CONFIG_PACKAGE_SCHEDULER_FREERTOS)` in its own `CMakeLists.txt` and is only loaded by the scheduler choice at the Kconfig layer.
 
 ## Package boundary
 
@@ -16,7 +16,7 @@ It depends only on the generic fact `ARCH_CPU_FAMILY_CORTEX_M`. Generic architec
 
 | target | type | role |
 |---|---|---|
-| `freertos-config` | INTERFACE | include directories and global defines (`_ARMV8M_LM_PRESENT`, `_ARMV8M_MAINLINE_PRESENT`); exposed through the public link chain rather than registered with `package_lib_add` |
+| `freertos-config` | INTERFACE | include directories and global defines (`_ARMV8M_LM_PRESENT`, `_ARMV8M_MAINLINE_PRESENT`) exposed through the public link chain |
 | `freertos-heap` | OBJECT | `portable/MemMang/<heap>.c` (heap_4 default) |
 | `freertos-kernel` | OBJECT | `tasks.c` `queue.c` `list.c` `event_groups.c` `stream_buffer.c` (+ `timers.c` if `PACKAGE_FREERTOS_USE_TIMERS=y`) |
 | `freertos-port` | OBJECT | `portable/GCC/ARM_CM33_NTZ/non_secure/{port.c,portasm.c}` |
@@ -25,7 +25,7 @@ PUBLIC link chain: `freertos-port → freertos-kernel → freertos-heap → free
 
 ## Why `freertos-config` is not registered
 
-`cmake/package.cmake:9-13` (`package_lib_compile_options`) applies `target_compile_options(<lib> PRIVATE ...)` to every lib in `FLY_ALL_PACKAGE_LIB_LIST`. CMake treats `PRIVATE` options on an INTERFACE target as a hard configure error. Since `freertos-config` is INTERFACE, we expose it through the PUBLIC chain instead of `package_lib_add()`-ing it. It carries only include dirs + definitions; the strict global flag pass is therefore safely skipped for this target.
+`fly_add_package_compile_options()` applies `target_compile_options(<lib> PRIVATE ...)` to every library registered with `fly_register_package_library()`. CMake treats `PRIVATE` options on an INTERFACE target as a configuration error. `freertos-config` carries its include directories and definitions through the PUBLIC link chain. [Package helpers](../../../cmake/package.cmake)
 
 ## Configuration bridge
 
@@ -90,4 +90,4 @@ Users do **not** select a port. Architecture Kconfig only declares generic hardw
 
 ## Version selection
 
-`PACKAGE_FREERTOS_VERSION` → `PACKAGE_FREERTOS_GIT_TAG` → `fetch_git_project(GIT_TAG)`. Default tag is `V11.1.0`. Switch with `./build.sh package_update freertos-kernel` (forces re-fetch) or `./build.sh menuconfig` + rebuild (re-pulls the new tag). Re-verify the chosen tag exists with `git ls-remote --tags https://github.com/FreeRTOS/FreeRTOS-Kernel.git` before pinning.
+`PACKAGE_FREERTOS_VERSION` → `PACKAGE_FREERTOS_GIT_TAG` → `fly_fetch_git_project(GIT_TAG)`. Default tag is `V11.1.0`. Switch with `./build.sh package_update freertos-kernel` (forces re-fetch) or `./build.sh menuconfig` + rebuild (re-pulls the new tag). Re-verify the chosen tag exists with `git ls-remote --tags https://github.com/FreeRTOS/FreeRTOS-Kernel.git` before pinning.

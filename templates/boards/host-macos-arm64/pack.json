@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "board/host-macos-arm64",
+  "kind": "board",
+  "label": "macOS host (Arm64)",
+  "files": [
+    {
+      "source": "app_main.c",
+      "destination": "board/app_main.c"
+    },
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "defconfig",
+      "destination": "board/defconfig"
+    }
+  ],
+  "provides": [
+    "cpu/arm64"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "host",
+    "chip": null,
+    "core": {
+      "id": "native",
+      "architecture": "arm64"
+    },
+    "toolchain": "apple-clang",
+    "clock_hz": null,
+    "memories": [],
+    "arch": "arm64-macos"
+  }
+}

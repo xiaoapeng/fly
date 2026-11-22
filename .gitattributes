@@ -1,1 +1,1 @@
-tool/jlink/** filter=lfs diff=lfs merge=lfs -text
+templates/tools/jlink/assets/** filter=lfs diff=lfs merge=lfs -text

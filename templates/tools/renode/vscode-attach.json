@@ -1,0 +1,10 @@
+{
+  "type": "cortex-debug",
+  "request": "attach",
+  "servertype": "external",
+  "executable": "@FLY_EXECUTABLE@",
+  "gdbPath": "@FLY_GDB@",
+  "gdbTarget": "@FLY_ENDPOINT@",
+  "postStartSessionCommands": "@FLY_AFTER_CONNECT@",
+  "loadFiles": []
+}

@@ -6,7 +6,7 @@ include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching ehshell...")
 
-function(fnv1a_64_hash_cmake input_str output_var)
+function(_fly_ehshell_fnv1a_64_hash input_str output_var)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     execute_process(
@@ -32,7 +32,7 @@ function(fnv1a_64_hash_cmake input_str output_var)
     set(${output_var} "${clean_hex}ULL" PARENT_SCOPE)
 endfunction()
 
-fetch_git_project(
+fly_fetch_git_project(
     ehshell
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -40,8 +40,8 @@ fetch_git_project(
     GIT_TAG        master
 )
 
-fetch_git_project_add(ehshell)
-package_lib_add(ehshell)
+fly_add_git_project_subdirectory(ehshell)
+fly_register_package_library(ehshell)
 
 # Kconfig knob must reach C: upstream defaults EHSHELL_CONFIG_ARGC_MAX to 8 and
 # ehip-tools' route command static-asserts >= 9, so the value has to be
@@ -49,11 +49,11 @@ package_lib_add(ehshell)
 target_compile_definitions(ehshell PUBLIC
     -DEHSHELL_CONFIG_ARGC_MAX=${CONFIG_PACKAGE_EHSHELL_ARGC_MAX})
 
-fnv1a_64_hash_cmake("${CONFIG_PACKAGE_EHSHELL_PASSWORD}" FINAL_HASH)
+_fly_ehshell_fnv1a_64_hash("${CONFIG_PACKAGE_EHSHELL_PASSWORD}" FINAL_HASH)
 target_compile_definitions(ehshell PRIVATE -DCONFIG_PACKAGE_EHSHELL_PASSWORD_HASH=${FINAL_HASH})
 
 if(NOT CONFIG_PACKAGE_EHSHELL_BUILTIN_NONE)
-    package_lib_add(ehshell_builtin)
+    fly_register_package_library(ehshell_builtin)
 endif()
 
 endif()

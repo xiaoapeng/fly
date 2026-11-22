@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "support/nanosig-app",
+  "kind": "support",
+  "label": "Shared nanosig application runtime",
+  "files": [
+    {
+      "source": "app/biz/heartbeat.c",
+      "destination": "app/biz/heartbeat.c"
+    },
+    {
+      "source": "app/include/biz/heartbeat.h",
+      "destination": "app/include/biz/heartbeat.h"
+    },
+    {
+      "source": "app/include/runtime.h",
+      "destination": "app/include/runtime.h"
+    },
+    {
+      "source": "app/runtime.c",
+      "destination": "app/runtime.c"
+    }
+  ]
+}
