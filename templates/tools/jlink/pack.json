@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "id": "tool/jlink",
+  "kind": "tool",
+  "label": "J-Link 实板烧写、GDB 调试、RTT 日志和离线导出",
+  "dependencies": [
+    "support/rtt"
+  ],
+  "files": [
+    {
+      "source": "flash_actions.py",
+      "destination": "tool/packs/tool/jlink/flash_actions.py"
+    },
+    {
+      "source": "debug_actions.py",
+      "destination": "tool/packs/tool/jlink/debug_actions.py"
+    },
+    {
+      "source": "vscode-attach.json",
+      "destination": "tool/packs/tool/jlink/vscode-attach.json"
+    },
+    {
+      "source": "jlink_support.py",
+      "destination": "tool/packs/tool/jlink/jlink_support.py"
+    }
+  ],
+  "compatibility": {
+    "board_data": {
+      "board/frdm-mcxn947-core0": {
+        "device": "MCXN947_M33_0"
+      },
+      "board/gd32e230c8": {
+        "device": "GD32E230C8T6"
+      },
+      "board/gd32f103rc": {
+        "device": "GD32F103RCT6"
+      },
+      "board/stm32f030x8": {
+        "device": "STM32F030C8"
+      },
+      "board/stm32f103x6": {
+        "device": "STM32F103C6"
+      },
+      "board/stm32f401cb": {
+        "device": "STM32F401CB"
+      },
+      "board/stm32h750vb": {
+        "device": "STM32H750VB"
+      }
+    }
+  },
+  "settings": {
+    "speed": 4000,
+    "interface": "SWD",
+    "scan_chain": "-1,-1"
+  },
+  "actions": [
+    {
+      "name": "flash-run",
+      "provider": "jlink",
+      "handler": "tool/packs/tool/jlink/flash_actions.py",
+      "inputs": [
+        "artifact"
+      ],
+      "help": "烧写已打包的最终 BIN，复位并启动实板",
+      "tool_check": "tool/packs/tool/jlink/flash_actions.py"
+    },
+    {
+      "name": "export",
+      "provider": "jlink",
+      "handler": "tool/packs/tool/jlink/flash_actions.py",
+      "inputs": [
+        "artifact"
+      ],
+      "help": "从同一固件归档导出 J-Link 离线 ZIP",
+      "tool_check": "tool/packs/tool/jlink/flash_actions.py"
+    },
+    {
+      "name": "log",
+      "provider": "jlink",
+      "handler": "tool/packs/tool/jlink/debug_actions.py",
+      "inputs": [
+        "none"
+      ],
+      "help": "实时读取 J-Link RTT，不构建或烧录",
+      "tool_check": "tool/packs/tool/jlink/debug_actions.py"
+    },
+    {
+      "name": "debug",
+      "provider": "jlink",
+      "handler": "tool/packs/tool/jlink/debug_actions.py",
+      "inputs": [
+        "build",
+        "artifact"
+      ],
+      "help": "附加 J-Link GDB，按选中的调试配置确定符号来源",
+      "tool_check": "tool/packs/tool/jlink/debug_actions.py",
+      "debug_profiles": [
+        {
+          "id": "attach",
+          "input": "build",
+          "mode": "attach",
+          "server": "owned",
+          "after_connect": [],
+          "vscode_fragment": "tool/packs/tool/jlink/vscode-attach.json"
+        },
+        {
+          "id": "external",
+          "input": "build",
+          "mode": "attach",
+          "server": "external",
+          "after_connect": [],
+          "vscode_fragment": "tool/packs/tool/jlink/vscode-attach.json"
+        },
+        {
+          "id": "flash-and-attach",
+          "input": "artifact",
+          "mode": "attach",
+          "server": "owned",
+          "after_connect": [],
+          "pre_action": {
+            "action": "flash-run",
+            "provider": "jlink"
+          },
+          "vscode_fragment": "tool/packs/tool/jlink/vscode-attach.json"
+        }
+      ]
+    }
+  ]
+}

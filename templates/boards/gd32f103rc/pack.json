@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "board/gd32f103rc",
+  "kind": "board",
+  "label": "GD32F103RCT6 (8 MHz HXTAL)",
+  "files": [
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "flash.ld",
+      "destination": "board/flash.ld"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m3",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "GD32F103RCT6",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m3"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 108000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 134217728,
+        "size": 262144
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 49152
+      }
+    ],
+    "arch": "gd32f10x"
+  }
+}

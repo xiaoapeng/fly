@@ -5,7 +5,7 @@ if(NOT GIT_EXECUTABLE)
     message(FATAL_ERROR "Git not found")
 endif()
 
-message(STATUS "[fetch_git_project] Found Git: ${GIT_EXECUTABLE}")
+message(STATUS "[fly_fetch_git_project] Found Git: ${GIT_EXECUTABLE}")
 
 
 # Generic Git-package patch mechanism (consensus plan Option A):
@@ -15,12 +15,12 @@ message(STATUS "[fetch_git_project] Found Git: ${GIT_EXECUTABLE}")
 # (HEAD sha + per-patch sha256) stored next to the source tree so it
 # survives distclean. Any mismatch: forward-check first, then reverse-check
 # (already applied => skip), else FATAL_ERROR (advise re-clone).
-function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
+function(_fly_apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
     set(SOURCE_DIR "${FLY_SOURCE_DL_BASE_DIR}/${GIT_PROJECT_NAME}-src")
     set(STATE_FILE "${SOURCE_DIR}/.fly-patches-state")
 
     if(NOT EXISTS "${SOURCE_DIR}/.git")
-        message(FATAL_ERROR "[apply_git_project_patches] ${SOURCE_DIR} has no .git; fetch first")
+        message(FATAL_ERROR "[_fly_apply_git_project_patches] ${SOURCE_DIR} has no .git; fetch first")
     endif()
     if(NOT EXISTS "${PATCH_DIR}")
         # No patches dir = nothing to apply; treat as clean.
@@ -41,7 +41,7 @@ function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
         ERROR_QUIET
     )
     if(NOT HEAD_RESULT EQUAL 0)
-        message(FATAL_ERROR "[apply_git_project_patches] cannot resolve HEAD in ${SOURCE_DIR}")
+        message(FATAL_ERROR "[_fly_apply_git_project_patches] cannot resolve HEAD in ${SOURCE_DIR}")
     endif()
 
     # Recompute expected state: HEAD sha + sha256 of each patch in order.
@@ -56,7 +56,7 @@ function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
     if(EXISTS "${STATE_FILE}")
         file(READ "${STATE_FILE}" RECORDED_STATE)
         if(RECORDED_STATE STREQUAL EXPECTED_STATE)
-            message(STATUS "[apply_git_project_patches] ${GIT_PROJECT_NAME}: patches already applied at ${HEAD_SHA}")
+            message(STATUS "[_fly_apply_git_project_patches] ${GIT_PROJECT_NAME}: patches already applied at ${HEAD_SHA}")
             return()
         endif()
         # Marker differs: HEAD changed or patch content changed. Verify by
@@ -81,9 +81,9 @@ function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
                     ERROR_VARIABLE APPLY_ERR
                 )
                 if(NOT APPLY_RESULT EQUAL 0)
-                    message(FATAL_ERROR "[apply_git_project_patches] ${GIT_PROJECT_NAME}: failed to apply ${PATCH_NAME}: ${APPLY_ERR}")
+                    message(FATAL_ERROR "[_fly_apply_git_project_patches] ${GIT_PROJECT_NAME}: failed to apply ${PATCH_NAME}: ${APPLY_ERR}")
                 endif()
-                message(STATUS "[apply_git_project_patches] ${GIT_PROJECT_NAME}: applied ${PATCH_NAME}")
+                message(STATUS "[_fly_apply_git_project_patches] ${GIT_PROJECT_NAME}: applied ${PATCH_NAME}")
             else()
                 # Forward fails: is it already applied?
                 execute_process(
@@ -92,10 +92,10 @@ function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
                     ERROR_QUIET OUTPUT_QUIET
                 )
                 if(REV_CHECK EQUAL 0)
-                    message(STATUS "[apply_git_project_patches] ${GIT_PROJECT_NAME}: ${PATCH_NAME} already applied; skipping")
+                    message(STATUS "[_fly_apply_git_project_patches] ${GIT_PROJECT_NAME}: ${PATCH_NAME} already applied; skipping")
                 else()
                     message(FATAL_ERROR
-                        "[apply_git_project_patches] ${GIT_PROJECT_NAME}: patch ${PATCH_NAME} no longer matches HEAD ${HEAD_SHA}. "
+                        "[_fly_apply_git_project_patches] ${GIT_PROJECT_NAME}: patch ${PATCH_NAME} no longer matches HEAD ${HEAD_SHA}. "
                         "The pinned source tree changed. Re-clone: rm -rf ${SOURCE_DIR}")
                 endif()
             endif()
@@ -105,7 +105,7 @@ function(apply_git_project_patches GIT_PROJECT_NAME PATCH_DIR)
     endif()
 endfunction()
 
-function(fetch_git_project GIT_PROJECT_NAME)
+function(fly_fetch_git_project GIT_PROJECT_NAME)
     cmake_parse_arguments(
         CUSTOM_FUNC
         ""
@@ -168,7 +168,7 @@ function(fetch_git_project GIT_PROJECT_NAME)
     # Configure-time patch application (runs on every fresh configure so a
     # re-synced dl/ tree is re-patched before any source file is compiled).
     if(CUSTOM_FUNC_PATCH_DIR)
-        apply_git_project_patches(${GIT_PROJECT_NAME} "${CUSTOM_FUNC_PATCH_DIR}")
+        _fly_apply_git_project_patches(${GIT_PROJECT_NAME} "${CUSTOM_FUNC_PATCH_DIR}")
     endif()
 
     if(NOT CUSTOM_FUNC_AUTO_UPDATE)
@@ -208,14 +208,14 @@ function(fetch_git_project GIT_PROJECT_NAME)
 
 endfunction()
 
-function(fetch_git_project_add GIT_PROJECT_NAME)
+function(fly_add_git_project_subdirectory GIT_PROJECT_NAME)
     set(SOURCE_DL_DIR "${FLY_SOURCE_DL_BASE_DIR}/${GIT_PROJECT_NAME}-src")
     set(BINARY_DL_DIR "${CMAKE_BINARY_DIR}/package_build/${GIT_PROJECT_NAME}")
     # 添加项目到本工程
     if(EXISTS "${SOURCE_DL_DIR}/CMakeLists.txt")
-        message(STATUS "[fetch_git_project_add] Adding ${GIT_PROJECT_NAME} to this project...")
+        message(STATUS "[fly_add_git_project_subdirectory] Adding ${GIT_PROJECT_NAME} to this project...")
         add_subdirectory(${SOURCE_DL_DIR} ${BINARY_DL_DIR})
     else()
-        message(WARNING "[fetch_git_project_add] ${GIT_PROJECT_NAME} does not have a CMakeLists.txt")
+        message(WARNING "[fly_add_git_project_subdirectory] ${GIT_PROJECT_NAME} does not have a CMakeLists.txt")
     endif()
 endfunction()

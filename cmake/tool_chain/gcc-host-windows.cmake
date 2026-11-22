@@ -1,6 +1,6 @@
 set(CMAKE_SYSTEM_NAME Windows)
 
-find_gcc_toolchain("")
+_fly_find_gcc_toolchain("")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

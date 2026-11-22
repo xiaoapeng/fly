@@ -12,21 +12,21 @@ FLY 是一套嵌入式固件构建、打包、烧录和调试工具。固件使�
 
 ## 目录结构
 
-- `arch/<vendor>/<family>/` 提供芯片支持，包括厂商 SDK、HAL、启动代码和芯片级的默认链接脚本。各架构通过 `gcc-config.cmake` 配置 CPU 选项和工具链，并提供 `Kconfig`。覆盖 `arm64`、`ch58x`、`gd32`、`mcxn947`、`stm32` 和 `x64`（Linux 和 Windows 宿主）。
-- `templates/` 包含工程骨架、应用模板和板卡支持。生成的应用是独立仓库，默认位于 SDK 同级的 `fly-project/` 下。
-- `package/<name>/` 存放可复用组件。`eventhub-os`、`ehip` 等 Git 依赖通过 `fetch_git_project()` 克隆到应用的 `build/deps/<name>-src/`。
-- `cmake/` 存放工具链文件、组件包辅助函数（`package_lib_add`、`target_link_package_lib`）、打包模块（`jlink-make-image.cmake`、`openocd-make-image.cmake`）及 VS Code 调试配置的生成逻辑。
-- `tool/python/` 中的 `build.py` 调度构建，`mk_jlink_img.py` 和 `mk_openocd_img.py` 打包固件，`fetch_git_project.py` 按镜像设置拉取 Git 仓库，`mk_mcu_firmware_factory_data.py` 生成固件尾部的出厂数据。
+- `arch/<vendor>/<family>/` 提供芯片支持，包括厂商 SDK、HAL、启动代码和芯片级的默认链接脚本。各架构在自己的 `arch.json` 声明 ID 和配置标识，由 `gcc-config.cmake` 配置工具链，按需由 `Kconfig` 声明硬件能力。板卡清单引用架构 ID。
+- `templates/` 包含工程骨架、板卡包、APP 包和工具包。共享实现按板卡、APP、日志职责归位，由包清单声明依赖。生成的应用是独立仓库，默认位于 SDK 同级的 `fly-project/` 下。
+- `package/<name>/` 存放可复用组件。`eventhub-os`、`ehip` 等 Git 依赖通过 `fly_fetch_git_project()` 克隆到应用的 `build/deps/<name>-src/`。
+- `cmake/` 存放工具链文件、组件包辅助函数（`fly_register_package_library`、`fly_link_package_libraries`）和通用固件打包目标。
+- `tool/python/` 中的 `build.py` 调度构建，`project_actions.py` 调度包注册的动作，`firmware_payload.py` 生成并校验公共固件包，`fetch_git_project.py` 按镜像设置拉取 Git 仓库。
 - `tool/test/` 下的 `check_standalone_projects.py` 验证工程配置、ARM 和宿主构建、固件打包及 SDK 安装。
 - `.github/workflows/` 下的 `ci.yml` 负责 PR 检查，`nightly.yml` 负责夜间 Release 构建和打包冒烟测试。PR 描述模板位于 `.github/pull_request_template.md`。
 - `resource/git.mirror-source.json` 用于初始化本地 `.git.mirror-source.json`。本地文件由 Git 忽略，可配置镜像以加快在中国大陆拉取依赖。
-- `tool/jlink/**` 根据 `.gitattributes` 由 Git LFS 管理。
+- `templates/tools/jlink/assets/` 的随附二进制由 Git LFS 管理。工具包从 SDK 读取资源，应用生成时只复制清单中列出的文件。
 
 ## 职责归属与依赖方向
 
-- SDK 提供芯片支持、可复用组件以及构建、调试和打包工具。板级初始化、探针和 RTT 设置、日志适配和默认 Flash/RAM 布局归板卡模板，生成时复制到应用的 `board/`。复用同一份实现的板卡在各自清单中声明共享目录。
+- SDK 提供芯片支持、可复用组件以及构建、调试和打包工具。板级初始化和默认 Flash/RAM 布局归板卡包。每个工具用一个模板包声明自己的烧写、运行、日志、调试和导出动作。探针参数、仿真模型和 GDB 服务归各工具包，目标侧日志由工具依赖的日志包提供。
 - 通用 Python 和 CMake 代码通过清单字段、目标属性和显式参数读取差异。模板显示名、组件选择、必需的板卡数据和启动文案由清单或模板配置声明。板卡专用地址和组件专用的编译选项例外由对应板卡或组件维护。使用现有能力的新板卡或模板只需提供自身的数据和源码。
-- 应用根目录声明固件目标和打包分区清单。`app/CMakeLists.txt` 登记应用源码和头文件搜索路径。板级 CMake 选择芯片目标及其链接依赖。应用的 `tool/cmake/` 封装根据板卡数据和工具是否可用，决定是否添加打包、烧录和调试目标。 [模板说明](templates/README.md)
+- 应用根目录声明固件目标和打包分区清单。`app/CMakeLists.txt` 登记应用源码。板级 CMake 选择芯片目标及其链接依赖。`fly.project.json` 记录所选包和动作默认提供者，公共调度器按包清单解析执行。 [模板说明](templates/README.md)
 - 命令行和直接运行 CMake 时共用 SDK 选择和版本校验逻辑。用户显式指定的 SDK 路径与解析后的实际路径分开处理。分享应用时，把 SDK 锁定到配置的远端上可获取的提交，并在未设置本地 SDK 覆盖的干净克隆中验证安装、构建及适用的打包流程。
 
 ## 构建脚本子命令
@@ -40,25 +40,27 @@ FLY 是一套嵌入式固件构建、打包、烧录和调试工具。固件使�
 | `loadconfig <file>` | 加载配置并重新生成 `build/config/` | `./build.sh loadconfig defconfig` |
 | `saveconfig [name]` | 将当前配置保存为应用的最小 defconfig | `./build.sh saveconfig` |
 | `build [type] [-j N]` | 配置并编译。`-j` 也可直接传给构建脚本，例如 `./build.sh -j 44` | `./build.sh build Debug -j 8` |
+| `capabilities [--json]` | 总览已启用的包、动作及工具状态 | `./build.sh capabilities` |
 | `vscode [type]` | 配置 CMake 并生成本地的 VS Code 和 clangd 设置 | `./build.sh vscode Debug` |
 | `clean` | 执行 `cmake --build build/cmake --target clean`，保留已生成的配置 | `./build.sh clean` |
 | `distclean` | 删除应用的 `build/`，保留 `image/` 下的固件包 | `./build.sh distclean` |
-| `make_img [target]` | 生成固件包，需要先有 `build/` | `./build.sh make_img` |
-| `flash [target]` | 通过 J-Link 或 OpenOCD 烧录固件 | `./build.sh flash` |
-| `rttlog` | 打包后，通过 `image/CURRENT/` 下的脚本实时读取 SEGGER RTT 日志 | `./build.sh rttlog` |
+| `make_img [target] [--via PROVIDER]` | 生成通用固件包，可另导出专用 ZIP | `./build.sh make_img` |
+| `flash-run [target] [--via PROVIDER]` | 通过选定包加载并启动已发布的固件 | `./build.sh flash-run --via jlink` |
+| `log [target] [--via PROVIDER]` | 读取实时或已保存的日志 | `./build.sh log --via renode` |
+| `debug [target] [--via PROVIDER]` | 启动 GDB 调试会话 | `./build.sh debug --list` |
 | `package_update [name] [-l]` | 执行 `build/cmake/` 中的组件更新目标。`-l` 列出组件包 | `./build.sh package_update -l` |
 | `package_mirror -l/-d/-e/-u` | 列出、禁用、启用镜像或重新测速 | `./build.sh package_mirror -l` |
 | `add_path_env <path>` | 将工具链或调试器的 `bin/` 目录加到 FLY 的 PATH 最前面，记录到由 Git 忽略的 `.PATH.env.json` | `./build.sh add_path_env /opt/gcc-arm/bin` |
 
 ## 固件打包与烧录目标
 
-应用根目录的 `CMakeLists.txt` 声明固件、调试和打包目标。`app/CMakeLists.txt` 登记应用源码和头文件搜索路径。通过 `add_jlink_image(<name> ...)` 或 `add_openocd_image(<name> ...)` 声明的打包目标会生成 CMake 目标 `<name>_flash` 和 `<name>_make_img`。默认名称为 `default`。使用其他名称时，将它传给 `flash` 或 `make_img`。
+应用根目录通过 `fly_add_firmware_image()` 声明通用打包分区，生成 `<name>_make_img` 目标。默认名称为 `default`。`flash-run` 让烧写和仿真提供者根据通用 `manifest.json` 加载最终 BIN 并启动。需要专用 ZIP 的工具包在自己的 `pack.json` 中注册 `export`，复用同一份固件和配套符号。
 
 ## 组件包
 
-- 各 `package/<name>/CMakeLists.txt` 通过 `package_lib_add(<target>)` 注册自己的库目标。该函数定义在 `cmake/package.cmake`。
+- 各 `package/<name>/CMakeLists.txt` 通过 `fly_register_package_library(<target>)` 注册自己的库目标。该函数定义在 `cmake/package.cmake`。
 - 用 `if(CONFIG_PACKAGE_<NAME>)` 控制是否注册组件。在 `menuconfig` 中关闭组件后，它就不会参与构建。
-- 工程的可执行目标调用 `target_link_package_lib(<exec>)`，链接所有已启用的组件。需要时可为各组件单独设置 `target_compile_definitions` 和 `target_include_directories`。
+- 工程的可执行目标调用 `fly_link_package_libraries(<exec>)`，链接所有已启用的组件。需要时可为各组件单独设置 `target_compile_definitions` 和 `target_include_directories`。
 
 ## 构建环境与工具链
 
@@ -72,8 +74,9 @@ FLY 是一套嵌入式固件构建、打包、烧录和调试工具。固件使�
 ## 编码约定
 
 - C 的函数名和变量名使用 `snake_case`，宏使用 `UPPERCASE`。生成应用的固件目标名为 `fly_app`。
-- 先链接板卡选定的架构目标及其依赖库，再调用 `target_link_package_lib(<exec>)`。芯片专用库及其链接顺序由板级配置管理。
-- 工程骨架为可执行目标设置告警选项，并用 `package_lib_compile_options()` 将选项传给组件包。需要例外的组件自行声明 `FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS` 目标属性。
+- FLY 对外提供的 CMake 函数采用 `fly_<动词>_<对象>`。SDK 私有辅助函数以 `_fly_` 开头，应用自己的 CMake 封装以 `app_` 开头。
+- 先链接板卡选定的架构目标及其依赖库，再调用 `fly_link_package_libraries(<exec>)`。芯片专用库及其链接顺序由板级配置管理。
+- 工程骨架为可执行目标设置告警选项，并用 `fly_add_package_compile_options()` 将选项传给组件包。需要例外的组件自行声明 `FLY_EXCLUDED_PACKAGE_COMPILE_OPTIONS` 目标属性。
 
 ## 审阅与验证
 
@@ -89,7 +92,7 @@ FLY 是一套嵌入式固件构建、打包、烧录和调试工具。固件使�
 2. 必需检查（`kconfig`、`arm-build`、`host-linux`、`host-macos`、`host-windows`）全部通过后才合并。分支保护启用 `strict` 且特性分支落后时，先同步 `master` 再重跑。这五项曾因上游 `eventhub` 的 Apple Clang C11 原子操作问题及 `ehshell` 在 MinGW 缺少 `bzero`、`isprint` 而暂缓，现已通过 `96916a7`、`a1c1bcf` 修复并全部设为必需。
 3. 统一用变基方式合并（`gh pr merge --rebase`）。合并后删除特性分支，切回本地 `master` 并用 `git pull --ff-only` 同步远端。如果切换会覆盖未提交的改动，或本地 `master` 已分叉，保留现场并报告。禁止自动丢弃改动或重置分支。
 4. 本地先跑 `python3 tool/test/check_standalone_projects.py --matrix config`。涉及 ARM 或宿主工程时，用同一脚本运行 `--matrix arm` 或 `--matrix host`。
-5. 新增模板或板卡时，在板卡清单中声明已验证的模板组合，供生成器和持续集成使用。
+5. 新增模板或板卡时，在本包清单中声明所需或提供的能力。生成器和 CI 使用相同的兼容性解析。
 6. 更改检查任务名称时，同时更新分支保护中的 `contexts`。 [分支保护和合并配置](docs/CI.md)
 
 ## 提交与 PR 说明

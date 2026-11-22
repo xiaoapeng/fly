@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "board/gd32e230c8",
+  "kind": "board",
+  "label": "GD32E230C8T6 (8 MHz HXTAL)",
+  "files": [
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "flash.ld",
+      "destination": "board/flash.ld"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m23",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "GD32E230C8T6",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m23"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 72000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 134217728,
+        "size": 65536
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 8192
+      }
+    ],
+    "arch": "gd32e23x"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "board/stm32f103x6",
+  "kind": "board",
+  "label": "STM32F103C6",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "include/stm32f1xx_hal_conf.h",
+      "destination": "board/include/stm32f1xx_hal_conf.h"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m3",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "dependencies": [
+    "support/stm32-board"
+  ],
+  "board": {
+    "target_kind": "mcu",
+    "chip": "STM32F103C6",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m3"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 8000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 134217728,
+        "size": 32768
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 10240
+      }
+    ],
+    "arch": "stm32f1xx"
+  }
+}

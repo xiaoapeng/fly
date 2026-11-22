@@ -7,7 +7,7 @@ include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching ehip...")
 
-fetch_git_project(
+fly_fetch_git_project(
     ehip
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -15,7 +15,7 @@ fetch_git_project(
     GIT_TAG        master
 )
 
-fetch_git_project_add(ehip)
-package_lib_add(ehip)
+fly_add_git_project_subdirectory(ehip)
+fly_register_package_library(ehip)
 
 endif()

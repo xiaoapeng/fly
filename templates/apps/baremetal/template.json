@@ -1,6 +1,0 @@
-{
-  "label": "Bare metal",
-  "expected_log": "boot ok",
-  "expected_config": ["CONFIG_PACKAGE_SCHEDULER_NONE=y"],
-  "required_files": ["app/main.c", "app/biz/.gitkeep", "app/include/biz/.gitkeep"]
-}

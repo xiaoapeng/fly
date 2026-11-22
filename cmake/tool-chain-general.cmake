@@ -1,5 +1,5 @@
 
-function(add_target_make_bin ELF_FILE)
+function(fly_add_target_bin ELF_FILE)
     add_custom_command(
         TARGET ${ELF_FILE}
         POST_BUILD
@@ -21,7 +21,7 @@ function(add_target_make_bin ELF_FILE)
     )
 endfunction()
 
-function(add_target_make_map TARGET_NAME)
+function(fly_add_target_map TARGET_NAME)
     # 确保是目标存在
     if(NOT TARGET ${TARGET_NAME})
         message(FATAL_ERROR "Target ${TARGET_NAME} does not exist")
@@ -74,15 +74,15 @@ function(add_target_make_map TARGET_NAME)
     
     # 输出信息
     message(STATUS "Map file will be generated: ${MAP_FILE}")
-endfunction(add_target_make_map)
+endfunction(fly_add_target_map)
 
-function(add_target_print_memory_usage TARGET_NAME)
+function(fly_add_target_memory_report TARGET_NAME)
     target_link_options(${TARGET_NAME}  PRIVATE
         "-Wl,--print-memory-usage"
     )
-endfunction(add_target_print_memory_usage)
+endfunction(fly_add_target_memory_report)
 
-function(find_gcc_toolchain CROSS_COMPILE_PREFIX)
+function(_fly_find_gcc_toolchain CROSS_COMPILE_PREFIX)
 
     find_program(TMP_CMAKE_C_COMPILER    ${CROSS_COMPILE_PREFIX}gcc NO_CACHE)
     find_program(TMP_CMAKE_CXX_COMPILER  ${CROSS_COMPILE_PREFIX}g++ NO_CACHE)

@@ -6,7 +6,7 @@ include("${FLY_TOP_DIR}/cmake/fetch_git_project.cmake")
 
 message("Fetching ehshell...")
 
-fetch_git_project(
+fly_fetch_git_project(
     argparse
     DEEP_CLONE     ON
     AUTO_UPDATE    OFF
@@ -14,7 +14,7 @@ fetch_git_project(
     GIT_TAG        fly-package
 )
 
-fetch_git_project_add(argparse)
-package_lib_add(argparse)
+fly_add_git_project_subdirectory(argparse)
+fly_register_package_library(argparse)
 
 endif()

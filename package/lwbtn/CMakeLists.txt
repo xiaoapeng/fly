@@ -10,7 +10,7 @@ endif()
 
 message("Fetching lwbtn @ ${CONFIG_PACKAGE_LWBTN_GIT_COMMIT}...")
 
-fetch_git_project(
+fly_fetch_git_project(
     lwbtn
     AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/MaJerle/lwbtn.git
@@ -81,7 +81,7 @@ target_compile_definitions(lwbtn PUBLIC
     LWBTN_CFG_CLICK_CONSECUTIVE_KEEP_AFTER_SHORT_PRESS=${LWBTN_CFG_CLICK_KEEP_AFTER_SHORT_PRESS}
 )
 
-# package_lib_compile_options() appends the project's strict flags AFTER this
+# fly_add_package_compile_options() appends the project's strict flags AFTER this
 # package is configured (later flags win), so the exemption cannot live in
 # target_compile_options(). Source-level options are applied after target-level
 # ones, which keeps the exemption with the package (same pattern as nanosig).
@@ -89,6 +89,6 @@ set_source_files_properties("${LWBTN_SRC_DIR}/lwbtn/src/lwbtn/lwbtn.c" PROPERTIE
     COMPILE_OPTIONS "-Wno-conversion;-Wno-sign-conversion"
 )
 
-package_lib_add(lwbtn)
+fly_register_package_library(lwbtn)
 
 endif()

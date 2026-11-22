@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "support/rtt",
+  "kind": "support",
+  "label": "SEGGER RTT firmware log transport",
+  "files": [
+    {"source": "sink.c", "destination": "tool/packs/support/rtt/sink.c"},
+    {"source": "sink.cmake", "destination": "tool/packs/support/rtt/sink.cmake"}
+  ],
+  "cmake": "tool/packs/support/rtt/sink.cmake",
+  "provides": ["firmware/log-sink"],
+  "config_defaults": ["CONFIG_PACKAGE_SEGGER_RTT=y"],
+  "log_sink": {"target": "fly_rtt_sink", "enabled_by": "CONFIG_PACKAGE_SEGGER_RTT"}
+}

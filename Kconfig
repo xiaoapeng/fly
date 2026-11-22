@@ -1,4 +1,4 @@
 mainmenu "FLY SDK Configuration"
 
-source "arch/Kconfig"
+# Application configuration loads architecture facts from its selected board.
 source "package/Kconfig"

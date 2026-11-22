@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "id": "gd32vf103",
+  "config": "CONFIG_ARCH_GD32VF103X"
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "support/stm32-board",
+  "kind": "support",
+  "label": "Shared STM32 board sources",
+  "files": [
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "flash.ld.in",
+      "destination": "board/flash.ld.in"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "log.c",
+      "destination": "board/log.c"
+    },
+    {
+      "source": "stm32-board.cmake",
+      "destination": "board/stm32-board.cmake"
+    }
+  ]
+}

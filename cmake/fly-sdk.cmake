@@ -15,12 +15,10 @@ endforeach()
 set(FLY_PROJECT_RULES_HASH "${fly_project_rule_hashes}" CACHE INTERNAL "Application CMake rules")
 
 include("${FLY_TOP_DIR}/cmake/env.cmake")
+include("${FLY_TOP_DIR}/cmake/firmware-image.cmake")
 include("${FLY_TOP_DIR}/cmake/git-status.cmake")
-include("${FLY_TOP_DIR}/cmake/jlink-make-image.cmake")
-include("${FLY_TOP_DIR}/cmake/openocd-make-image.cmake")
-include("${FLY_TOP_DIR}/cmake/vscode-cortex-debug-gdb.cmake")
 
-arch_build_config()
+_fly_configure_architecture()
 include_directories("${FLY_CONFIG_DIR}")
 
 add_subdirectory("${FLY_TOP_DIR}/arch" "${CMAKE_CURRENT_BINARY_DIR}/arch")

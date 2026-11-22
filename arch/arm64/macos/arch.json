@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "id": "arm64-macos",
+  "config": "CONFIG_ARCH_ARM64_MACOS",
+  "host_system": "Darwin"
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "app/baremetal",
+  "kind": "app",
+  "label": "Bare metal",
+  "files": [
+    {
+      "source": "app/biz/.gitkeep",
+      "destination": "app/biz/.gitkeep"
+    },
+    {
+      "source": "app/include/biz/.gitkeep",
+      "destination": "app/include/biz/.gitkeep"
+    },
+    {
+      "source": "app/main.c",
+      "destination": "app/main.c"
+    }
+  ],
+  "provides": [
+    "app/baremetal"
+  ],
+  "app": {
+    "config_defaults": [
+      "CONFIG_PACKAGE_SCHEDULER_NONE=y"
+    ],
+    "firmware_target": "fly_app",
+    "expected_log": [
+      "boot ok"
+    ]
+  }
+}

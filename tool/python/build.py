@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
+from action_protocol import ActionError, write_json
+from arch_registry import for_board, validate_choice
 from build_environment import prepare_python
+from build_actions import add_commands, execute as execute_action
+from project_actions import build_tree_lock, parse_endpoint, project_fingerprint
+from template_packs import load_project
 
 ENV_PATH_CONFIG_JSON_FILE_PATH = '.PATH.env.json'
 GIT_MIRROR_SOURCE_JSON_FILE_PATH = '.git.mirror-source.json'
@@ -48,7 +53,10 @@ class BuildPaths:
     def kconfig(self):
         import kconfiglib
 
-        return kconfiglib.Kconfig(str(self.project / 'Kconfig'))
+        board = load_project(self.project).board
+        architecture = for_board(self.sdk / 'arch', board.id, board.data['board'])
+        os.environ.update(architecture.kconfig_environment())
+        return kconfiglib.Kconfig(str(self.project / 'Kconfig')), architecture
 
 
 def get_cmake_cache_value(build_dir, key):
@@ -78,8 +86,9 @@ def write_generated_config(paths, kconf):
 
 
 def run_loadconfig(paths, input_file):
-    kconf = paths.kconfig()
+    kconf, architecture = paths.kconfig()
     kconf.load_config(str(input_file))
+    validate_choice(kconf, architecture)
     paths.config.parent.mkdir(parents=True, exist_ok=True)
     kconf.write_config(str(paths.config))
     write_generated_config(paths, kconf)
@@ -110,11 +119,12 @@ def run_menuconfig(paths):
 
     refresh_config(paths)
     os.environ['KCONFIG_CONFIG'] = str(paths.config)
-    kconf = paths.kconfig()
+    kconf, architecture = paths.kconfig()
     menuconfig.menuconfig(kconf)
     # Use the saved .config, including when the user exits without saving.
     if paths.config.is_file():
         kconf.load_config(str(paths.config))
+        validate_choice(kconf, architecture)
         write_generated_config(paths, kconf)
 
 
@@ -123,8 +133,9 @@ def run_saveconfig(paths, output_file):
         raise ValueError('Use a path relative to the project for saveconfig.')
     if not paths.config.is_file():
         refresh_config(paths)
-    kconf = paths.kconfig()
+    kconf, architecture = paths.kconfig()
     kconf.load_config(str(paths.config))
+    validate_choice(kconf, architecture)
     config_file = paths.project / output_file
     kconf.write_min_config(str(config_file))
     print(f'Defconfig saved to: {config_file}')
@@ -142,7 +153,7 @@ def require_cmake():
 
 def run_cmake(paths, command):
     # Reconfigure and build with the SDK that launched this command, without
-    # persisting an explicit CMake override. Older scaffolds read FLY_ROOT.
+    # persisting an explicit CMake override.
     sdk = paths.sdk.as_posix()
     env = dict(os.environ, FLY_APP_SDK_DIR=sdk, FLY_ROOT=sdk)
     subprocess.run(command, cwd=paths.project, env=env, check=True)
@@ -159,6 +170,15 @@ def project_rules_changed(paths):
     rule_hashes = ''.join(sha256(path.read_bytes()).hexdigest()
                           for path in (paths.project / name for name in files) if path.is_file())
     return configured != rule_hashes
+
+
+def action_index_changed(paths):
+    index = paths.generated / 'actions.json'
+    try:
+        data = json.loads(index.read_text(encoding='utf-8'))
+        return data['fingerprint'] != project_fingerprint(paths.project)
+    except (OSError, KeyError, TypeError, ValueError):
+        return True
 
 
 def configure_project(paths, build_type=None, *, force=False):
@@ -192,6 +212,7 @@ def configure_project(paths, build_type=None, *, force=False):
         or not (paths.cmake / 'compile_commands.json').is_file()
         or get_cmake_cache_value(paths.cmake, 'Python3_EXECUTABLE') != Path(sys.executable).as_posix()
         or project_rules_changed(paths)
+        or action_index_changed(paths)
     )
 
     if configure:
@@ -230,6 +251,10 @@ def run_build(paths, build_type=None, jobs=None, tool_paths=()):
     if (paths.project / 'build.sh').is_file() or (paths.project / 'build.bat').is_file():
         try:
             update_vscode(paths, tool_paths)
+            if not (paths.project / '.vscode/launch.json').is_file():
+                from project_ide import write_debug_configs
+
+                write_debug_configs(paths.project, paths.sdk, paths.cmake, get_cmake_cache_value(paths.cmake, 'CMAKE_GDB'))
         except (OSError, ValueError) as error:
             print(f'Could not update VS Code configuration: {error}', file=sys.stderr)
     jobs = jobs if jobs is not None else (os.cpu_count() or 1)
@@ -249,27 +274,9 @@ def run_target(paths, target):
     if not configured_project or Path(configured_project).resolve() != paths.project:
         raise ValueError('The project location changed. Run build first.')
     # Older Make versions can miss same-second edits to app packaging settings.
-    if target.endswith(('_make_img', '_flash')) and project_rules_changed(paths):
+    if target.endswith('_make_img') and (project_rules_changed(paths) or action_index_changed(paths)):
         run_cmake(paths, ['cmake', '-S', str(paths.project), '-B', str(paths.cmake)])
     run_cmake(paths, ['cmake', '--build', str(paths.cmake), '--target', target])
-
-
-def run_rttlog(paths):
-    current = paths.images / 'CURRENT'
-    if not current.is_dir():
-        # Applications made with an older SDK may still have a package here.
-        current = paths.output / 'image' / 'CURRENT'
-    if platform.system() == 'Windows':
-        script = current / 'log.bat'
-        command = [str(script)]
-    else:
-        script = current / 'log.sh'
-        command = ['bash', str(script)]
-    if not script.is_file():
-        if current.is_dir():
-            raise ValueError('The current image package does not provide RTT logging. Configure it and rebuild the image.')
-        raise ValueError('Image log script not found. Run make_img first.')
-    subprocess.run(command, cwd=paths.project, check=True)
 
 
 def run_append_path_env(source_dir, env_path):
@@ -350,13 +357,7 @@ def main():
     # distclean 
     parser_distclean = subparsers.add_parser('distclean', help='Delete build and generated configs, keeping top-level image packages.')
 
-    # flash
-    parser_flash = subparsers.add_parser('flash', help='Flash firmware to target.')
-    parser_flash.add_argument('flash_target', type=str, nargs='?', default='default', help='Flash target (default: default).')
-
-    # make_img
-    parser_make_img = subparsers.add_parser('make_img', help='Generate image files.')
-    parser_make_img.add_argument('flash_target', type=str, nargs='?', default='default', help='Image target (default: default).')
+    add_commands(subparsers)
 
     # Subparser for build
     parser_build = subparsers.add_parser('build', help='Build project.')
@@ -366,9 +367,8 @@ def main():
 
     parser_vscode = subparsers.add_parser('vscode', help='Configure the project and generate VS Code settings.')
     parser_vscode.add_argument('build_type', nargs='?', help='CMake build type, for example Debug or Release.')
-    
-    # Subparser for rttlog
-    parser_log = subparsers.add_parser('rttlog', help='Capture RTT logs.')
+    parser_vscode.add_argument('--artifact', type=Path, help='Bind archive debug to this manifest.json.')
+    parser_vscode.add_argument('--endpoint', type=parse_endpoint, help='Enable external GDB profiles at HOST:PORT.')
 
     # Subparser for package_update <pack_name> -l --list 
     parser_package_update = subparsers.add_parser('package_update', help='Update package dependencies.')
@@ -393,20 +393,27 @@ def main():
         parser.error('Specify an application directory. Use fly.sh or fly.bat new to create one.')
     if not (paths.project / 'Kconfig').is_file() or not (paths.project / 'CMakeLists.txt').is_file():
         parser.error(f'A FLY application requires Kconfig and CMakeLists.txt in {paths.project}')
+    if not (paths.project / 'fly.project.json').is_file():
+        parser.error('No fly.project.json. Generate a project with fly.sh new or fly.bat new.')
 
     os.environ['FLY_SDK_DIR'] = sdk.as_posix()
     os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
     try:
-        if args.command in ('distclean', 'add_path_env', 'rttlog'):
-            os.chdir(paths.project)
-            if args.command == 'distclean':
+        os.chdir(paths.project)
+        tool_paths = load_env(paths.sdk)
+        if args.command == 'distclean':
+            with build_tree_lock(paths.project):
                 run_distclean(paths)
-            elif args.command == 'rttlog':
-                load_env(paths.sdk)
-                run_rttlog(paths)
-            else:
-                run_append_path_env(sdk, args.env_path)
+            return 0
+        if args.command == 'add_path_env':
+            run_append_path_env(sdk, args.env_path)
+            return 0
+        if args.command == 'rttlog':
+            print('rttlog is deprecated. Use ./build.sh log instead.', file=sys.stderr)
+        if (args.command in ('capabilities', 'flash-run', 'log', 'debug', 'rttlog')
+                or args.command == 'make_img' and (args.list or args.artifact is not None)):
+            run_project_action(paths, args)
             return 0
 
         if args.command == 'prepare':
@@ -417,12 +424,16 @@ def main():
 
         import kconfiglib
 
-        os.chdir(paths.project)
-        tool_paths = load_env(paths.sdk)
         try:
             run_command(paths, args, tool_paths)
         except kconfiglib.KconfigError as error:
             raise ValueError(str(error)) from error
+    except ActionError as error:
+        print(f'Error: {error}', file=sys.stderr)
+        return error.exit_code
+    except KeyboardInterrupt:
+        print('Cancelled.', file=sys.stderr)
+        return 130
     except (OSError, ValueError) as error:
         print(f'Error: {error}', file=sys.stderr)
         return 1
@@ -432,11 +443,25 @@ def main():
     return 0
 
 
+def run_project_action(paths, args):
+    execute_action(paths, args, cache=get_cmake_cache_value,
+                   configure=configure_project, build_target=run_target)
+
+
 def run_command(paths, args, tool_paths):
     if args.command == 'prepare':
         refresh_config(paths)
         print(Path(sys.executable).as_posix())
-    elif args.command == 'menuconfig':
+        return
+    if args.command == 'make_img':
+        run_project_action(paths, args)
+        return
+    with build_tree_lock(paths.project):
+        run_build_command(paths, args, tool_paths)
+
+
+def run_build_command(paths, args, tool_paths):
+    if args.command == 'menuconfig':
         run_menuconfig(paths)
     elif args.command == 'saveconfig':
         run_saveconfig(paths, args.savefile_name)
@@ -446,16 +471,22 @@ def run_command(paths, args, tool_paths):
         require_cmake()
         if (paths.cmake / 'CMakeCache.txt').is_file():
             run_target(paths, 'clean')
-    elif args.command in ('flash', 'make_img'):
-        run_target(paths, f'{args.flash_target}_{args.command}')
     elif args.command == 'package_update':
         target = 'show_list' if args.list else args.pack_name
         run_target(paths, f'package_update_{target}')
     elif args.command == 'package_mirror':
         run_package_mirror(paths, args.list, args.enable, args.disable, args.update)
     elif args.command == 'vscode':
+        from project_ide import bind_artifact, write_debug_configs
+
+        if args.artifact is not None:
+            bind_artifact(paths.project, paths.sdk, args.artifact)
+        if args.endpoint is not None:
+            write_json(paths.project / '.vscode/fly-debug-endpoint.json', args.endpoint)
         configure_project(paths, args.build_type, force=True)
         update_vscode(paths, tool_paths)
+        write_debug_configs(paths.project, paths.sdk, paths.cmake,
+                            get_cmake_cache_value(paths.cmake, 'CMAKE_GDB'))
     else:
         run_build(paths, getattr(args, 'build_type', None), args.jobs, tool_paths)
 

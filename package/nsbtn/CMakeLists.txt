@@ -13,6 +13,6 @@ target_include_directories(nsbtn PUBLIC
 # propagate to every consumer translation unit.
 target_link_libraries(nsbtn PUBLIC lwbtn nanosig)
 
-package_lib_add(nsbtn)
+fly_register_package_library(nsbtn)
 
 endif()

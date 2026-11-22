@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "id": "board/frdm-mcxn947-core0",
+  "kind": "board",
+  "label": "FRDM-MCXN947",
+  "files": [
+    {
+      "source": "MCXN947_cm33_core0_flash.ld",
+      "destination": "board/MCXN947_cm33_core0_flash.ld"
+    },
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "board_time.c",
+      "destination": "board/board_time.c"
+    },
+    {
+      "source": "clock_config.c",
+      "destination": "board/clock_config.c"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "include/board_time.h",
+      "destination": "board/include/board_time.h"
+    },
+    {
+      "source": "include/clock_config.h",
+      "destination": "board/include/clock_config.h"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m33",
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "MCXN947",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m33"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 150000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 0,
+        "size": 786432
+      },
+      {
+        "id": "secondary-flash",
+        "kind": "flash",
+        "address": 1048576,
+        "size": 1048576
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 319488
+      }
+    ],
+    "arch": "mcxn947"
+  }
+}

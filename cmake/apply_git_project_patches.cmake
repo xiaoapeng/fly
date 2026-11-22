@@ -7,7 +7,7 @@
 include("${CMAKE_CURRENT_LIST_DIR}/fetch_git_project.cmake")
 
 if(NOT DEFINED FLY_PATCH_PROJECT_NAME OR NOT DEFINED FLY_PATCH_DIR OR NOT DEFINED FLY_SOURCE_DL_BASE_DIR)
-    message(FATAL_ERROR "[apply_git_project_patches] FLY_PATCH_PROJECT_NAME, FLY_PATCH_DIR and FLY_SOURCE_DL_BASE_DIR are required")
+    message(FATAL_ERROR "[_fly_apply_git_project_patches] FLY_PATCH_PROJECT_NAME, FLY_PATCH_DIR and FLY_SOURCE_DL_BASE_DIR are required")
 endif()
 
-apply_git_project_patches(${FLY_PATCH_PROJECT_NAME} "${FLY_PATCH_DIR}")
+_fly_apply_git_project_patches(${FLY_PATCH_PROJECT_NAME} "${FLY_PATCH_DIR}")

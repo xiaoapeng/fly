@@ -47,7 +47,13 @@ set(Python3_EXECUTABLE "${fly_python}" CACHE FILEPATH "Python interpreter for FL
 set(Python3_EXECUTABLE "${fly_python}")
 
 include("${FLY_CONFIG_DIR}/.config.cmake")
-include("${FLY_TOP_DIR}/arch/${CONFIG_ARCH}/gcc-config.cmake")
+set(fly_arch_dir "${FLY_TOP_DIR}/arch/${CONFIG_ARCH}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${FLY_TOP_DIR}/arch/Kconfig" "${fly_arch_dir}/arch.json")
+if(EXISTS "${fly_arch_dir}/Kconfig")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${fly_arch_dir}/Kconfig")
+endif()
+include("${fly_arch_dir}/gcc-config.cmake")
 include("${FLY_TOP_DIR}/cmake/tool-chain-general.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
 set(FLY_TOOLCHAIN_SYSTEM_NAME "${CMAKE_SYSTEM_NAME}")

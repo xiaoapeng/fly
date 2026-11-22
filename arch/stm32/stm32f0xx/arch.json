@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "id": "stm32f0xx",
+  "config": "CONFIG_ARCH_STM32F0XX"
+}

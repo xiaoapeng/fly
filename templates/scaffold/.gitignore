@@ -2,6 +2,7 @@
 /image/
 /fly
 /.fly-root
+/.fly-build.lock
 /.fly-setup-*/
 /.vscode/launch.json
 /.vscode/settings.json
@@ -9,3 +10,8 @@
 /.vscode/fly-settings.json
 /.vscode/fly-tasks.json
 /.vscode/fly-cmake-kits.json
+/.vscode/fly-artifact.json
+/.vscode/fly-launch.json
+/.vscode/fly-owned.json
+/.vscode/fly-debug/
+/.vscode/fly-debug-endpoint.json
