@@ -1,7 +1,10 @@
-# http://www.mounriver.com/download 
-# windows: MounRiver_Studio_Setup_V192.zip
-# linux：  MounRiver_Studio_Community_V180
-set(CROSS_COMPILE_PREFIX riscv-none-elf-)
+# Current WCH GCC uses a different prefix from older MounRiver Studio releases.
+find_program(_fly_wch_gcc NAMES riscv32-wch-elf-gcc NO_CACHE)
+if(_fly_wch_gcc)
+    set(CROSS_COMPILE_PREFIX riscv32-wch-elf-)
+else()
+    set(CROSS_COMPILE_PREFIX riscv-none-elf-)
+endif()
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION  1)

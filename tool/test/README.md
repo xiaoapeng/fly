@@ -24,6 +24,8 @@ python3 tool/test/check_standalone_projects.py --matrix host
 python3 tool/test/check_standalone_projects.py --matrix renode --build-type Release
 ```
 
+CH582 回归使用 WCH RISC-V GCC 15.2.0、CMake 和 Ninja。将工具链的 `bin/` 加入 `PATH` 后，执行 `python3 tool/test/check_ch582.py`。它在临时目录中编译和打包 RV32 裸机程序，并检查 ELF、APP 分区地址及固件尾部 CRC。
+
 动作协议、打包边界和缓存回归可单独运行。实板 J-Link 及 VS Code 调试验证在对应运行环境中执行。
 
 ```sh

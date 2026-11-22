@@ -6,7 +6,7 @@
 
 | 流水线 | 触发 | 内容 |
 |---|---|---|
-| `.github/workflows/ci.yml` | PR、push 到 `master`、手动 | 生成配置、ARM Debug 编译和打包、三平台原生构建 |
+| `.github/workflows/ci.yml` | PR、push 到 `master`、手动 | 生成配置、ARM Debug 编译和打包、CH582 RV32 Release 编译和打包、三平台原生构建 |
 | `.github/workflows/nightly.yml` | 每日 02:17 UTC、手动 | 相同的 ARM 工程和固件包使用 Release 构建 |
 
 快速 CI 在同一分支有新提交时会取消上一次未完成的运行。
@@ -26,6 +26,10 @@ ARM 构建矩阵读取板卡清单和架构 ISA。配置检查适用于所有生
 芯片源码、FreeRTOS 和 nanosig 等外部依赖在 CMake 配置时按版本拉取到 SDK 的 `dl/`。同一个 CI 工作区生成的多个应用复用下载结果，各自保留配置与构建产物。CI 的打包检查验证应用根目录 `image/` 下的固件产物和各目标与构建类型的 `CURRENT.json`，并确认 `distclean` 后仍可访问固件包。
 
 在安装 Renode 1.17.0 的机器上运行 `python3 tool/test/check_standalone_projects.py --matrix renode --build-type Release`，可为工具包声明的每个板卡与模板组合生成独立工程，并验证实际运行的最终 BIN、固件 CRC 和 RTT。 [回归参数](../tool/test/README.md)
+
+## RV32 构建检查
+
+`rv32-build` 独立运行 CH582 回归。作业从 WCH 工具链索引选用 Linux x86_64 的 GCC 15.2.0，工作流固定下载地址并校验 SHA256。回归在临时工程中链接实际的 `arch-ch58x`、厂商启动代码和 ISP 库，生成 ELF 和固件包，并校验分区地址与尾部 CRC。 [WCH 工具链索引](https://github.com/openwch/board_manager_files/blob/1ca9500eef50846b88af4a638a9bbc308b5d4b0d/package_ch32v_index.json)
 
 ## 分支保护（必需检查 + rebase 合并）
 
@@ -74,6 +78,9 @@ python3 tool/test/check_standalone_projects.py --matrix config
 # 需要 CMake 和 arm-none-eabi 工具链
 python3 tool/test/check_standalone_projects.py --matrix arm
 python3 tool/test/check_standalone_projects.py --matrix arm --build-type Release
+
+# 需要 CMake、Ninja 和 WCH RISC-V GCC 15.2.0
+python3 tool/test/check_ch582.py
 
 # 用当前宿主平台的原生工具链
 python3 tool/test/check_standalone_projects.py --matrix host
