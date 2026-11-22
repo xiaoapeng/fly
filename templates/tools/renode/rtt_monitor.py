@@ -1,11 +1,9 @@
 """Monitor helpers evaluated by Renode's embedded IronPython."""
 
-import sys
-
 import clr
 
 clr.AddReference("System.Security.Cryptography")
-from System import Convert
+from System import Console, Convert
 from System.IO import File
 from System.Security.Cryptography import SHA256
 from System.Threading import Timer, TimerCallback
@@ -15,8 +13,9 @@ _gdb_timers = {}
 
 
 def _emit(message):
-    sys.stdout.write(message + '\n')
-    sys.stdout.flush()
+    # Keep complete records on the synchronized console writer.
+    Console.WriteLine(message)
+    Console.Out.Flush()
 
 
 def mc_fly_watch_gdb(port):
