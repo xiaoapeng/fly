@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "support/cortex-m-timebase",
+  "kind": "support",
+  "label": "Shared Cortex-M bare-metal timebase",
+  "files": [
+    {
+      "source": "timebase.cmake",
+      "destination": "board/timebase.cmake"
+    },
+    {
+      "source": "board_time.c",
+      "destination": "board/board_time.c"
+    },
+    {
+      "source": "include/board_time.h",
+      "destination": "board/include/board_time.h"
+    }
+  ]
+}

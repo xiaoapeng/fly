@@ -1,2 +1,6 @@
 // Start the application from the NPCX9M6F code SRAM mapped by Renode.
 using "platforms/boards/nuvoton_npcx9m6fb_evb.repl"
+
+nvic:
+    priorityMask: 0xE0
+    systickFrequency: 15000000

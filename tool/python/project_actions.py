@@ -59,6 +59,7 @@ def write_cmake(project, output):
         'FLY_PACK_TARGET': app.data['app']['firmware_target'],
         'FLY_BOARD_ID': board.id, 'FLY_BOARD_CHIP': board_data['chip'] or '',
         'FLY_BOARD_CORE_ID': board_data['core']['id'], 'FLY_BOARD_MANIFEST': str(board.path),
+        'FLY_BOARD_CLOCK_HZ': board_data['clock_hz'] or '',
         'FLY_PACK_BOARD_CMAKE': board.data.get('cmake', ''),
         'FLY_PACK_APP_CMAKE': app.data.get('cmake', ''),
     }

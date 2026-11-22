@@ -42,7 +42,7 @@ int main(void)
 {
     board_init();
     fly_log_firmware_info();
-    const configSTACK_DEPTH_TYPE app_stack_words = 1024u;
+    const configSTACK_DEPTH_TYPE app_stack_words = 256u;
     if (xTaskCreate(run_app, "app", app_stack_words, NULL, tskIDLE_PRIORITY + 1u, NULL) != pdPASS) {
         stop("FreeRTOS task creation failed\n");
     }

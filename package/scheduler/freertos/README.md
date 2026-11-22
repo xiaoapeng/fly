@@ -19,7 +19,7 @@ It depends only on the generic fact `ARCH_CPU_FAMILY_CORTEX_M`. Generic architec
 | `freertos-config` | INTERFACE | include directories and global defines (`_ARMV8M_LM_PRESENT`, `_ARMV8M_MAINLINE_PRESENT`) exposed through the public link chain |
 | `freertos-heap` | OBJECT | `portable/MemMang/<heap>.c` (heap_4 default) |
 | `freertos-kernel` | OBJECT | `tasks.c` `queue.c` `list.c` `event_groups.c` `stream_buffer.c` (+ `timers.c` if `PACKAGE_FREERTOS_USE_TIMERS=y`) |
-| `freertos-port` | OBJECT | `portable/GCC/ARM_CM33_NTZ/non_secure/{port.c,portasm.c}` |
+| `freertos-port` | OBJECT | GCC portable sources selected for the Cortex-M profile |
 
 PUBLIC link chain: `freertos-port → freertos-kernel → freertos-heap → freertos-config`. The executable reaches `freertos-config` through this chain.
 
@@ -51,7 +51,7 @@ Three-layer fallback per tunable:
 2. Kconfig exposed the key → use it
 3. otherwise → curated default keeps the build green
 
-Architecture capabilities (`configENABLE_FPU`, `configENABLE_TRUSTZONE`, `__NVIC_PRIO_BITS`) are bridged from `CONFIG_ARCH_*` symbols the same way.
+The configuration gets FPU availability and NVIC priority width from `CONFIG_ARCH_*`. The ARMv8-M NTZ ports operate in one security state with `configENABLE_TRUSTZONE` disabled.
 
 The template lives only in `package/scheduler/freertos/inc/`. Projects must not provide their own `FreeRTOSConfig.h`; the packaged template is made available through the `freertos-config` INTERFACE target's include directories.
 
@@ -63,24 +63,16 @@ The template lives only in `package/scheduler/freertos/inc/`. Projects must not 
 
 The package owns the mapping table:
 
-```cmake
-if(CONFIG_ARCH_CORE STREQUAL "cortex-m33")
-    if(CONFIG_ARCH_TRUSTZONE_MODE STREQUAL "non-secure")
-        set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM33_NTZ/non_secure")
-    else()
-        message(FATAL_ERROR ...)
-    endif()
-    set(FREERTOS_PORT_GLOBAL_DEFS _ARMV8M_LM_PRESENT _ARMV8M_MAINLINE_PRESENT)
-elseif(CONFIG_ARCH_CORE STREQUAL "cortex-m4")
-    if(CONFIG_ARCH_HAS_HARD_FPU AND CONFIG_ARCH_FLOAT_ABI STREQUAL "hard")
-        set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM4F")
-    else()
-        message(FATAL_ERROR ...)
-    endif()
-else()
-    message(FATAL_ERROR ...)
-endif()
-```
+| Architecture profile | Port under `portable/GCC/` |
+|---|---|
+| Cortex-M0 | `ARM_CM0` |
+| Cortex-M3 | `ARM_CM3` |
+| Cortex-M4 with hardware FPU and hard-float ABI | `ARM_CM4F` |
+| Cortex-M7 with hardware FPU and hard-float ABI | `ARM_CM7/r0p1` |
+| Cortex-M23 | `ARM_CM23_NTZ/non_secure` |
+| Cortex-M33 with `non-secure` or `unified` board mode | `ARM_CM33_NTZ/non_secure` |
+
+The M7 port includes the r0p1 exception return workaround and supports later core revisions. [Upstream M7 port guidance](https://github.com/FreeRTOS/FreeRTOS-Kernel/blob/V11.1.0/portable/GCC/ARM_CM7/ReadMe.txt)
 
 Users do **not** select a port. Architecture Kconfig only declares generic hardware/startup facts; this package maps them to the portable path.
 

@@ -1,4 +1,5 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+include("${CMAKE_CURRENT_LIST_DIR}/timebase.cmake")
 set(FLY_FLASH_ADDRESS "0x00000000")
 # Internal flash partition ends where the Core 1 image begins.
 set(FLY_FLASH_SIZE "0x000C0000")
@@ -20,11 +21,4 @@ function(fly_configure_board target)
         "-Wl,--defsym=__stack_size__=0x1000"
     )
     set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${linker_script}")
-endfunction()
-
-function(fly_add_board_timebase target)
-    if(NOT CONFIG_PACKAGE_SCHEDULER_NONE)
-        message(FATAL_ERROR "The board SysTick timebase requires the bare-metal scheduler.")
-    endif()
-    target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board_time.c")
 endfunction()

@@ -57,11 +57,16 @@ add_library(nanosig
     "${NANOSIG_SRC_DIR}/platform/${_nanosig_backend}/port.c"
 )
 
+if(CONFIG_ARCH_CORE STREQUAL "cortex-m0")
+    target_sources(nanosig PRIVATE atomic-cas-armv6m.c)
+endif()
+
 if(CONFIG_PACKAGE_SCHEDULER_FREERTOS)
     target_sources(nanosig PRIVATE
         "${NANOSIG_SRC_DIR}/src/ns_broker.c"
         "${NANOSIG_SRC_DIR}/src/ds/ns_hashtbl.c")
-    target_compile_definitions(nanosig PRIVATE NANOSIG_BROKER_STACK_SIZE=0)
+    target_compile_definitions(nanosig PRIVATE
+        NANOSIG_BROKER_STACK_SIZE=${CONFIG_PACKAGE_NANOSIG_FREERTOS_BROKER_STACK_BYTES})
     target_link_libraries(nanosig PUBLIC freertos-config)
 endif()
 

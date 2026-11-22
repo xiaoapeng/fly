@@ -21,7 +21,7 @@
 | `host-macos` | macOS arm64 | 用 Apple Clang 构建生成的 macOS 应用 |
 | `host-windows` | Windows x64 | 用 MinGW-w64 构建生成的 Windows 应用，另测批处理入口、SDK 锁定安装和 NTFS 目录链接 |
 
-ARM 构建矩阵读取板卡清单和架构 ISA。配置检查适用于所有生成模板，验证板卡绑定、CPU 构建配置和 APP 所需的 Kconfig，并检查架构目录移动后原配置仍可加载。
+ARM 构建矩阵读取板卡清单和架构 ISA，构建已登记板卡的裸机、裸机+nanosig 和 FreeRTOS+nanosig 组合。配置检查验证各模板的板卡绑定、CPU 构建配置和 APP 所需的 Kconfig，并检查架构目录移动后原配置仍可加载。
 
 芯片源码、FreeRTOS 和 nanosig 等外部依赖在 CMake 配置时按版本拉取到 SDK 的 `dl/`。同一个 CI 工作区生成的多个应用复用下载结果，各自保留配置与构建产物。CI 的打包检查验证应用根目录 `image/` 下的固件产物和各目标与构建类型的 `CURRENT.json`，并确认 `distclean` 后仍可访问固件包。
 

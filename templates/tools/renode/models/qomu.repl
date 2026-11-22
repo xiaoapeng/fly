@@ -1,2 +1,5 @@
 // Direct SRAM application load on the stock Qomu model.
 using "platforms/boards/eos-s3-qomu.repl"
+
+nvic:
+    systickFrequency: 48000000

@@ -10,11 +10,14 @@
     }
   ],
   "dependencies": [
-    "support/nrf52840-board"
+    "support/nrf52840-board",
+    "support/cortex-m-timebase"
   ],
   "provides": [
     "cpu/arm-cortex-m4",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "board": {

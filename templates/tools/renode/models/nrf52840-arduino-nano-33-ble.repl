@@ -1,2 +1,6 @@
 // The FLY runner starts the application at its partition vector table.
 using "platforms/boards/arduino_nano_33_ble.repl"
+
+nvic:
+    priorityMask: 0xE0
+    systickFrequency: 64000000

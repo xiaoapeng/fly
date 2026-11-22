@@ -20,6 +20,15 @@ config PACKAGE_NANOSIG_GIT_COMMIT
         https://github.com/xiaoapeng/nanosig.git. This pin carries the
         upstream bare-metal and FreeRTOS backends; no local patches are applied.
 
+config PACKAGE_NANOSIG_FREERTOS_BROKER_STACK_BYTES
+    int "FreeRTOS broker task stack (bytes)"
+    depends on PACKAGE_NANOSIG && PACKAGE_SCHEDULER_FREERTOS
+    range 1024 2147483647
+    default 2048
+    help
+        Stack allocation for the nanosig broker task. Increase this when
+        running callbacks that need more stack space in the broker.
+
 choice PACKAGE_NANOSIG_LOG_LEVEL
     prompt "nanosig debug output level"
     default PACKAGE_NANOSIG_LOG_LEVEL_SYS

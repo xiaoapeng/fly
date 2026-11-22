@@ -1,0 +1,7 @@
+if ARCH_GD32E23X
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 2
+
+endif

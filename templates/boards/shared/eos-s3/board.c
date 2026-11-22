@@ -6,6 +6,7 @@
 
 void board_init(void)
 {
+    /* The QORC bootloaders leave the C10 core clock at 48 MHz. */
     __asm__ volatile ("cpsie i" ::: "memory");
 }
 

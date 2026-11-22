@@ -109,11 +109,7 @@ extern void vAssertCalled(const char *pcFile, unsigned long ulLine);
 #define configASSERT(x)    do { if ((x) == 0) { vAssertCalled(__FILE__, __LINE__); } } while (0)
 #define configCHECK_HANDLER_INSTALLATION  1
 
-/* ---- Architecture capabilities from autoconf.h ----
- * The architecture Kconfig owns CPU/core/FPU/ABI/NVIC/TrustZone facts. The
- * generic package only supplies fallback values for a port that did not
- * provide them. The Cortex-M33 non-secure port sets TrustZone off and
- * selects ARM_CM33_NTZ/non_secure, which omits SecureContext refs. */
+/* ---- Architecture capabilities from autoconf.h ---- */
 #ifndef configENABLE_FPU
 #  ifdef CONFIG_ARCH_HAS_HARD_FPU
 #    define configENABLE_FPU                   CONFIG_ARCH_HAS_HARD_FPU
@@ -124,21 +120,9 @@ extern void vAssertCalled(const char *pcFile, unsigned long ulLine);
 #ifndef configENABLE_MPU
 #  define configENABLE_MPU                     0
 #endif
-/* ---- Security state (inherent to the NTZ port, not per-arch tunable) ----
- * This package only builds the NTZ (non-TrustZone) ports: ARM_CM33_NTZ,
- * ARM_CM0, ARM_CM3, ARM_CM4F. The NTZ semantics mean the kernel runs
- * entirely in the Secure state and never switches to the non-secure world,
- * so:
- *   - configENABLE_TRUSTZONE / _SECURE_CONTEXT must be 0 (no SecureContext
- *     references exist in the NTZ port);
- *   - configRUN_FREERTOS_SECURE_ONLY must be 1 so the initial EXC_RETURN is
- *     the Secure-only variant (0xFFFFFFFD). The NS variant (0xFFFFFFBC)
- *     faults on the first exception return on security-extension cores
- *     (UsageFault, xTickCount stays 0, scheduler dies before the first
- *     tick); on cores without the security extension (M0/M3/M4) the ES/S
- *     bits are ignored and the value is harmless either way.
- * A dual-state secure build would require the ARM_CM33 port plus explicit
- * arch support and is out of scope for this package. */
+/* The ARMv8-M NTZ ports run the scheduler in the same state as reset.
+ * The secure-only configuration uses the reset-compatible EXC_RETURN
+ * (0xFFFFFFFD) and avoids SecureContext calls. */
 #ifndef configENABLE_TRUSTZONE
 #  define configENABLE_TRUSTZONE               0
 #endif
@@ -156,9 +140,7 @@ extern void vAssertCalled(const char *pcFile, unsigned long ulLine);
 #    error "ARCH_NVIC_PRIO_BITS is required by the selected architecture"
 #  endif
 #endif
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    ( 5U << ( 8U - __NVIC_PRIO_BITS ) )
-
-/* CM0 and CM33 provide the vector symbols directly. The CMake port selection
- * maps the CM3 and CM4F handler names to the startup vectors. */
+/* Two-bit NVIC priorities cannot represent the usual logical priority 5. */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    ( ( __NVIC_PRIO_BITS < 3 ? 1U : 5U ) << ( 8U - __NVIC_PRIO_BITS ) )
 
 #endif /* FREERTOS_CONFIG_H */

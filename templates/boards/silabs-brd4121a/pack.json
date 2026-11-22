@@ -6,9 +6,17 @@
   "files": [
     {"source": "board.cmake", "destination": "board/board.cmake"}
   ],
-  "provides": ["cpu/arm-cortex-m33", "board/log-hook"],
+  "provides": [
+    "cpu/arm-cortex-m33",
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
+  ],
   "cmake": "board/board.cmake",
-  "dependencies": ["support/silabs-mg26-board"],
+  "dependencies": [
+    "support/silabs-mg26-board",
+    "support/cortex-m-timebase"
+  ],
   "board": {
     "target_kind": "mcu",
     "chip": "EFR32MG26B420F3200IM68",

@@ -36,7 +36,7 @@ J-Link 工具包的 `assets/` 存放 SDK 随附的 Git LFS 二进制。生成应
 
 生成菜单按板卡和 APP 显示可用的 Renode 模型。每个模型声明验证范围及限制。[工具包模型清单](tools/renode/pack.json)记录已可选的组合，[板级平台接入清单](../docs/renode-board-inventory.md)记录上游 Renode 1.17.0 候选。
 
-`startup-smoke` 覆盖最终 BIN 加载、固件启动、尾部 CRC 和 RTT。FRDM-MCXN947 Core 0 的两个 nanosig 模板还验证心跳。运行整个仿真回归可使用 `python3 tool/test/check_standalone_projects.py --matrix renode --build-type Release`。
+`startup-smoke` 覆盖最终 BIN 加载、固件启动、尾部 CRC 和 RTT。两个 nanosig 模板还验证至少 3 次间隔约 1 秒的心跳。运行整个仿真回归可使用 `python3 tool/test/check_standalone_projects.py --matrix renode --build-type Release`。
 
 Renode 默认持续运行并实时输出 RTT，按 `Ctrl+C` 停止。`--duration-ms` 可指定结束时的虚拟时间。运行中的 `./build.sh log --via renode` 会跟随同一份 RTT，结束后可用同一命令回看 `image/logs/renode/` 中的记录。
 
@@ -44,20 +44,22 @@ Renode 默认持续运行并实时输出 RTT，按 `Ctrl+C` 停止。`--duration
 
 ## 板卡与宿主平台
 
-| 目标 | `--board` | 模板 |
-| --- | --- | --- |
-| FRDM-MCXN947 Core 0 | `frdm-mcxn947-core0` | `baremetal`、`baremetal-nanosig`、`freertos-nanosig` |
-| STM32 初始目标 | `stm32f030x8`、`stm32f103x6`、`stm32f401cb`、`stm32h750vb` | `baremetal` |
-| STM32 开发板 | `stm32f072b-disco`、`stm32f407g-disc1`、`stm32f746g-disco`、`nucleo-f767zi`、`nucleo-h753zi`、`stm32h747i-disco-cm7` | `baremetal` |
-| GD32 Cortex-M | `gd32f103rc`、`gd32e230c8` | `baremetal` |
-| Nordic nRF52840 | `nrf52840dk`、`arduino-nano-33-ble` | `baremetal` |
-| TI CC2538 | `zolertia-firefly` | `baremetal` |
-| ADI MAX32652 | `max32652-evkit` | `baremetal` |
-| QuickLogic EOS S3 | `qomu`、`quickfeather` | `baremetal` |
-| Renesas RA | `renesas-ek-ra2e1`、`arduino-uno-r4-minima` | `baremetal` |
-| Silicon Labs EFR32MG26 | `silabs-brd4116a`、`silabs-brd4117a`、`silabs-brd4118a`、`silabs-brd4120a`、`silabs-brd4121a` | `baremetal` |
-| Nuvoton NPCX9 | `npcx9m6fb-evb` | `baremetal` |
-| 宿主平台 | `host-linux-x64`、`host-macos-arm64`、`host-windows-x64` | `baremetal` |
+以下 ARM 板卡均提供 `baremetal`、`baremetal-nanosig` 和 `freertos-nanosig`。宿主平台提供 `baremetal`。
+
+| 目标 | `--board` |
+| --- | --- |
+| FRDM-MCXN947 Core 0 | `frdm-mcxn947-core0` |
+| STM32 初始目标 | `stm32f030x8`、`stm32f103x6`、`stm32f401cb`、`stm32h750vb` |
+| STM32 开发板 | `stm32f072b-disco`、`stm32f407g-disc1`、`stm32f746g-disco`、`nucleo-f767zi`、`nucleo-h753zi`、`stm32h747i-disco-cm7` |
+| GD32 Cortex-M | `gd32f103rc`、`gd32e230c8` |
+| Nordic nRF52840 | `nrf52840dk`、`arduino-nano-33-ble` |
+| TI CC2538 | `zolertia-firefly` |
+| ADI MAX32652 | `max32652-evkit` |
+| QuickLogic EOS S3 | `qomu`、`quickfeather` |
+| Renesas RA | `renesas-ek-ra2e1`、`arduino-uno-r4-minima` |
+| Silicon Labs EFR32MG26 | `silabs-brd4116a`、`silabs-brd4117a`、`silabs-brd4118a`、`silabs-brd4120a`、`silabs-brd4121a` |
+| Nuvoton NPCX9 | `npcx9m6fb-evb` |
+| 宿主平台 | `host-linux-x64`、`host-macos-arm64`、`host-windows-x64` |
 
 宿主配置使用原生工具链构建最小程序。CI 的覆盖范围和本地执行方法见 [CI 流程](../docs/CI.md)。
 
@@ -89,6 +91,10 @@ SDK 的 `PATCH_DIR` 和应用的 `patches/<依赖名>/` 各自先按文件名应
 ## nanosig 应用运行时
 
 `app/main.c` 中的裸机入口或 FreeRTOS 应用任务直接调用 `app_runtime_init()`，然后把 `app_runtime_get_loop()` 返回的原生 `ns_loop_t *` 传给 `heartbeat_init()`。初始化成功后，`app_runtime_run()` 在裸机上轮询事件循环，在 FreeRTOS 应用任务中运行阻塞的事件循环。
+
+提供 `board/timebase` 的板卡实现 `fly_add_board_timebase(target)`，并通过 `board_time.h` 提供 `board_time_start()` 和 `board_time_us()`。当前 ARM 板卡复用同一份 SysTick 实现，根据清单中的 `clock_hz` 提供 1 ms 时基。FreeRTOS 模板由内核接管 SysTick。
+
+FreeRTOS 示例默认使用 4352 字节堆、256 字的应用任务栈、1024 字节的 nanosig broker 栈和 256 字节的事件环，适合模板的心跳业务。新增业务时，可以在 `menuconfig` 调整堆与 broker 栈，在应用中调整任务栈和事件环。32 KiB 及以下的 APP 分区在 Debug 和 Release 均采用 `-Os`，为应用和固件尾部留出空间。
 
 事件循环运行期间，`app/biz/heartbeat.c` 用 nanosig 周期定时器每秒调用一次 `ns_sysln("heartbeat")`。模板将 nanosig 的原生日志接到所选日志实现，默认日志等级为 System，可在 `menuconfig` 的 nanosig 菜单调整。
 

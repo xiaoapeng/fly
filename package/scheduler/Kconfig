@@ -35,7 +35,9 @@ choice PACKAGE_SCHEDULER
     config PACKAGE_SCHEDULER_FREERTOS
         bool "FreeRTOS (preemptive kernel)"
         depends on ARCH_CPU_FAMILY_CORTEX_M && ARCH_NVIC_PRIO_BITS > 0
-        depends on ARCH_CORE = "cortex-m0" || ARCH_CORE = "cortex-m3" || (ARCH_CORE = "cortex-m4" && ARCH_HAS_HARD_FPU && ARCH_FLOAT_ABI = "hard") || (ARCH_CORE = "cortex-m33" && ARCH_TRUSTZONE_MODE = "non-secure")
+        depends on ARCH_CORE = "cortex-m0" || ARCH_CORE = "cortex-m3" || ARCH_CORE = "cortex-m4" || ARCH_CORE = "cortex-m7" || ARCH_CORE = "cortex-m23" || ARCH_CORE = "cortex-m33"
+        depends on (ARCH_CORE != "cortex-m4" && ARCH_CORE != "cortex-m7") || (ARCH_HAS_HARD_FPU && ARCH_FLOAT_ABI = "hard")
+        depends on ARCH_CORE != "cortex-m33" || ARCH_TRUSTZONE_MODE = "non-secure" || ARCH_TRUSTZONE_MODE = "unified"
         help
           FreeRTOS is available for Cortex-M profiles with a matching port. The package
           selects the appropriate port using architecture facts such as
