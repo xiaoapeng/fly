@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "board/arduino-uno-r4-minima",
+  "kind": "board",
+  "label": "Arduino UNO R4 Minima (R7FA4M1AB3CFM)",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "flash.ld",
+      "destination": "board/flash.ld"
+    },
+    {
+      "source": "README.md",
+      "destination": "board/README.md"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m4",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "R7FA4M1AB3CFM",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m4"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 48000000,
+    "memories": [
+      {
+        "id": "boot-flash",
+        "kind": "flash",
+        "address": 0,
+        "size": 16384
+      },
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 16384,
+        "size": 245760
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 32768
+      }
+    ],
+    "arch": "ra4m1"
+  }
+}

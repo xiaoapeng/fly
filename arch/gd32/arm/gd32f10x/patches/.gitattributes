@@ -1,0 +1,2 @@
+# Vendor patch context preserves the original line endings and spacing.
+*.patch -text whitespace=-blank-at-eol

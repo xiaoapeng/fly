@@ -1,5 +1,9 @@
 {
   "schema_version": 1,
   "id": "gd32e23x",
-  "config": "CONFIG_ARCH_GD32E23X"
+  "config": "CONFIG_ARCH_GD32E23X",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m23",
+  "float_abi": "soft"
 }

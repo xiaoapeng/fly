@@ -1,0 +1,28 @@
+// STM32H750VB startup model built on Renode's STM32H7 family platform.
+using "platforms/cpus/stm32h7.repl"
+
+flashBank1:
+    size: 0x20000
+
+flashBank2: @ none
+
+axiSram:
+    size: 0x80000
+
+sdramBank1: @ none
+sdramBank2: @ none
+externalFlash: @ none
+sramBank1: @ none
+sramBank2: @ none
+
+system_flash_ro:
+    init add:
+        WriteWord 0x1E880 0x80
+
+nvic:
+    systickFrequency: 64000000
+
+// DBGMCU identifies STM32H750 revision V (ST ES0392).
+sysbus:
+    init add:
+        Tag <0x5C001000, 0x5C001003> "DBGMCU_IDCODE" 0x20030450

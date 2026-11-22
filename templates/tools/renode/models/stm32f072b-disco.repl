@@ -1,0 +1,2 @@
+// Renode 1.17.0 board platform with FLY application memory bounds.
+using "platforms/boards/stm32f072b_discovery.repl"

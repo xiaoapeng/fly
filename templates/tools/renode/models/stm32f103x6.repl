@@ -1,0 +1,19 @@
+// STM32F103C6 startup model built on Renode's STM32F103 family platform.
+using "platforms/cpus/stm32f103.repl"
+
+flash: @ sysbus 0x08000000
+    size: 0x8000
+
+sram:
+    size: 0x2800
+
+fsmcBank1: @ none
+
+nvic:
+    systickFrequency: 8000000
+
+// Keep RCC reset values readable without downloading the optional SVD.
+sysbus:
+    init:
+        Tag <0x40021000, 0x40021003> "RCC_CR" 0x0A020083
+        Tag <0x40021004, 0x40021007> "RCC_CFGR" 0x00000000

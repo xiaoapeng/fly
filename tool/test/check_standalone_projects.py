@@ -21,7 +21,7 @@ from zlib import crc32
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 
-from arch_registry import discover as discover_architectures
+from arch_registry import discover as discover_architectures, resolve_board
 from project_new import select_interactively, write_menu
 from template_packs import discover as discover_packs, from_registry
 
@@ -593,7 +593,12 @@ def check_generated_config(sdk, workspace, board, template):
         raise RuntimeError(f"{name} generated Kconfig warnings:\n{output}")
 
     config = (project / "build/config/.config").read_text(encoding="utf-8").splitlines()
-    expected = (project / "defconfig").read_text(encoding="utf-8").splitlines() + [f"{board['config_symbol']}=y"]
+    architecture = board["architecture"]
+    expected = (project / "defconfig").read_text(encoding="utf-8").splitlines() + [
+        f"{architecture.config}=y", f'CONFIG_ARCH="{architecture.id}"',
+        f'CONFIG_ARCH_PROFILE="{architecture.profile}"', f'CONFIG_ARCH_CORE="{architecture.cpu}"',
+        f'CONFIG_ARCH_ISA="{architecture.isa}"', f'CONFIG_ARCH_TOOLCHAIN="{architecture.toolchain}"',
+    ]
     for assignment in expected:
         if assignment not in config:
             raise RuntimeError(f"{name} is missing Kconfig line {assignment!r}")
@@ -619,13 +624,15 @@ def check_registered_template(sdk, workspace, *, build_type=None):
             if (source / name).is_file():
                 shutil.copy2(source / name, target / name)
     # This architecture is present solely through its own manifest.
-    declaration = {"schema_version": 1, "id": "fixture-arch", "config": "CONFIG_ARCH_FIXTURE"}
-    toolchain_config = "# Configuration-only fixture\n"
+    declaration = {"schema_version": 1, "id": "fixture-arch", "config": "CONFIG_ARCH_FIXTURE",
+                   "isa": "riscv", "toolchain": "gcc-riscv-none-embed", "cpu": "fixture-core",
+                   "march": "rv32imac", "abi": "ilp32"}
+    toolchain_config = "# Fixture architecture has no additional flags\n"
     if build_type:
-        declaration["host_system"] = platform.system()
         native = next(arch for arch in discover_architectures(sdk / "arch").values()
                       if arch.host_system == platform.system())
-        toolchain_config = (sdk / "arch" / native.relative_path / "gcc-config.cmake").read_text(encoding="utf-8")
+        declaration = json.loads((native.directory / "arch.json").read_text(encoding="utf-8"))
+        declaration.update(id="fixture-arch", config="CONFIG_ARCH_FIXTURE")
     (arch_dir / "arch.json").write_text(json.dumps(declaration), encoding="utf-8")
     (arch_dir / "gcc-config.cmake").write_text(toolchain_config, encoding="utf-8")
     (arch_dir / "CMakeLists.txt").write_text("add_library(fixture_arch INTERFACE)\n", encoding="utf-8")
@@ -673,6 +680,9 @@ def check_registered_template(sdk, workspace, *, build_type=None):
         "arch": "fixture-arch", "toolchain": "fixture-gcc", "clock_hz": 6100,
         "memories": [] if build_type else [{"id": "flash", "kind": "flash", "address": 0, "size": 256}],
     })
+    fixture_arch = resolve_board(discover_architectures(fixture / "arch"), board["id"], board["board"])
+    if in_build_matrix(fixture_arch, "arm") or in_build_matrix(fixture_arch, "host") != bool(build_type):
+        raise RuntimeError("Build matrix picked the wrong fixture architecture")
     pack("app", "fixture-template", {
         "main.c": ("app/main.c", "int main(void) { return 0; }\n"),
         "biz/fixture.c": ("app/biz/fixture.c", "/* fixture business */\n"),
@@ -805,10 +815,20 @@ def check_registered_template(sdk, workspace, *, build_type=None):
     if "fixture says hello" not in (project / "README.md").read_text(encoding="utf-8"):
         raise RuntimeError("The generated README did not use the manifest's expected log")
     run(entrypoint(project, "build", "loadconfig", "defconfig"), project)
-    config = (project / "build/config/.config").read_text(encoding="utf-8")
+    config_path = project / "build/config/.config"
+    config = config_path.read_text(encoding="utf-8")
     if not all(line in config for line in (
-            'CONFIG_ARCH="experimental/fixture"', "CONFIG_ARCH_FIXTURE=y", "CONFIG_ARCH_FIXTURE_CAPABILITY=y")):
+            'CONFIG_ARCH="fixture-arch"', "CONFIG_ARCH_FIXTURE=y", "CONFIG_ARCH_FIXTURE_CAPABILITY=y")):
         raise RuntimeError(f"The discovered architecture was not activated:\n{config}")
+    if build_type:
+        run(entrypoint(project, "build", "build", build_type), project)
+    moved_arch = fixture / "arch/relocated/fixture"
+    moved_arch.parent.mkdir()
+    arch_dir.rename(moved_arch)
+    run(entrypoint(project, "build", "loadconfig", str(config_path)), project)
+    config_cmake = (project / "build/config/.config.cmake").read_text(encoding="utf-8")
+    if config_path.read_text(encoding="utf-8") != config or 'FLY_ARCH_RELATIVE_DIR "relocated/fixture"' not in config_cmake:
+        raise RuntimeError("Moving an architecture directory changed its saved configuration or failed to update CMake")
     if build_type:
         run(entrypoint(project, "build", "build", build_type), project)
         check_build_outputs(fixture, project, host=True, target="fixture_firmware")
@@ -824,6 +844,7 @@ def check_registered_template(sdk, workspace, *, build_type=None):
         if result.returncode == 0 or rejected.exists() or diagnostic not in result.stdout:
             raise RuntimeError(f"Invalid pack did not report {diagnostic!r} cleanly:\n{result.stdout}")
     reject(board_path, {**board, "board": {**board["board"], "arch": "unknown-architecture"}}, "unknown-architecture")
+    reject(board_path, {**board, "board": {**board["board"], "arch_profile": "missing-profile"}}, "missing-profile")
     board_path.write_text(json.dumps(board), encoding="utf-8")
     wrong_config = project / "wrong.config"
     wrong_config.write_text("CONFIG_ARCH_MCXN947=y\n", encoding="utf-8")
@@ -846,13 +867,117 @@ def check_registered_template(sdk, workspace, *, build_type=None):
     print("Arbitrary pack registration, shared files, board binding and invalid combinations: PASS", flush=True)
 
 
+def check_gd32f10x_variants(project):
+    cmake_dir = project / "build/cmake"
+    commands = json.loads((cmake_dir / "compile_commands.json").read_text(encoding="utf-8"))
+    startup_commands = {Path(entry["file"]).name: entry["command"] for entry in commands}
+    variants = ("md", "hd", "xd", "cl")
+    for variant in variants:
+        startup = f"startup_gd32f10x_{variant}.S"
+        if f"-DGD32F10X_{variant.upper()}" not in startup_commands.get(startup, ""):
+            raise RuntimeError(f"{startup} does not build with its matching GD32F10x device macro")
+    run(["cmake", "--build", str(cmake_dir), "--parallel", "2", "--target",
+         *(f"arch-gd32f10x-{variant}" for variant in variants)], project)
+    print("GD32F10x MD, HD, XD and CL device targets: PASS", flush=True)
+
+
+def check_h750_build(project, build_type, cache):
+    config_path = project / "build/config/.config"
+    config = config_path.read_text(encoding="utf-8")
+    required = {'CONFIG_ARCH_CORE="cortex-m7"', 'CONFIG_ARCH_PROFILE="cm7"',
+                'CONFIG_ARCH_FPU="fpv5-d16"', 'CONFIG_ARCH_FLOAT_ABI="hard"'}
+    if not required.issubset(config.splitlines()) or "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y" in config:
+        raise RuntimeError("H750 did not select the Cortex-M7 hard-float profile with a supported scheduler")
+    requested = project / "build/unsupported-scheduler.config"
+    requested.write_text(config.replace("CONFIG_PACKAGE_SCHEDULER_NONE=y", "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y"),
+                         encoding="utf-8")
+    rejected = subprocess.run(entrypoint(project, "build", "loadconfig", str(requested)), cwd=project,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+    if rejected.returncode == 0 or "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y is unavailable" not in rejected.stdout:
+        raise RuntimeError(f"Explicit H750 FreeRTOS choice was not rejected:\n{rejected.stdout}")
+    if config_path.read_text(encoding="utf-8") != config:
+        raise RuntimeError("Rejected scheduler request replaced the current H750 config")
+    cmake_dir = project / "build/cmake"
+    commands = json.loads((cmake_dir / "compile_commands.json").read_text(encoding="utf-8"))
+    flags = ("-mcpu=cortex-m7", "-mfpu=fpv5-d16", "-mfloat-abi=hard")
+    if not commands or any(not all(flag in command["command"] for flag in flags)
+                           or "-mcpu=cortex-m4" in command["command"] for command in commands):
+        raise RuntimeError("H750 compile commands differ from the selected CPU profile")
+    readelf = next((line.split("=", 1)[1] for line in cache.splitlines()
+                    if line.startswith("CMAKE_READELF:")), "")
+    if not Path(readelf).is_file():
+        raise RuntimeError("CMake did not resolve readelf for the selected H750 toolchain")
+    attributes = run([readelf, "-A", str(cmake_dir / "fly_app")], project)
+    if "Tag_FP_arch: FPv5/FP-D16" not in attributes or "Tag_ABI_VFP_args: VFP registers" not in attributes:
+        raise RuntimeError(f"H750 ELF does not declare FPv5-D16 with the hard-float calling convention:\n{attributes}")
+    run(entrypoint(project, "build", "make_img"), project)
+    package, manifest = current_package(project, build_type)
+    app, = manifest["partitions"]
+    with ZipFile(package.with_suffix(".zip")) as archive:
+        check_partition(package, archive, app, (cmake_dir / "fly_app.bin").read_bytes())
+    print("STM32H750 M7 compiler flags, ELF attributes and package: PASS", flush=True)
+
+
 def check_board_build(sdk, workspace, board, template, build_type):
     name = f"{board['id']}-{template}"
     project = workspace / name
     generate(sdk, project, name, board["id"], template)
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
-    check_build_outputs(sdk, project, host=board["target_kind"] == "host")
+    cache = check_build_outputs(sdk, project, host=board["target_kind"] == "host")
+    if board["id"] == "gd32f103rc":
+        check_gd32f10x_variants(project)
+    if board["id"] == "stm32h750vb":
+        check_h750_build(project, build_type, cache)
     print(f"{name}: {build_type} compile and link PASS", flush=True)
+
+
+def check_renode_project(sdk, workspace, board, template, build_type, renode):
+    name = board
+    project = workspace / f"{board}-{template}"
+    generate(sdk, project, name, board, template, "--pack", "tool/renode")
+    run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
+    run(entrypoint(project, "build", "make_img"), project)
+    package, manifest = current_package(project, build_type)
+    app, = manifest["partitions"]
+    with ZipFile(package.with_suffix(".zip")) as archive:
+        check_partition(package, archive, app, (project / "build/cmake/fly_app.bin").read_bytes())
+
+    duration = 3200
+    options = ["--tool", f"renode={renode.resolve()}"] if renode else []
+    output = run(entrypoint(project, "build", "flash-run", "--via", "renode",
+                            "--duration-ms", str(duration), *options), project)
+    logs = project / "image/logs/renode/default" / build_type / manifest["artifact_id"]
+    record_path, = logs.glob("*/record.json")
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    rtt = record_path.with_name(record["rtt_log"]).read_text(encoding="utf-8")
+    expected_app = {"name": app["name"], "address": app["address"], "sha256": app["bin"]["sha256"]}
+    boot_markers = [f"Firmware {name} v0.1.0", f"CRC32 0x{int(app['trailer']['crc32'], 16):08X} (OK)",
+                    *template_manifest(sdk, template)["app"]["expected_log"]]
+    if (record["status"] != "ok" or record["virtual_ms"] != duration
+            or record["partitions"] != [expected_app]
+            or not all(marker in rtt and marker in output for marker in boot_markers)):
+        raise RuntimeError(f"{project.name} did not report a verified boot in Renode:\n{output}")
+    print(f"{project.name}: Renode boot and {boot_markers[1]} PASS", flush=True)
+
+
+def check_renode_matrix(sdk, workspace, build_type, renode):
+    registry = discover_packs(sdk / "templates")
+    models = registry["tool/renode"].data["models"]
+    cases = [(model["board"].split("/", 1)[1], app.split("/", 1)[1])
+             for model in models for app in model["apps"]]
+    if not cases:
+        raise RuntimeError("No Renode board and APP combinations declared")
+    errors = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(check_renode_project, sdk, workspace, board, app, build_type, renode): (board, app)
+                   for board, app in cases}
+        for future, case in futures.items():
+            try:
+                future.result()
+            except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+                errors.append(f"{' / '.join(case)}: {error}")
+    if errors:
+        raise RuntimeError("Renode checks failed:\n" + "\n".join(errors))
 
 
 def check_frdm_templates(sdk, workspace, build_type):
@@ -864,6 +989,12 @@ def check_frdm_templates(sdk, workspace, build_type):
         for future in futures:
             future.result()
     return {(FRDM_BOARD, template) for template in FRDM_SMOKES}
+
+
+def in_build_matrix(architecture, matrix):
+    if matrix == "arm":
+        return architecture.isa == "arm"
+    return architecture.host_system == platform.system()
 
 
 def check_matrix(sdk, workspace, matrix, build_type):
@@ -879,9 +1010,8 @@ def check_matrix(sdk, workspace, matrix, build_type):
                 continue
             profiles.append(app.id.split("/", 1)[1])
         board = pack.data["board"]
-        arch = architectures[board["arch"]]
-        boards.append(dict(board, id=pack.id.split("/", 1)[1], templates=profiles,
-                           config_symbol=arch.config, host_system=arch.host_system))
+        architecture = resolve_board(architectures, pack.id, board)
+        boards.append(dict(board, id=pack.id.split("/", 1)[1], templates=profiles, architecture=architecture))
     if not boards:
         raise RuntimeError("No board manifests found")
     if matrix == "config":
@@ -891,10 +1021,7 @@ def check_matrix(sdk, workspace, matrix, build_type):
         check_registered_template(sdk, workspace)
         return
 
-    kind = "host" if matrix == "host" else "mcu"
-    selected = [board for board in boards if board["target_kind"] == kind]
-    if kind == "host":
-        selected = [board for board in selected if board["host_system"] == platform.system()]
+    selected = [board for board in boards if in_build_matrix(board["architecture"], matrix)]
     if not selected:
         raise RuntimeError(f"No boards registered for the {matrix} matrix on {sys.platform}")
     smoke_coverage = check_frdm_templates(sdk, workspace, build_type) if matrix == "arm" else set()
@@ -913,12 +1040,13 @@ def main():
                          help="Check native package directory aliases without a toolchain.")
     partial.add_argument("--sdk-setup-only", action="store_true",
                          help="Check the generator and application launchers without a toolchain.")
-    partial.add_argument("--matrix", choices=("config", "arm", "host"),
-                         help="Check configs, build all Cortex-M boards, or build the current native host.")
+    partial.add_argument("--matrix", choices=("config", "arm", "host", "renode"),
+                         help="Check configs, build Cortex-M or native host applications, or boot in Renode.")
     parser.add_argument("--build-type", choices=("Debug", "Release"), default="Debug")
+    parser.add_argument("--renode", type=Path, help="Path to the Renode executable for the Renode matrix.")
     args = parser.parse_args()
     sdk = Path(__file__).resolve().parents[2]
-    sdk_outputs = [sdk / name for name in (".config", "auto-generate", "build", "dl", "image", ".vscode")]
+    sdk_outputs = [sdk / name for name in (".config", "auto-generate", "build", "image", ".vscode")]
     original = {path: path.stat().st_mtime_ns if path.exists() else None for path in sdk_outputs}
     with tempfile.TemporaryDirectory(prefix="fly standalone ") as directory:
         workspace = Path(directory)
@@ -926,6 +1054,8 @@ def main():
             check_image_links(sdk, workspace)
         elif args.sdk_setup_only:
             check_sdk_setup(sdk, workspace)
+        elif args.matrix == "renode":
+            check_renode_matrix(sdk, workspace, args.build_type, args.renode)
         elif args.matrix:
             check_matrix(sdk, workspace, args.matrix, args.build_type)
         else:

@@ -1,0 +1,2 @@
+using "platforms/boards/silabs/brd4121a.repl"
+using "efr32mg26-startup.repl"

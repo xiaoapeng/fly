@@ -1,0 +1,12 @@
+// Startup smoke based on the bundled Renode 1.17 Firefly model.
+using "platforms/boards/zolertia-firefly.repl"
+
+flash:
+    size: 0x80000
+
+ram:
+    size: 0x8000
+
+nvic:
+    priorityMask: 0xE0
+    systickFrequency: 16000000

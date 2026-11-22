@@ -15,12 +15,11 @@ fly_fetch_git_project(
     AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/MaJerle/lwbtn.git
     GIT_TAG        "${CONFIG_PACKAGE_LWBTN_GIT_COMMIT}"
+    SOURCE_DIR_VAR LWBTN_SRC_DIR
 )
 
 # FLY compiles the upstream single source file directly instead of adding
 # upstream's CMake target, so Kconfig stays the only configuration entry.
-set(LWBTN_SRC_DIR "${FLY_SOURCE_DL_BASE_DIR}/lwbtn-src")
-
 add_library(lwbtn "${LWBTN_SRC_DIR}/lwbtn/src/lwbtn/lwbtn.c")
 
 target_include_directories(lwbtn PUBLIC

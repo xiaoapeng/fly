@@ -1,0 +1,30 @@
+// Common GD32E23x and GD32F10x RCU startup handshake, based on the vendor
+// gd32e23x_rcu.h and gd32f10x_rcu.h register definitions. The oscillators
+// and system clock switch respond immediately; clock frequencies and
+// peripheral resets are not modeled here.
+rcu: Python.PythonPeripheral @ sysbus 0x40021000
+    size: 0x100
+    initable: true
+    script: '''
+CTL, CFG0 = 0x00, 0x04
+OSC_ENABLE = (1 << 0) | (1 << 16) | (1 << 24)
+OSC_READY = OSC_ENABLE << 1
+SCS, SCSS = 0x3, 0xC
+if request.IsInit:
+    registers = {CTL: 0x83}
+elif request.IsRead:
+    request.Value = registers.get(request.Offset, 0)
+elif request.IsWrite:
+    offset = request.Offset
+    value = request.Value
+    if offset == CTL:
+        value = (value & ~OSC_READY) | ((value & OSC_ENABLE) << 1)
+    elif offset == CFG0:
+        value = (value & ~SCSS) | ((value & SCS) << 2)
+    registers[offset] = value
+'''
+
+// Only startup wait-state register storage is needed. This block has no
+// Flash erase or programming behavior.
+fmc_registers: Memory.ArrayMemory @ sysbus 0x40022000
+    size: 0x100

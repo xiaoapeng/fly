@@ -1,0 +1,14 @@
+set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(FLY_FLASH_ADDRESS "0x08000000")
+set(FLY_FLASH_SIZE "0x00200000")
+
+set(FLY_STM32_ARCH_TARGET "arch-stm32f767xx")
+set(FLY_STM32_FLASH_SIZE "${FLY_FLASH_SIZE}")
+set(FLY_STM32_RAM_ADDRESS "0x20000000")
+set(FLY_STM32_RAM_SIZE "512K")
+
+# The board's default HSE is 8 MHz from the on-board ST-LINK MCO.
+if(TARGET "${FLY_STM32_ARCH_TARGET}")
+    target_compile_definitions(${FLY_STM32_ARCH_TARGET} PUBLIC HSE_VALUE=8000000U)
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/stm32-board.cmake")

@@ -2,5 +2,8 @@
   "schema_version": 1,
   "id": "x64-windows",
   "config": "CONFIG_ARCH_X64_WINDOWS",
-  "host_system": "Windows"
+  "host_system": "Windows",
+  "isa": "host",
+  "toolchain": "gcc-host-windows",
+  "cpu": "x86_64"
 }

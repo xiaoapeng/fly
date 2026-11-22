@@ -19,12 +19,13 @@ SDK = Path(__file__).resolve().parents[2]
 ARTIFACT_ID = 'a' * 64
 
 FAKE_RENODE = '''
-import base64, os, re, sys, time
+import base64, json, os, re, sys, time
 from pathlib import Path
 
 root, script = map(Path, sys.argv[1:])
 commands = script.read_text().splitlines()
-duration = int(next(line.split()[1] for line in commands if line.startswith('fly_run ')))
+_, duration, completion = next(line.split(maxsplit=2) for line in commands if line.startswith('fly_run '))
+duration = int(duration)
 verify = next(line for line in commands if line.startswith('fly_verify_binary '))
 address, digest = re.fullmatch(r'fly_verify_binary (0x[0-9a-f]+) [0-9]+ "([0-9a-f]+)"', verify).groups()
 if (root / 'wrong-digest').exists():
@@ -43,7 +44,10 @@ emit(b'last RTT line\\n')
 while not (root / 'finish').exists():
     time.sleep(0.01)
 if duration:
-    print('FLY_RENODE_RUN_COMPLETE', flush=True)
+    if not (root / 'missing-completion').exists():
+        Path(json.loads(completion)).write_text(str(duration), encoding='utf-8')
+    suffix = '[19:53:34.4860] [INFO] fly: Machine paused.' if (root / 'joined').exists() else ''
+    print('FLY_RENODE_RUN_COMPLETE' + suffix, flush=True)
 '''
 
 HARNESS = '''
@@ -173,3 +177,18 @@ class RenodeRunTests(unittest.TestCase):
         self.assertIn('ARTIFACT_MISMATCH', output.read_text())
         _, record = self.record()
         self.assertEqual(record['status'], 'error')
+
+    def test_completion_with_interleaved_monitor_log(self):
+        for flag in ('joined', 'advance', 'finish'):
+            (self.root / flag).touch()
+        runner, output = self.start('175', 'run')
+        self.assertEqual(runner.wait(timeout=10), 0, output.read_text())
+        _, record = self.record()
+        self.assertEqual(record['status'], 'ok')
+
+    def test_clean_exit_without_completion_is_rejected(self):
+        for flag in ('missing-completion', 'advance', 'finish'):
+            (self.root / flag).touch()
+        runner, output = self.start('175', 'run')
+        self.assertEqual(runner.wait(timeout=10), 1, output.read_text())
+        self.assertIn('EXECUTION_ERROR', output.read_text())

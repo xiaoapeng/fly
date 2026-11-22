@@ -44,6 +44,7 @@
         "size": 524288
       }
     ],
-    "arch": "stm32h7xx"
+    "arch": "stm32h7xx",
+    "arch_profile": "cm7"
   }
 }

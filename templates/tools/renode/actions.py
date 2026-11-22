@@ -2,6 +2,7 @@
 
 import base64
 from datetime import datetime, timezone
+import json
 import os
 from pathlib import Path
 import re
@@ -23,7 +24,7 @@ from run_log import RUN_LOCK, show_log
 
 ROOT = Path(__file__).resolve().parent
 RUN_STARTED = b"FLY_RENODE_RUN_STARTED"
-RUN_COMPLETE = b"FLY_RENODE_RUN_COMPLETE"
+COMPLETION_FILE = "run.complete"
 RTT_LINE = re.compile(rb"FLY_RTT64 ([A-Za-z0-9+/=]+)")
 EVIDENCE_LINE = re.compile(rb"FLY_BIN_VERIFIED ([a-f0-9]+) ([a-f0-9]{64})")
 TOOL_ID = "renode"
@@ -101,31 +102,31 @@ def _stream_run(program, script_path, rtt, identity, duration):
     record_ref = {"record_path": str(record_path)}
     expected = {(int(part["address"], 16), part["sha256"].encode("ascii")) for part in identity}
     verified = set()
-    started = completed = False
+    started = False
     deadline = monotonic() + 30 + 3 * (duration or 0) / 1000
     pending = b""
 
     def consume(chunk):
-        nonlocal pending, started, completed
+        nonlocal pending, started
         lines = (pending + chunk).split(b"\n")
         pending = lines.pop()
         for raw in lines:
             line = raw.strip()
-            evidence = EVIDENCE_LINE.fullmatch(line)
+            # The Renode logger can append its bracketed timestamp to a monitor record.
+            monitor_line = line.partition(b"[")[0].rstrip() if line.startswith(b"FLY_") else line
+            evidence = EVIDENCE_LINE.fullmatch(monitor_line)
             if evidence:
                 verified.add((int(evidence[1], 16), evidence[2]))
-            if (b"Memory digest mismatch" in line or line == RUN_STARTED and not expected <= verified):
+            if (b"Memory digest mismatch" in line or monitor_line == RUN_STARTED and not expected <= verified):
                 raise ProviderError("ARTIFACT_MISMATCH", f"Renode did not load the verified firmware. See {console_path}",
                                     data=record_ref)
             if b"There was an error executing command" in line:
                 raise ProviderError("EXECUTION_ERROR", f"Renode monitor command failed. See {console_path}",
                                     data=record_ref)
-            if line == RUN_STARTED:
+            if monitor_line == RUN_STARTED:
                 started = True
-            elif line == RUN_COMPLETE:
-                completed = True
             else:
-                entry = RTT_LINE.fullmatch(line)
+                entry = RTT_LINE.fullmatch(monitor_line)
                 if entry and started:
                     payload = base64.b64decode(entry[1], validate=True)
                     rtt.write(payload)
@@ -162,7 +163,9 @@ def _stream_run(program, script_path, rtt, identity, duration):
                 stop_child(process)
     if exit_value:
         raise tool_failed("Renode", exit_value, data=record_ref)
-    if not started or not completed or duration is None:
+    completion = record_dir / COMPLETION_FILE
+    if (not started or duration is None or not completion.is_file()
+            or completion.read_text(encoding="utf-8") != str(duration)):
         raise ProviderError("EXECUTION_ERROR", f"Renode exited before completing the requested run. See {console_path}",
                             data=record_ref)
 
@@ -182,7 +185,8 @@ def _run(request, artifact, manifest, model):
         {"name": part["name"], "address": part["address"], "sha256": part["bin"]["sha256"]}
         for part in manifest["partitions"]
     ]
-    script = [*_base_script(artifact, manifest, model), f"fly_run {duration or 0}", "quit"]
+    completion = json.dumps((record_dir / COMPLETION_FILE).as_posix(), ensure_ascii=False)
+    script = [*_base_script(artifact, manifest, model), f"fly_run {duration or 0} {completion}", "quit"]
     script_path.write_text("\n".join(script) + "\n", encoding="utf-8")
     print(f"Renode firmware {manifest['artifact_id']}", flush=True)
     for part in identity:

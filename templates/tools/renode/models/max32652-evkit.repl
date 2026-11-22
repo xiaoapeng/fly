@@ -1,0 +1,11 @@
+// Use the Renode 1.17 MAX32652 EV Kit platform at the reset clock.
+using "platforms/boards/max32652-evkit.repl"
+
+nvic:
+    priorityMask: 0xE0
+    systickFrequency: 50000000
+
+// Keep model initialization independent of the optional remote SVD.
+sysbus:
+    init:
+        Tag <0x40000400, 0x400007FF> "SI Registers"

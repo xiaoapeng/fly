@@ -1,5 +1,9 @@
 {
   "schema_version": 1,
   "id": "gd32f10x",
-  "config": "CONFIG_ARCH_GD32F10X"
+  "config": "CONFIG_ARCH_GD32F10X",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m3",
+  "float_abi": "soft"
 }

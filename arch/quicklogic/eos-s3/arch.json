@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "quicklogic-eos-s3",
+  "config": "CONFIG_ARCH_QUICKLOGIC_EOS_S3",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m4",
+  "fpu": "fpv4-sp-d16",
+  "float_abi": "hard"
+}

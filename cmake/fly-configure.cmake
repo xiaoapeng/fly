@@ -4,7 +4,6 @@ set(FLY_RESOLVED_SDK_DIR "${FLY_TOP_DIR}" CACHE INTERNAL "Resolved FLY SDK check
 set(FLY_WORKSPACE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(FLY_OUTPUT_DIR "${FLY_WORKSPACE_DIR}/build")
 set(FLY_CONFIG_DIR "${FLY_OUTPUT_DIR}/config")
-set(FLY_DOWNLOAD_DIR "${FLY_OUTPUT_DIR}/deps")
 set(FLY_IMAGE_DIR "${FLY_WORKSPACE_DIR}/image")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -47,13 +46,13 @@ set(Python3_EXECUTABLE "${fly_python}" CACHE FILEPATH "Python interpreter for FL
 set(Python3_EXECUTABLE "${fly_python}")
 
 include("${FLY_CONFIG_DIR}/.config.cmake")
-set(fly_arch_dir "${FLY_TOP_DIR}/arch/${CONFIG_ARCH}")
+set(FLY_SELECTED_ARCH_DIR "${FLY_TOP_DIR}/arch/${FLY_ARCH_RELATIVE_DIR}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${FLY_TOP_DIR}/arch/Kconfig" "${fly_arch_dir}/arch.json")
-if(EXISTS "${fly_arch_dir}/Kconfig")
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${fly_arch_dir}/Kconfig")
+    "${FLY_TOP_DIR}/arch/Kconfig" "${FLY_SELECTED_ARCH_DIR}/arch.json")
+if(EXISTS "${FLY_SELECTED_ARCH_DIR}/Kconfig")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FLY_SELECTED_ARCH_DIR}/Kconfig")
 endif()
-include("${fly_arch_dir}/gcc-config.cmake")
+include("${FLY_SELECTED_ARCH_DIR}/gcc-config.cmake")
 include("${FLY_TOP_DIR}/cmake/tool-chain-general.cmake")
 include("${FLY_TOP_DIR}/cmake/arch-config.cmake")
 set(FLY_TOOLCHAIN_SYSTEM_NAME "${CMAKE_SYSTEM_NAME}")

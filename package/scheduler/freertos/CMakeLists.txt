@@ -16,12 +16,14 @@ fly_fetch_git_project(
     AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/FreeRTOS/FreeRTOS-Kernel.git
     GIT_TAG        "${CONFIG_PACKAGE_FREERTOS_GIT_TAG}"
+    SOURCE_DIR_VAR FREERTOS_SRC_DIR
 )
-
-set(FREERTOS_SRC_DIR "${FLY_SOURCE_DL_BASE_DIR}/freertos-kernel-src")
 
 # Select the FreeRTOS port from generic architecture facts. The package owns
 # this mapping; architecture Kconfig only supplies hardware/startup facts.
+set(FREERTOS_PORT_SOURCES port.c)
+set(FREERTOS_PORT_GLOBAL_DEFS)
+set(FREERTOS_PORT_VECTOR_DEFS)
 if(CONFIG_ARCH_CORE STREQUAL "cortex-m33")
     if(CONFIG_ARCH_TRUSTZONE_MODE STREQUAL "non-secure")
         set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM33_NTZ/non_secure")
@@ -29,18 +31,23 @@ if(CONFIG_ARCH_CORE STREQUAL "cortex-m33")
         message(FATAL_ERROR "FreeRTOS: unsupported Cortex-M33 security mode: ${CONFIG_ARCH_TRUSTZONE_MODE}")
     endif()
     set(FREERTOS_PORT_GLOBAL_DEFS _ARMV8M_LM_PRESENT _ARMV8M_MAINLINE_PRESENT)
+    list(APPEND FREERTOS_PORT_SOURCES portasm.c)
 elseif(CONFIG_ARCH_CORE STREQUAL "cortex-m0")
     set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM0")
-    set(FREERTOS_PORT_GLOBAL_DEFS)
-elseif(CONFIG_ARCH_CORE STREQUAL "cortex-m3")
-    set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM3")
-    set(FREERTOS_PORT_GLOBAL_DEFS)
-elseif(CONFIG_ARCH_CORE STREQUAL "cortex-m4")
-    if(CONFIG_ARCH_HAS_HARD_FPU AND CONFIG_ARCH_FLOAT_ABI STREQUAL "hard")
+    list(APPEND FREERTOS_PORT_SOURCES portasm.c)
+elseif(CONFIG_ARCH_CORE STREQUAL "cortex-m3" OR CONFIG_ARCH_CORE STREQUAL "cortex-m4")
+    if(CONFIG_ARCH_CORE STREQUAL "cortex-m3")
+        set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM3")
+    elseif(CONFIG_ARCH_HAS_HARD_FPU AND CONFIG_ARCH_FLOAT_ABI STREQUAL "hard")
         set(FREERTOS_PORT_DIR "portable/GCC/ARM_CM4F")
     else()
         message(FATAL_ERROR "FreeRTOS: Cortex-M4 requires the hard-FPU ARM_CM4F port in v1")
     endif()
+    set(FREERTOS_PORT_VECTOR_DEFS
+        vPortSVCHandler=SVC_Handler
+        xPortPendSVHandler=PendSV_Handler
+        xPortSysTickHandler=SysTick_Handler
+    )
 else()
     message(FATAL_ERROR "FreeRTOS: unsupported generic architecture core: ${CONFIG_ARCH_CORE}")
 endif()
@@ -103,10 +110,9 @@ add_library(freertos-assert OBJECT
 )
 
 # 4) port (OBJECT)
-add_library(freertos-port OBJECT
-    "${FREERTOS_SRC_DIR}/${FREERTOS_PORT_DIR}/port.c"
-    "${FREERTOS_SRC_DIR}/${FREERTOS_PORT_DIR}/portasm.c"
-)
+list(TRANSFORM FREERTOS_PORT_SOURCES PREPEND "${FREERTOS_SRC_DIR}/${FREERTOS_PORT_DIR}/")
+add_library(freertos-port OBJECT ${FREERTOS_PORT_SOURCES})
+target_compile_definitions(freertos-port PRIVATE ${FREERTOS_PORT_VECTOR_DEFS})
 
 target_link_libraries(freertos-heap   PUBLIC freertos-config)
 target_link_libraries(freertos-kernel PUBLIC freertos-heap freertos-config)

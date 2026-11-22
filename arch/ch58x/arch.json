@@ -1,5 +1,10 @@
 {
   "schema_version": 1,
   "id": "ch58x",
-  "config": "CONFIG_ARCH_CH58X"
+  "config": "CONFIG_ARCH_CH58X",
+  "isa": "riscv",
+  "toolchain": "gcc-mrs-riscv-none-elf",
+  "cpu": "riscv",
+  "march": "rv32imac",
+  "abi": "ilp32"
 }

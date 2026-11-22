@@ -1,0 +1,17 @@
+// GD32E230C8T6 startup smoke model. Flash and SRAM match the FLY board.
+using "gd32-startup-rcu.repl"
+
+cpu: CPU.CortexM @ sysbus
+    cpuType: "cortex-m23"
+    nvic: nvic
+
+nvic: IRQControllers.NVIC @ sysbus 0xE000E000
+    priorityMask: 0xC0
+    systickFrequency: 72000000
+    -> cpu@0
+
+flash: Memory.MappedMemory @ sysbus 0x08000000
+    size: 0x10000
+
+sram: Memory.MappedMemory @ sysbus 0x20000000
+    size: 0x2000

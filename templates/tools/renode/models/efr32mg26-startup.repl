@@ -1,0 +1,5 @@
+// Startup and RTT on the Cortex-M33 use the board's reset clock.
+// The upstream model leaves TrustZone disabled and the radio CPU halted.
+nvic:
+    priorityMask: 0xF0
+    systickFrequency: 19000000

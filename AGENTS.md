@@ -7,14 +7,14 @@ FLY 是一套嵌入式固件构建、打包、烧录和调试工具。固件使�
 - 在 SDK 目录运行 `./fly.sh new` 或 `fly.bat new` 创建应用。应用的 `build.sh`（Linux/macOS）或 `build.bat`（Windows）调用 SDK 的 `tool/python/build.py`，再由它调用 CMake。
 - 应用的 `Kconfig` 生成 `build/config/.config`，再由该配置生成 `build/config/.config.cmake` 和 `build/config/autoconf.h`。
 - 应用根目录的 `CMakeLists.txt` 是构建入口。`cmake/fly-configure.cmake` 在 `project()` 前准备 Kconfig 和工具链，随后 `cmake/fly-sdk.cmake` 加载 SDK 的架构和组件包。
-- GitHub Actions 为七个 Cortex-M 目标和三个宿主平台生成工程。夜间任务以 Release 模式运行 ARM 构建矩阵。必需检查见 [持续集成说明](docs/CI.md)。
+- GitHub Actions 为板卡清单中已注册的 ARM 目标和三个宿主平台生成工程。夜间任务以 Release 模式运行 ARM 构建矩阵。必需检查见 [持续集成说明](docs/CI.md)。
 - 仓库根目录的 `CLAUDE.md` 是本地 OMC 编排配置，由 Git 忽略。
 
 ## 目录结构
 
-- `arch/<vendor>/<family>/` 提供芯片支持，包括厂商 SDK、HAL、启动代码和芯片级的默认链接脚本。各架构在自己的 `arch.json` 声明 ID 和配置标识，由 `gcc-config.cmake` 配置工具链，按需由 `Kconfig` 声明硬件能力。板卡清单引用架构 ID。
+- `arch/<vendor>/<family>/` 提供芯片支持。架构清单 `arch.json` 声明稳定 ID、ISA、工具链和 CPU 构建配置，供 Kconfig、CMake 和 CI 共用。芯片目标拥有与器件宏对应的启动文件和默认 `SystemInit`。板卡清单引用架构 ID，存在多个构建配置时还需选择 `arch_profile`。
 - `templates/` 包含工程骨架、板卡包、APP 包和工具包。共享实现按板卡、APP、日志职责归位，由包清单声明依赖。生成的应用是独立仓库，默认位于 SDK 同级的 `fly-project/` 下。
-- `package/<name>/` 存放可复用组件。`eventhub-os`、`ehip` 等 Git 依赖通过 `fly_fetch_git_project()` 克隆到应用的 `build/deps/<name>-src/`。
+- `package/<name>/` 存放可复用组件。芯片厂商源码与组件 Git 依赖通过 `fly_fetch_git_project()` 按提交缓存到 SDK 的 `dl/`。构建使用函数返回的源码目录，版本与补丁不同的工作树分别保存。
 - `cmake/` 存放工具链文件、组件包辅助函数（`fly_register_package_library`、`fly_link_package_libraries`）和通用固件打包目标。
 - `tool/python/` 中的 `build.py` 调度构建，`project_actions.py` 调度包注册的动作，`firmware_payload.py` 生成并校验公共固件包，`fetch_git_project.py` 按镜像设置拉取 Git 仓库。
 - `tool/test/` 下的 `check_standalone_projects.py` 验证工程配置、ARM 和宿主构建、固件打包及 SDK 安装。

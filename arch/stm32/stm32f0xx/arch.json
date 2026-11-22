@@ -1,5 +1,9 @@
 {
   "schema_version": 1,
   "id": "stm32f0xx",
-  "config": "CONFIG_ARCH_STM32F0XX"
+  "config": "CONFIG_ARCH_STM32F0XX",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m0",
+  "float_abi": "soft"
 }

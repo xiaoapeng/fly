@@ -1,0 +1,4 @@
+diff --git a/package/segger-rtt/inc/SEGGER_RTT_Conf.h b/package/segger-rtt/inc/SEGGER_RTT_Conf.snapshot.h
+similarity index 100%
+rename from package/segger-rtt/inc/SEGGER_RTT_Conf.h
+rename to package/segger-rtt/inc/SEGGER_RTT_Conf.snapshot.h

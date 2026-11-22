@@ -1,133 +1,144 @@
-set(STM32H7XX_INCLUDE_DIRS  
-    "${CMAKE_CURRENT_LIST_DIR}/../CMSIS/Include"
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Include/"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Inc/"
+include("${CMAKE_CURRENT_LIST_DIR}/../stm32-device.cmake")
+
+_fly_fetch_stm32_sources(h7
+    faccfec37f82f7a1319c21638111b0f7335de7fe
+    fec141ce999da655a48e1a15db83a72d564a1312
 )
 
-set(STM32H7XX_LL_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_lptim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_pwr.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_delayblock.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_dma2d.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_mdma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_adc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_comp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_i2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_fmac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_swpmi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_crs.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_exti.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usb.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_rng.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_hrtim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_rtc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_utils.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_bdma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_gpio.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_fmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_opamp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_rcc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_crc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_tim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_dma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_cordic.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_lpuart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_dac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_sdmmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_spi.c"
+set(STM32_DEVICE_TEMPLATES "${STM32_DEVICE_DIR}/Source/Templates")
+set(STM32_DEVICE_HEADER stm32h7xx.h)
+set(STM32_SYSTEM_SOURCE system_stm32h7xx.c)
+
+set(STM32_INCLUDE_DIRS
+    "${STM32_CMSIS_INCLUDE}"
+    "${STM32_DEVICE_DIR}/Include/"
+    "${STM32_HAL_DIR}/Inc/"
 )
 
-set(STM32H7XX_HAL_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_otfdec.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ramecc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mdma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spdifrx.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pcd_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cordic.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_swpmi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hcd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_gpio.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_smbus_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hash.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_iwdg.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dts.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_fdcan.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mdios.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_wwdg.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma2d.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cryp_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hsem.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sd_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dcmi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cec.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_comp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dfsdm_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_fmac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2s.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_smartcard.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rng_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_crc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sram.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_eth_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_jpeg.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_uart_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cryp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2s_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_smartcard_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_opamp_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mmc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_smbus.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_eth.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hrtim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rng.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_lptim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_nand.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_qspi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dfsdm.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dsi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_uart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_crc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_opamp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_irda.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hash_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_nor.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sdram.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_usart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pcd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_usart_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_gfxmmu.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pssi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc_ex.c"
+set(STM32_LL_SOURCES
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_lptim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_pwr.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_usart.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_delayblock.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_dma2d.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_mdma.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_adc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_comp.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_i2c.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_fmac.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_swpmi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_crs.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_exti.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_usb.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_rng.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_hrtim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_rtc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_utils.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_bdma.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_gpio.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_fmc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_opamp.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_rcc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_crc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_tim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_dma.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_cordic.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_lpuart.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_dac.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_sdmmc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_ll_spi.c"
+)
+
+set(STM32_HAL_SOURCES
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rcc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_otfdec.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dac_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_ramecc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_mdma.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_spdifrx.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_pcd_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dma.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_cordic.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_swpmi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sd.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_hcd.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_gpio.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_smbus_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_cortex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_flash_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_mmc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_hash.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_iwdg.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dts.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_fdcan.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_tim_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_mdios.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_pwr.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_wwdg.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dma2d.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_cryp_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_hsem.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_spi_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sd_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dcmi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_cec.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_tim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_comp.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dfsdm_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_fmac.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_i2s.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_smartcard.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rng_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_exti.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rtc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_crc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sram.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_eth_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rcc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_jpeg.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_uart_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_cryp.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_ltdc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_pwr_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_i2s_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sai.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_smartcard_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_spi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_flash.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_opamp_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_mmc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_smbus.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_eth.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_hrtim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rng.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_lptim.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_nand.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_qspi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dfsdm.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dsi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_uart.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_crc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_opamp.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_irda.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_i2c_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_i2c.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_hash_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_nor.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_rtc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sdram.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_usart.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_sai_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_pcd.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dma_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_adc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_adc.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_usart_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_ospi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_gfxmmu.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_dac.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_pssi.c"
+    "${STM32_HAL_DIR}/Src/stm32h7xx_hal_ltdc_ex.c"
 )
 
 
@@ -154,270 +165,52 @@ set(STM32H7XX_HAL_SOURCES
 # arch-stm32h725xx */   /*!< STM32H725AGI6, STM32H725IGK6, STM32H725IGT6, STM32H725RGV6, STM32H725VGT6, STM32H725VGY6, STM32H725ZGT6, STM32H725REV6, SM32H725VET6, STM32H725ZET6, STM32H725AEI6, STM32H725IET6, STM32H725IEK6  Devices */
 # arch-stm32h723xx */   /*!< STM32H723VGH6, STM32H723VGT6, STM32H723ZGI6, STM32H723ZGT6, STM32H723VET6, STM32H723VEH6, STM32H723ZET6, STM32H723ZEI6 Devices */
 
+if(CONFIG_ARCH_PROFILE STREQUAL "cm7")
+    _fly_add_stm32_device(arch-stm32h742xx STM32H742xx startup_stm32h742xx.s)
+    _fly_add_stm32_device(arch-stm32h743xx STM32H743xx startup_stm32h743xx.s)
+    _fly_add_stm32_device(arch-stm32h753xx STM32H753xx startup_stm32h753xx.s)
+    _fly_add_stm32_device(arch-stm32h750xx STM32H750xx startup_stm32h750xx.s)
+    _fly_add_stm32_device(arch-stm32h747xx-cm7 STM32H747xx startup_stm32h747xx.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h747xg-cm7 STM32H747xG startup_stm32h747xg.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h757xx-cm7 STM32H757xx startup_stm32h757xx.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h745xx-cm7 STM32H745xx startup_stm32h745xx.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h745xg-cm7 STM32H745xG startup_stm32h745xg.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h755xx-cm7 STM32H755xx startup_stm32h755xx.s CORE_CM7)
+    _fly_add_stm32_device(arch-stm32h7b0xx STM32H7B0xx startup_stm32h7b0xx.s)
+    _fly_add_stm32_device(arch-stm32h7b0xxq STM32H7B0xxQ startup_stm32h7b0xxq.s)
+    _fly_add_stm32_device(arch-stm32h7a3xx STM32H7A3xx startup_stm32h7a3xx.s)
+    _fly_add_stm32_device(arch-stm32h7a3xxq STM32H7A3xxQ startup_stm32h7a3xxq.s)
+    _fly_add_stm32_device(arch-stm32h7b3xx STM32H7B3xx startup_stm32h7b3xx.s)
+    _fly_add_stm32_device(arch-stm32h7b3xxq STM32H7B3xxQ startup_stm32h7b3xxq.s)
+    _fly_add_stm32_device(arch-stm32h735xx STM32H735xx startup_stm32h735xx.s)
+    _fly_add_stm32_device(arch-stm32h733xx STM32H733xx startup_stm32h733xx.s)
+    _fly_add_stm32_device(arch-stm32h730xx STM32H730xx startup_stm32h730xx.s)
+    _fly_add_stm32_device(arch-stm32h730xxq STM32H730xxQ startup_stm32h730xxq.s)
+    _fly_add_stm32_device(arch-stm32h725xx STM32H725xx startup_stm32h725xx.s)
+    _fly_add_stm32_device(arch-stm32h723xx STM32H723xx startup_stm32h723xx.s)
+elseif(CONFIG_ARCH_PROFILE STREQUAL "cm4")
+    # The shared vendor startup selects M7 in assembly, overriding GCC's -mcpu.
+    function(_fly_add_stm32h7_cm4_device target device_macro startup)
+        set(vendor_source "${STM32_DEVICE_TEMPLATES}/gcc/${startup}")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${vendor_source}")
+        file(READ "${vendor_source}" content)
+        string(REGEX MATCHALL "(^|\n)[ \t]*\\.cpu[ \t]+[^\r\n]+" cpu_directives "${content}")
+        list(LENGTH cpu_directives directive_count)
+        if(NOT directive_count EQUAL 1 OR NOT cpu_directives MATCHES "(^|\n)[ \t]*\\.cpu[ \t]+cortex-m7[ \t]*$")
+            message(FATAL_ERROR "Expected one Cortex-M7 .cpu directive in ${vendor_source}")
+        endif()
+        string(REGEX REPLACE "(^|\n)([ \t]*\\.cpu[ \t]+)cortex-m7([ \t]*)(\r?\n|$)"
+            "\\1\\2cortex-m4\\3\\4" content "${content}")
+        set(cm4_source "${CMAKE_CURRENT_BINARY_DIR}/cm4/${startup}")
+        file(GENERATE OUTPUT "${cm4_source}" CONTENT "${content}")
+        set_source_files_properties("${cm4_source}" PROPERTIES GENERATED TRUE)
+        _fly_add_stm32_device(${target} ${device_macro} "${cm4_source}" CORE_CM4)
+    endfunction()
 
-# STM32H742xx Library
-add_library(arch-stm32h742xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h742xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H742xx )
-target_include_directories(arch-stm32h742xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h742xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h742xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H743xx Library
-add_library(arch-stm32h743xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h743xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H743xx )
-target_include_directories(arch-stm32h743xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h743xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h743xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H753xx Library
-add_library(arch-stm32h753xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h753xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H753xx )
-target_include_directories(arch-stm32h753xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h753xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h753xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H750xx Library
-add_library(arch-stm32h750xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h750xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H750xx )
-target_include_directories(arch-stm32h750xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h750xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h750xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H747xx Library
-add_library(arch-stm32h747xx-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h747xx-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H747xx -DCORE_CM4 )
-target_include_directories(arch-stm32h747xx-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h747xx-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h747xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-add_library(arch-stm32h747xx-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h747xx-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H747xx -DCORE_CM7 )
-target_include_directories(arch-stm32h747xx-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h747xx-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h747xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-
-# STM32H747xG Library
-add_library(arch-stm32h747xg-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h747xg-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H747xG -DCORE_CM4 )
-target_include_directories(arch-stm32h747xg-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h747xg-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h747xg.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-
-add_library(arch-stm32h747xg-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h747xg-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H747xG -DCORE_CM7 )
-target_include_directories(arch-stm32h747xg-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h747xg-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h747xg.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-
-# STM32H757xx Library
-add_library(arch-stm32h757xx-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h757xx-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H757xx -DCORE_CM4 )
-target_include_directories(arch-stm32h757xx-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h757xx-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h757xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-add_library(arch-stm32h757xx-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h757xx-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H757xx -DCORE_CM7 )
-target_include_directories(arch-stm32h757xx-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h757xx-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h757xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H745xx Library
-add_library(arch-stm32h745xx-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h745xx-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM4 )
-target_include_directories(arch-stm32h745xx-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h745xx-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h745xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-add_library(arch-stm32h745xx-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h745xx-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7 )
-target_include_directories(arch-stm32h745xx-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h745xx-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h745xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H745xG Library
-add_library(arch-stm32h745xg-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h745xg-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H745xG -DCORE_CM4 )
-target_include_directories(arch-stm32h745xg-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h745xg-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h745xg.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-add_library(arch-stm32h745xg-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h745xg-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H745xG -DCORE_CM7 )
-target_include_directories(arch-stm32h745xg-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h745xg-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h745xg.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H755xx Library
-add_library(arch-stm32h755xx-cm4 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h755xx-cm4 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H755xx -DCORE_CM4 )
-target_include_directories(arch-stm32h755xx-cm4 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h755xx-cm4 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h755xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-add_library(arch-stm32h755xx-cm7 OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h755xx-cm7 PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H755xx -DCORE_CM7 )
-target_include_directories(arch-stm32h755xx-cm7 PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h755xx-cm7 PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h755xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H7B0xx Library
-add_library(arch-stm32h7b0xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h7b0xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H7B0xx )
-target_include_directories(arch-stm32h7b0xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h7b0xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7b0xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H7A3xx Library
-add_library(arch-stm32h7a3xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h7a3xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H7A3xx )
-target_include_directories(arch-stm32h7a3xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h7a3xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7a3xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H7A3xxQ Library
-add_library(arch-stm32h7a3xxq OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h7a3xxq PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H7A3xxQ )
-target_include_directories(arch-stm32h7a3xxq PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h7a3xxq PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7a3xxq.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H7B3xx Library
-add_library(arch-stm32h7b3xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h7b3xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H7B3xx )
-target_include_directories(arch-stm32h7b3xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h7b3xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7b3xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H7B3xxQ Library
-add_library(arch-stm32h7b3xxq OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h7b3xxq PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H7B3xxQ )
-target_include_directories(arch-stm32h7b3xxq PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h7b3xxq PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7b3xxq.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H735xx Library
-add_library(arch-stm32h735xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h735xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H735xx )
-target_include_directories(arch-stm32h735xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h735xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h735xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H733xx Library
-add_library(arch-stm32h733xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h733xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H733xx )
-target_include_directories(arch-stm32h733xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h733xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h733xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H730xx Library
-add_library(arch-stm32h730xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h730xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H730xx )
-target_include_directories(arch-stm32h730xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h730xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h730xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H730xxQ Library
-add_library(arch-stm32h730xxq OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h730xxq PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H730xxQ )
-target_include_directories(arch-stm32h730xxq PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h730xxq PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h730xxq.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H725xx Library
-add_library(arch-stm32h725xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h725xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H725xx )
-target_include_directories(arch-stm32h725xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h725xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h725xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
-
-# STM32H723xx Library
-add_library(arch-stm32h723xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32h723xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32H723xx )
-target_include_directories(arch-stm32h723xx PUBLIC "${STM32H7XX_INCLUDE_DIRS}")
-target_sources(arch-stm32h723xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h723xx.s"
-    ${STM32H7XX_LL_SOURCES}
-    ${STM32H7XX_HAL_SOURCES}
-)
+    _fly_add_stm32h7_cm4_device(arch-stm32h747xx-cm4 STM32H747xx startup_stm32h747xx.s)
+    _fly_add_stm32h7_cm4_device(arch-stm32h747xg-cm4 STM32H747xG startup_stm32h747xg.s)
+    _fly_add_stm32h7_cm4_device(arch-stm32h757xx-cm4 STM32H757xx startup_stm32h757xx.s)
+    _fly_add_stm32h7_cm4_device(arch-stm32h745xx-cm4 STM32H745xx startup_stm32h745xx.s)
+    _fly_add_stm32h7_cm4_device(arch-stm32h745xg-cm4 STM32H745xG startup_stm32h745xg.s)
+    _fly_add_stm32h7_cm4_device(arch-stm32h755xx-cm4 STM32H755xx startup_stm32h755xx.s)
+endif()

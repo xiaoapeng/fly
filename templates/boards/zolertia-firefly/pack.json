@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "board/zolertia-firefly",
+  "kind": "board",
+  "label": "Zolertia Firefly (CC2538SF53)",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "flash.ld",
+      "destination": "board/flash.ld"
+    },
+    {
+      "source": "README.md",
+      "destination": "board/README.md"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m3",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "CC2538SF53",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m3"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 16000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 2097152,
+        "size": 522240
+      },
+      {
+        "id": "cca-flash-page",
+        "kind": "flash",
+        "address": 2619392,
+        "size": 2048
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 32768
+      }
+    ],
+    "arch": "cc2538"
+  }
+}

@@ -9,6 +9,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 sys.path.insert(0, str(Path(os.environ["FLY_SDK_DIR"]) / "tool" / "python"))
 
+from action_protocol import read_json
 from firmware_payload import manifest_file
 from jlink_support import check_tool, device_settings, materialized, offline_assets, tool, tool_path
 from provider_runtime import ProviderError, provider_main, require_tool, run_child, tool_failed, validate_artifact
@@ -142,7 +143,9 @@ def action(request, _session):
             ]
             return {"available": not missing, "missing": missing}
         return check_tool(request, "jlink", "Install SEGGER J-Link Commander or set the jlink tool path")
-    path, manifest = validate_artifact(request)
+    board = read_json(Path(request["board"]["manifest_path"]))["board"]
+    flash = [region for region in board["memories"] if region["kind"] == "flash"]
+    path, manifest = validate_artifact(request, memories=flash)
     handler = {"flash-run": flash_run, "export": export}[request["action"]]
     return handler(request, path, manifest, settings)
 

@@ -1,103 +1,114 @@
-set(STM32F4XX_INCLUDE_DIRS  
-    "${CMAKE_CURRENT_LIST_DIR}/../CMSIS/Include"
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Include"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Inc"
+include("${CMAKE_CURRENT_LIST_DIR}/../stm32-device.cmake")
+
+_fly_fetch_stm32_sources(f4
+    3b64b7b0b546cefe84f13c65508126eea58b97d8
+    bfa4a8fde4fa5141619be006df8ef3e08265bd65
 )
 
-set(STM32F4XX_LL_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_lptim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_utils.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_rcc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_sdmmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_pwr.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_gpio.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_crc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_rng.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_i2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_dma2d.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_dac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_fmpi2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_exti.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_spi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_dma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_rtc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_fsmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_fmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_tim.c"
+set(STM32_DEVICE_TEMPLATES "${STM32_DEVICE_DIR}/Source/Templates")
+set(STM32_DEVICE_HEADER stm32f4xx.h)
+set(STM32_SYSTEM_SOURCE system_stm32f4xx.c)
+
+set(STM32_INCLUDE_DIRS
+    "${STM32_CMSIS_INCLUDE}"
+    "${STM32_DEVICE_DIR}/Include"
+    "${STM32_HAL_DIR}/Inc"
 )
 
-set(STM32F4XX_HAL_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pccard.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_nor.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_mmc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_fmpi2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_eth.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_lptim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rtc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_irda.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spdifrx.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma2d.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dfsdm.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cec.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_fmpsmbus_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_fmpsmbus.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_smartcard.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_iwdg.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cryp.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rtc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_qspi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sram.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hash.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hash_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rng.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_nand.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dcmi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sdram.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_ltdc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_fmpi2c_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dsi.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_smbus.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_usart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_can.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dac_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cryp_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sai_ex.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dac.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_ltdc.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_wwdg.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hcd.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sai.c"
-    "${CMAKE_CURRENT_LIST_DIR}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dcmi_ex.c"
+set(STM32_LL_SOURCES
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_usb.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_lptim.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_utils.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_rcc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_sdmmc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_pwr.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_gpio.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_crc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_rng.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_i2c.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_dma2d.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_dac.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_fmpi2c.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_usart.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_exti.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_spi.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_dma.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_rtc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_adc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_fsmc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_fmc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_ll_tim.c"
+)
+
+set(STM32_HAL_SOURCES
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_pccard.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_nor.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_mmc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dma_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_i2c_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_fmpi2c.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_eth.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_lptim.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_adc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_rtc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_irda.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_spdifrx.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dma2d.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dfsdm.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_pcd.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_cec.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_fmpsmbus_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_fmpsmbus.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dma.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_pcd_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_pwr_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_smartcard.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_rcc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_iwdg.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_cryp.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_tim_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_spi.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_rtc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_qspi.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_sram.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_hash.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_hash_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_flash_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_rng.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_sd.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_nand.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dcmi.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_sdram.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_crc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_gpio.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_tim.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_ltdc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_cortex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_fmpi2c_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dsi.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_adc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_flash_ramfunc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_exti.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_smbus.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_usart.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_i2s.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_uart.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_can.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_i2c.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_rcc_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dac_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_cryp_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_i2s_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_pwr.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_sai_ex.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dac.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_ltdc.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_flash.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_wwdg.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_hcd.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_sai.c"
+    "${STM32_HAL_DIR}/Src/stm32f4xx_hal_dcmi_ex.c"
 )
 
 
@@ -125,233 +136,26 @@ set(STM32F4XX_HAL_SOURCES
 # arch-stm32f413xx */   /*!< STM32F413CH, STM32F413MH, STM32F413RH, STM32F413VH, STM32F413ZH, STM32F413CG, STM32F413MG, STM32F413RG, STM32F413VG and STM32F413ZG Devices */
 # arch-stm32f423xx */   /*!< STM32F423CH, STM32F423RH, STM32F423VH and STM32F423ZH Devices */
 
-
-# STM32F405xx
-add_library(arch-stm32f405xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f405xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F405xx)
-target_include_directories(arch-stm32f405xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f405xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f405xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F415xx
-add_library(arch-stm32f415xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f415xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F415xx)
-target_include_directories(arch-stm32f415xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f415xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f415xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F407xx
-add_library(arch-stm32f407xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f407xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F407xx)
-target_include_directories(arch-stm32f407xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f407xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f407xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F417xx
-add_library(arch-stm32f417xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f417xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F417xx)
-target_include_directories(arch-stm32f417xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f417xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f417xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F427xx
-add_library(arch-stm32f427xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f427xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F427xx)
-target_include_directories(arch-stm32f427xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f427xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f427xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F437xx
-add_library(arch-stm32f437xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f437xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F437xx)
-target_include_directories(arch-stm32f437xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f437xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f437xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F429xx
-add_library(arch-stm32f429xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f429xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F429xx)
-target_include_directories(arch-stm32f429xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f429xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f429xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F439xx
-add_library(arch-stm32f439xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f439xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F439xx)
-target_include_directories(arch-stm32f439xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f439xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f439xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F401xC
-add_library(arch-stm32f401xc OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f401xc PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xC)
-target_include_directories(arch-stm32f401xc PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f401xc PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f401xc.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F401xE
-add_library(arch-stm32f401xe OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f401xe PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE)
-target_include_directories(arch-stm32f401xe PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f401xe PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f401xe.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F410Tx
-add_library(arch-stm32f410tx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f410tx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F410Tx)
-target_include_directories(arch-stm32f410tx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f410tx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f410tx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F410Cx
-add_library(arch-stm32f410cx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f410cx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F410Cx)
-target_include_directories(arch-stm32f410cx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f410cx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f410cx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F410Rx
-add_library(arch-stm32f410rx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f410rx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F410Rx)
-target_include_directories(arch-stm32f410rx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f410rx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f410rx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F411xE
-add_library(arch-stm32f411xe OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f411xe PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F411xE)
-target_include_directories(arch-stm32f411xe PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f411xe PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f411xe.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F446xx
-add_library(arch-stm32f446xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f446xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F446xx)
-target_include_directories(arch-stm32f446xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f446xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f446xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F469xx
-add_library(arch-stm32f469xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f469xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F469xx)
-target_include_directories(arch-stm32f469xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f469xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f469xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F479xx
-add_library(arch-stm32f479xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f479xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F479xx)
-target_include_directories(arch-stm32f479xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f479xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f479xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F412Cx
-add_library(arch-stm32f412cx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f412cx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F412Cx)
-target_include_directories(arch-stm32f412cx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f412cx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f412cx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F412Zx
-add_library(arch-stm32f412zx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f412zx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F412Zx)
-target_include_directories(arch-stm32f412zx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f412zx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f412zx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F412Vx
-add_library(arch-stm32f412vx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f412vx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F412Vx)
-target_include_directories(arch-stm32f412vx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f412vx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f412vx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F412Rx
-add_library(arch-stm32f412rx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f412rx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F412Rx)
-target_include_directories(arch-stm32f412rx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f412rx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f412rx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F413xx
-add_library(arch-stm32f413xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f413xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F413xx)
-target_include_directories(arch-stm32f413xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f413xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f413xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
-
-# STM32F423xx
-add_library(arch-stm32f423xx OBJECT EXCLUDE_FROM_ALL)
-target_compile_definitions(arch-stm32f423xx PUBLIC -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F423xx)
-target_include_directories(arch-stm32f423xx PUBLIC "${STM32F4XX_INCLUDE_DIRS}")
-target_sources(arch-stm32f423xx PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f423xx.s"
-    ${STM32F4XX_LL_SOURCES}
-    ${STM32F4XX_HAL_SOURCES}
-)
+_fly_add_stm32_device(arch-stm32f405xx STM32F405xx startup_stm32f405xx.s)
+_fly_add_stm32_device(arch-stm32f415xx STM32F415xx startup_stm32f415xx.s)
+_fly_add_stm32_device(arch-stm32f407xx STM32F407xx startup_stm32f407xx.s)
+_fly_add_stm32_device(arch-stm32f417xx STM32F417xx startup_stm32f417xx.s)
+_fly_add_stm32_device(arch-stm32f427xx STM32F427xx startup_stm32f427xx.s)
+_fly_add_stm32_device(arch-stm32f437xx STM32F437xx startup_stm32f437xx.s)
+_fly_add_stm32_device(arch-stm32f429xx STM32F429xx startup_stm32f429xx.s)
+_fly_add_stm32_device(arch-stm32f439xx STM32F439xx startup_stm32f439xx.s)
+_fly_add_stm32_device(arch-stm32f401xc STM32F401xC startup_stm32f401xc.s)
+_fly_add_stm32_device(arch-stm32f401xe STM32F401xE startup_stm32f401xe.s)
+_fly_add_stm32_device(arch-stm32f410tx STM32F410Tx startup_stm32f410tx.s)
+_fly_add_stm32_device(arch-stm32f410cx STM32F410Cx startup_stm32f410cx.s)
+_fly_add_stm32_device(arch-stm32f410rx STM32F410Rx startup_stm32f410rx.s)
+_fly_add_stm32_device(arch-stm32f411xe STM32F411xE startup_stm32f411xe.s)
+_fly_add_stm32_device(arch-stm32f446xx STM32F446xx startup_stm32f446xx.s)
+_fly_add_stm32_device(arch-stm32f469xx STM32F469xx startup_stm32f469xx.s)
+_fly_add_stm32_device(arch-stm32f479xx STM32F479xx startup_stm32f479xx.s)
+_fly_add_stm32_device(arch-stm32f412cx STM32F412Cx startup_stm32f412cx.s)
+_fly_add_stm32_device(arch-stm32f412zx STM32F412Zx startup_stm32f412zx.s)
+_fly_add_stm32_device(arch-stm32f412vx STM32F412Vx startup_stm32f412vx.s)
+_fly_add_stm32_device(arch-stm32f412rx STM32F412Rx startup_stm32f412rx.s)
+_fly_add_stm32_device(arch-stm32f413xx STM32F413xx startup_stm32f413xx.s)
+_fly_add_stm32_device(arch-stm32f423xx STM32F423xx startup_stm32f423xx.s)

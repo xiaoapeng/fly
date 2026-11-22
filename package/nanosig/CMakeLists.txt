@@ -16,11 +16,11 @@ fly_fetch_git_project(
     AUTO_UPDATE    OFF
     GIT_REPOSITORY https://github.com/xiaoapeng/nanosig.git
     GIT_TAG        "${CONFIG_PACKAGE_NANOSIG_GIT_COMMIT}"
+    SOURCE_DIR_VAR NANOSIG_SRC_DIR
 )
 
 # FLY compiles the upstream core directly instead of adding upstream's CMake
 # target, so Kconfig selects the backend through its platform include path.
-set(NANOSIG_SRC_DIR "${FLY_SOURCE_DL_BASE_DIR}/nanosig-src")
 if(CONFIG_PACKAGE_SCHEDULER_NONE)
     set(_nanosig_backend baremetal)
 elseif(CONFIG_PACKAGE_SCHEDULER_FREERTOS)

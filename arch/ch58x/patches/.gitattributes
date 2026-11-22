@@ -1,0 +1,2 @@
+# Preserve the upstream header bytes and Git patch context lines.
+*.patch -text whitespace=-blank-at-eol

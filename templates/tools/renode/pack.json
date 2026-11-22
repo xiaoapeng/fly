@@ -26,6 +26,118 @@
     {
       "source": "models/frdm-mcxn947-core0.repl",
       "destination": "tool/packs/tool/renode/models/frdm-mcxn947-core0.repl"
+    },
+    {
+      "source": "models/gd32-startup-rcu.repl",
+      "destination": "tool/packs/tool/renode/models/gd32-startup-rcu.repl"
+    },
+    {
+      "source": "models/gd32e230c8.repl",
+      "destination": "tool/packs/tool/renode/models/gd32e230c8.repl"
+    },
+    {
+      "source": "models/gd32f103rc.repl",
+      "destination": "tool/packs/tool/renode/models/gd32f103rc.repl"
+    },
+    {
+      "source": "models/stm32f030x8.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f030x8.repl"
+    },
+    {
+      "source": "models/stm32f103x6.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f103x6.repl"
+    },
+    {
+      "source": "models/stm32f401cb.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f401cb.repl"
+    },
+    {
+      "source": "models/stm32h750vb.repl",
+      "destination": "tool/packs/tool/renode/models/stm32h750vb.repl"
+    },
+    {
+      "source": "models/stm32f072b-disco.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f072b-disco.repl"
+    },
+    {
+      "source": "models/stm32f407g-disc1.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f407g-disc1.repl"
+    },
+    {
+      "source": "models/nucleo-h753zi.repl",
+      "destination": "tool/packs/tool/renode/models/nucleo-h753zi.repl"
+    },
+    {
+      "source": "models/stm32h747i-disco-cm7.repl",
+      "destination": "tool/packs/tool/renode/models/stm32h747i-disco-cm7.repl"
+    },
+    {
+      "source": "models/nrf52840dk.repl",
+      "destination": "tool/packs/tool/renode/models/nrf52840dk.repl"
+    },
+    {
+      "source": "models/nrf52840-arduino-nano-33-ble.repl",
+      "destination": "tool/packs/tool/renode/models/nrf52840-arduino-nano-33-ble.repl"
+    },
+    {
+      "source": "models/nucleo-f767zi.repl",
+      "destination": "tool/packs/tool/renode/models/nucleo-f767zi.repl"
+    },
+    {
+      "source": "models/stm32f746g-disco.repl",
+      "destination": "tool/packs/tool/renode/models/stm32f746g-disco.repl"
+    },
+    {
+      "source": "models/zolertia-firefly.repl",
+      "destination": "tool/packs/tool/renode/models/zolertia-firefly.repl"
+    },
+    {
+      "source": "models/max32652-evkit.repl",
+      "destination": "tool/packs/tool/renode/models/max32652-evkit.repl"
+    },
+    {
+      "source": "models/qomu.repl",
+      "destination": "tool/packs/tool/renode/models/qomu.repl"
+    },
+    {
+      "source": "models/quickfeather.repl",
+      "destination": "tool/packs/tool/renode/models/quickfeather.repl"
+    },
+    {
+      "source": "models/efr32mg26-startup.repl",
+      "destination": "tool/packs/tool/renode/models/efr32mg26-startup.repl"
+    },
+    {
+      "source": "models/renesas-ek-ra2e1.repl",
+      "destination": "tool/packs/tool/renode/models/renesas-ek-ra2e1.repl"
+    },
+    {
+      "source": "models/silabs-brd4116a.repl",
+      "destination": "tool/packs/tool/renode/models/silabs-brd4116a.repl"
+    },
+    {
+      "source": "models/silabs-brd4117a.repl",
+      "destination": "tool/packs/tool/renode/models/silabs-brd4117a.repl"
+    },
+    {
+      "source": "models/silabs-brd4118a.repl",
+      "destination": "tool/packs/tool/renode/models/silabs-brd4118a.repl"
+    },
+    {
+      "source": "models/silabs-brd4120a.repl",
+      "destination": "tool/packs/tool/renode/models/silabs-brd4120a.repl"
+    },
+    {
+      "source": "models/silabs-brd4121a.repl",
+      "destination": "tool/packs/tool/renode/models/silabs-brd4121a.repl"
+    },
+    {
+      "source": "models/arduino-uno-r4-minima.repl",
+      "destination": "tool/packs/tool/renode/models/arduino-uno-r4-minima.repl"
+    },
+    {
+      "source": "models/npcx9m6fb-evb.repl",
+      "destination": "tool/packs/tool/renode/models/npcx9m6fb-evb.repl"
     }
   ],
   "requires": [
@@ -45,6 +157,318 @@
         "Core 0 启动、CRC、RTT 与适用的心跳验证",
         "时钟和 SRAM 供电握手立即完成",
         "无 Core 1、NPU、USB、网络或完整外设"
+      ]
+    },
+    {
+      "board": "board/gd32e230c8",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/gd32e230c8.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "CPU、NVIC、Flash、SRAM 及启动所需的 RCU/FMC 寄存器",
+        "时钟就绪及切换立即完成，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/gd32f103rc",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/gd32f103rc.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "CPU、NVIC、Flash、SRAM 及启动所需的 RCU/FMC 寄存器",
+        "时钟就绪及切换立即完成，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32f030x8",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f030x8.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "STM32F0 系列模型，按板卡设置 Flash 和 SRAM",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32f103x6",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f103x6.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "STM32F103 系列模型，按板卡设置 Flash 和 SRAM",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32f401cb",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f401cb.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "STM32F4 系列模型，按板卡设置 Flash 和 SRAM",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32h750vb",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32h750vb.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "STM32H7 系列 Cortex-M7 模型，按板卡设置 Flash 和 AXI SRAM",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32f072b-disco",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f072b-disco.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 的 STM32F072B Discovery 模型",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32f407g-disc1",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f407g-disc1.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 的 STM32F4 Discovery 模型，Flash 和主 SRAM 按板卡约束",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/nucleo-h753zi",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/nucleo-h753zi.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 的 NUCLEO-H753ZI 模型，使用 Cortex-M7 与 AXI SRAM",
+        "裸机启动、CRC 和 RTT，外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/stm32h747i-disco-cm7",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32h747i-disco-cm7.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 的 STM32H747I-DISCO 模型，覆盖 Cortex-M7",
+        "裸机启动、CRC 和 RTT，CM4 和外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/nrf52840dk",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/nrf52840dk.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 nRF52840 DK 模型",
+        "裸机启动、CRC 和 RTT，无无线或其他外设验证"
+      ]
+    },
+    {
+      "board": "board/arduino-nano-33-ble",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/nrf52840-arduino-nano-33-ble.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "从 0x00010000 直接启动 APP",
+        "裸机启动、CRC 和 RTT，无引导加载器、DFU 或外围设备验证"
+      ]
+    },
+    {
+      "board": "board/nucleo-f767zi",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/nucleo-f767zi.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 NUCLEO-F767ZI 板卡使用 STM32F777 系列模型",
+        "裸机启动、CRC 和 RTT，无外设验证"
+      ]
+    },
+    {
+      "board": "board/stm32f746g-disco",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/stm32f746g-disco.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 STM32F7 Discovery 模型，约束到板上 MCU 内部 Flash 和 SRAM",
+        "裸机启动、CRC 和 RTT，无显示、网络或其他外设验证"
+      ]
+    },
+    {
+      "board": "board/zolertia-firefly",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/zolertia-firefly.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 直接加载 APP，启动、CRC 和 RTT 验证",
+        "实板需单独保留或配置 CCA，未验证无线外设"
+      ]
+    },
+    {
+      "board": "board/max32652-evkit",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/max32652-evkit.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Renode 1.17.0 的 MAX32652 EV Kit 模型，裸机启动、CRC 与 RTT",
+        "外设与实板启动配置未验证"
+      ]
+    },
+    {
+      "board": "board/qomu",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/qomu.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "直接加载厂商 BSP 规定的 SRAM APP，验证裸机启动、CRC 与 RTT",
+        "ROM 引导、外部 SPI Flash 编程及外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/quickfeather",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/quickfeather.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "直接加载厂商 BSP 规定的 SRAM APP，验证裸机启动、CRC 与 RTT",
+        "ROM 引导、外部 SPI Flash 编程及外设行为未验证"
+      ]
+    },
+    {
+      "board": "board/renesas-ek-ra2e1",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/renesas-ek-ra2e1.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M23 复位、裸机启动、CRC 与 RTT，保留内部复位时钟",
+        "外设与 ICU 行为未验证"
+      ]
+    },
+    {
+      "board": "board/silabs-brd4116a",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/silabs-brd4116a.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M33 裸机启动、CRC 与 RTT",
+        "仿真沿用关闭 TrustZone、暂停射频核的上游模型，安全域与无线行为未验证"
+      ]
+    },
+    {
+      "board": "board/silabs-brd4117a",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/silabs-brd4117a.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M33 裸机启动、CRC 与 RTT",
+        "仿真沿用关闭 TrustZone、暂停射频核的上游模型，安全域与无线行为未验证"
+      ]
+    },
+    {
+      "board": "board/silabs-brd4118a",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/silabs-brd4118a.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M33 裸机启动、CRC 与 RTT",
+        "仿真沿用关闭 TrustZone、暂停射频核的上游模型，安全域与无线行为未验证"
+      ]
+    },
+    {
+      "board": "board/silabs-brd4120a",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/silabs-brd4120a.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M33 裸机启动、CRC 与 RTT",
+        "仿真沿用关闭 TrustZone、暂停射频核的上游模型，安全域与无线行为未验证"
+      ]
+    },
+    {
+      "board": "board/silabs-brd4121a",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/silabs-brd4121a.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "Cortex-M33 裸机启动、CRC 与 RTT",
+        "仿真沿用关闭 TrustZone、暂停射频核的上游模型，安全域与无线行为未验证"
+      ]
+    },
+    {
+      "board": "board/arduino-uno-r4-minima",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/arduino-uno-r4-minima.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "保留前 16 KiB 引导区，从 0x00004000 直接启动 APP",
+        "裸机启动、CRC 与 RTT，USB DFU 和原厂引导程序未验证"
+      ]
+    },
+    {
+      "board": "board/npcx9m6fb-evb",
+      "apps": [
+        "app/baremetal"
+      ],
+      "path": "tool/packs/tool/renode/models/npcx9m6fb-evb.repl",
+      "level": "startup-smoke",
+      "limitations": [
+        "直接加载 Code SRAM 中的 APP，使用 Cortex-M4 复位入口",
+        "裸机启动、CRC 与 RTT，ROM 引导、SPI Flash 和外设中断未验证"
       ]
     }
   ],
