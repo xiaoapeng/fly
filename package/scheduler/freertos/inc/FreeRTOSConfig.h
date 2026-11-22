@@ -158,9 +158,7 @@ extern void vAssertCalled(const char *pcFile, unsigned long ulLine);
 #endif
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY    ( 5U << ( 8U - __NVIC_PRIO_BITS ) )
 
-/* NOTE: this port does NOT use vPortSVCHandler/xPortPendSVHandler and does
- * NOT do #include_next in FreeRTOSConfig.h. The non_secure port defines the
- * vector symbols directly: SysTick_Handler in port.c and
- * SVC_Handler/PendSV_Handler in portasm.c. Nothing to define here. */
+/* CM0 and CM33 provide the vector symbols directly. The CMake port selection
+ * maps the CM3 and CM4F handler names to the startup vectors. */
 
 #endif /* FREERTOS_CONFIG_H */

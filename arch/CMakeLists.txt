@@ -1,5 +1,1 @@
-
-add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/${CONFIG_ARCH}")
-
-
-
+add_subdirectory("${FLY_SELECTED_ARCH_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_ARCH}")

@@ -1,0 +1,111 @@
+ENTRY(Reset_Handler)
+
+MEMORY
+{
+    FLASH (rx) : ORIGIN = @FLY_FLASH_ADDRESS@, LENGTH = @FLY_FLASH_SIZE@
+    RAM (rw) : ORIGIN = 0x20000000, LENGTH = 512K
+}
+
+__StackTop = ORIGIN(RAM) + LENGTH(RAM);
+__StackLimit = __StackTop - 0x400;
+PROVIDE(__stack = __StackTop);
+
+PHDRS
+{
+    flash PT_LOAD FLAGS(5);
+    ram PT_LOAD FLAGS(6);
+}
+
+SECTIONS
+{
+    .vectors :
+    {
+        KEEP(*(.vectors))
+    } > FLASH :flash
+
+    .text :
+    {
+        *(.text .text.* .glue_7 .glue_7t)
+        *(text_system_*)
+        KEEP(*(.init))
+        KEEP(*(.fini))
+        *(.rodata .rodata.*)
+    } > FLASH
+
+    .ARM.extab :
+    {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } > FLASH
+
+    .ARM.exidx :
+    {
+        __exidx_start = .;
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+        __exidx_end = .;
+    } > FLASH
+
+    .preinit_array : ALIGN(4)
+    {
+        PROVIDE_HIDDEN(__preinit_array_start = .);
+        KEEP(*(.preinit_array))
+        PROVIDE_HIDDEN(__preinit_array_end = .);
+    } > FLASH
+
+    .init_array : ALIGN(4)
+    {
+        PROVIDE_HIDDEN(__init_array_start = .);
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)))
+        KEEP(*(.init_array))
+        PROVIDE_HIDDEN(__init_array_end = .);
+    } > FLASH
+
+    .fini_array : ALIGN(4)
+    {
+        PROVIDE_HIDDEN(__fini_array_start = .);
+        KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*)))
+        KEEP(*(.fini_array))
+        PROVIDE_HIDDEN(__fini_array_end = .);
+    } > FLASH
+
+    /* CMSIS __PROGRAM_START consumes the section bounds and word counts. */
+    .copy.table : ALIGN(4)
+    {
+        __copy_table_start__ = .;
+        LONG(LOADADDR(.data))
+        LONG(ADDR(.data))
+        LONG(SIZEOF(.data) / 4)
+        __copy_table_end__ = .;
+    } > FLASH
+
+    .zero.table : ALIGN(4)
+    {
+        __zero_table_start__ = .;
+        LONG(ADDR(.bss))
+        LONG(SIZEOF(.bss) / 4)
+        __zero_table_end__ = .;
+    } > FLASH
+
+    .data : ALIGN(4)
+    {
+        *(.data .data.*)
+        . = ALIGN(4);
+    } > RAM AT > FLASH :ram
+
+    .bss (NOLOAD) : ALIGN(4)
+    {
+        __bss_start__ = .;
+        *(.bss .bss.* COMMON)
+        . = ALIGN(4);
+        __bss_end__ = .;
+    } > RAM :ram
+
+    .noinit (NOLOAD) : ALIGN(8)
+    {
+        *(.noinit .noinit.*)
+        . = ALIGN(8);
+        PROVIDE(end = .);
+        PROVIDE(_end = .);
+    } > RAM :ram
+
+    ASSERT(ADDR(.noinit) + SIZEOF(.noinit) <= __StackLimit, "Not enough SRAM for stack")
+}

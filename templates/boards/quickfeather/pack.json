@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "id": "board/quickfeather",
+  "kind": "board",
+  "label": "QuickLogic QuickFeather (SRAM application)",
+  "files": [],
+  "dependencies": [
+    "support/eos-s3-board"
+  ],
+  "provides": [
+    "cpu/arm-cortex-m4",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "EOS-S3",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m4"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": null,
+    "memories": [
+      {
+        "id": "app-code",
+        "kind": "ram",
+        "loadable": true,
+        "address": 0,
+        "size": 159744
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 537030656,
+        "size": 247808
+      }
+    ],
+    "arch": "quicklogic-eos-s3"
+  }
+}

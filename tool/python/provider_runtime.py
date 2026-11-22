@@ -19,7 +19,7 @@ class ProviderError(ValueError):
         self.exit_code = exit_code
 
 
-def validate_artifact(request):
+def validate_artifact(request, *, memories=None):
     source = request["input"]
     path = Path(source["manifest_path"])
     board = request["board"]
@@ -31,6 +31,7 @@ def validate_artifact(request):
         artifact_id=source["artifact_id"],
         target=request["target"],
         build_type=request["build_type"],
+        memories=memories,
     )
     return path, manifest
 

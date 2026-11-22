@@ -1,0 +1,6 @@
+// Directly run the APP using Renode 1.17's bundled UNO R4 Minima platform.
+using "platforms/boards/arduino_uno_r4_minima.repl"
+
+nvic:
+    priorityMask: 0xF0
+    systickFrequency: 48000000

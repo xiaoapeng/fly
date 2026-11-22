@@ -1,5 +1,19 @@
 {
   "schema_version": 1,
   "id": "stm32h7xx",
-  "config": "CONFIG_ARCH_STM32H7XX"
+  "config": "CONFIG_ARCH_STM32H7XX",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "profiles": {
+    "cm7": {
+      "cpu": "cortex-m7",
+      "fpu": "fpv5-d16",
+      "float_abi": "hard"
+    },
+    "cm4": {
+      "cpu": "cortex-m4",
+      "fpu": "fpv4-sp-d16",
+      "float_abi": "hard"
+    }
+  }
 }

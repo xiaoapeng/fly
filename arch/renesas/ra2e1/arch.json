@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "ra2e1",
+  "config": "CONFIG_ARCH_RA2E1",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m23",
+  "float_abi": "soft"
+}

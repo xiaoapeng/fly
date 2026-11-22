@@ -1,0 +1,16 @@
+set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(FLY_FLASH_ADDRESS "0x00200000")
+set(FLY_FLASH_SIZE "0x0007F800")
+
+function(fly_configure_board target)
+    if(NOT TARGET arch-cc2538-sf53)
+        message(FATAL_ERROR "This board requires the CC2538SF53 target.")
+    endif()
+
+    target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board.c")
+    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}/include")
+    target_link_libraries(${target} arch-cc2538-sf53 c m gcc)
+    set(linker_script "${FLY_BOARD_DIR}/flash.ld")
+    target_link_options(${target} PRIVATE "-T${linker_script}")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${linker_script}")
+endfunction()

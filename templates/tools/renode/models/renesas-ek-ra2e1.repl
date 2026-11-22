@@ -1,0 +1,6 @@
+// Use the bundled Renode 1.17 EK-RA2E1 board and RA2E1A9 memory map.
+using "platforms/boards/renesas-ek_ra2e1.repl"
+
+nvic:
+    priorityMask: 0xC0
+    systickFrequency: 500000

@@ -1,0 +1,2 @@
+# Keep the upstream header's CRLF patch context on every host.
+*.patch -text whitespace=cr-at-eol,-blank-at-eol

@@ -13,6 +13,7 @@
 ## 索引
 
 - [工程模板和板卡](../templates/README.md) — 应用目录结构、CMake 入口和板卡配置
+- [Renode 1.17.0 板级平台清单](renode-board-inventory.md) — 固定版本的 80 份描述、芯片对应关系和 FLY 接入情况
 - [CI 流程](CI.md) — 从模板生成 ARM 和宿主平台应用，覆盖 PR 必需检查、夜间 Release 以及本地复现命令
 - [回归脚本](../tool/test/README.md) — 应用配置、构建、SDK 安装及固件打包的校验入口
 - [Kconfig 硬性规则](reference/kconfig-rules.md) — choice、请求位、默认选项和应用到 SDK 组件的依赖方向

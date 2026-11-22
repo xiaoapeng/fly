@@ -1,0 +1,9 @@
+// Renode 1.17 NUCLEO-F767ZI uses the shared STM32F777 model. Constrain the
+// internal SRAM to the F767ZI linker range and use the FLY reset HSI clock.
+using "platforms/boards/nucleo_f767zi.repl"
+
+sram:
+    size: 0x80000
+
+nvic:
+    systickFrequency: 16000000

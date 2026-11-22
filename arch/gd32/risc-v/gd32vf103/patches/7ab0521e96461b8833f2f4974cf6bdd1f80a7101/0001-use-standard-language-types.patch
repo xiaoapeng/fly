@@ -1,0 +1,18 @@
+Retain the FLY standard bool and upstream V1.3 C++ guards.
+
+--- a/Firmware/GD32VF103_standard_peripheral/gd32vf103.h
++++ b/Firmware/GD32VF103_standard_peripheral/gd32vf103.h
+@@ -38,3 +38,3 @@
+ 
+-#ifdef cplusplus
++#ifdef __cplusplus
+  extern "C" {
+@@ -179,3 +179,2 @@
+ typedef enum {DISABLE = 0, ENABLE = !DISABLE} EventStatus, ControlStatus;
+-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+ typedef enum {RESET = 0, SET = !RESET} FlagStatus;
+@@ -238,3 +237,3 @@
+ 
+-#ifdef cplusplus
++#ifdef __cplusplus
+ }

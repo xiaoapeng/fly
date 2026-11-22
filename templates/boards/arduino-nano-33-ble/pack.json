@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "board/arduino-nano-33-ble",
+  "kind": "board",
+  "label": "Arduino Nano 33 BLE",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    }
+  ],
+  "dependencies": [
+    "support/nrf52840-board"
+  ],
+  "provides": [
+    "cpu/arm-cortex-m4",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "nRF52840",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m4"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 64000000,
+    "memories": [
+      {
+        "id": "app-flash",
+        "kind": "flash",
+        "address": 65536,
+        "size": 983040
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 536870912,
+        "size": 262144
+      }
+    ],
+    "arch": "nordic-nrf52"
+  }
+}

@@ -136,7 +136,8 @@ def config_defaults(value, path):
 
 
 def validate_board(board, path):
-    fields(board, path, "board", ("target_kind", "chip", "core", "arch", "toolchain", "clock_hz", "memories"))
+    fields(board, path, "board", ("target_kind", "chip", "core", "arch", "toolchain", "clock_hz", "memories"),
+           ("arch_profile",))
     host = board["target_kind"] == "host"
     require(host or board["target_kind"] == "mcu", path, "Invalid board.target_kind")
     require((host and board["chip"] is None) or text(board["chip"]), path, "Invalid board.chip")
@@ -146,17 +147,21 @@ def validate_board(board, path):
         require(matches(NAME, core[key]), path, f"Invalid core.{key}")
     require(not host or core["id"] == "native", path, "Host core.id must be native")
     require(matches(NAME, board["arch"]), path, "Invalid board.arch")
+    if "arch_profile" in board:
+        require(matches(NAME, board["arch_profile"]), path, "Invalid board.arch_profile")
     require(matches(NAME, board["toolchain"]), path, "Invalid board.toolchain")
     require(board["clock_hz"] is None or positive_integer(board["clock_hz"]), path, "Invalid board.clock_hz")
     memories = array(board["memories"], path, "board.memories", lambda value: isinstance(value, dict), nonempty=not host)
     regions = {}
     for region in memories:
-        fields(region, path, "memory", ("id", "kind", "address", "size"))
+        fields(region, path, "memory", ("id", "kind", "address", "size"), ("loadable",))
         key = region["id"]
         address = region["address"]
         size = region["size"]
         require(matches(NAME, key) and key not in regions, path, "Invalid or duplicate memory ID")
         require(region["kind"] in ("flash", "ram"), path, f"Invalid memory kind for {key}")
+        if "loadable" in region:
+            require(type(region["loadable"]) is bool, path, f"Invalid loadable flag for {key}")
         require(type(address) is int and address >= 0 and positive_integer(size), path, f"Invalid memory range for {key}")
         require(not any(address < end and beginning < address + size for beginning, end in regions.values()),
                 path, f"Overlapping memory range for {key}")

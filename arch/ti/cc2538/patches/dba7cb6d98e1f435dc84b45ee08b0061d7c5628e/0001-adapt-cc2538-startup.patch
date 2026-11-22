@@ -1,0 +1,427 @@
+diff --git a/arch/cpu/cc2538/startup-gcc.c b/arch/cpu/cc2538/startup-gcc.c
+index bde8d14..bed8b07 100644
+--- a/arch/cpu/cc2538/startup-gcc.c
++++ b/arch/cpu/cc2538/startup-gcc.c
+@@ -29,300 +29,138 @@
+  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-/**
+- * \addtogroup cc2538
+- * @{
+- *
+- * \file
+- * Startup code for the cc2538 chip, to be used when building with gcc
+- */
+-#include "contiki.h"
+-#include "reg.h"
+-#include "flash.h"
+-#include "sys-ctrl.h"
+-#include "rom-util.h"
+ 
++/* Vector layout adapted from Contiki-NG's TI-authored CC2538 startup.
++ * See README.md for the exact upstream revision.
++ */
+ #include <stdint.h>
+-/*---------------------------------------------------------------------------*/
+-extern int main(void);
+-/*---------------------------------------------------------------------------*/
+-/* System handlers provided here */
+-void reset_handler(void);
+-void nmi_handler(void);
+-void default_handler(void);
+-
+-/* System Handler and ISR prototypes implemented elsewhere */
+-void clock_isr(void); /* SysTick Handler */
+-void gpio_port_a_isr(void);
+-void gpio_port_b_isr(void);
+-void gpio_port_c_isr(void);
+-void gpio_port_d_isr(void);
+-void rtimer_isr(void);
+-void cc2538_rf_rx_tx_isr(void);
+-void cc2538_rf_err_isr(void);
+-void udma_isr(void);
+-void udma_err_isr(void);
+-void crypto_isr(void);
+-void pka_isr(void);
++#include <string.h>
+ 
+-/* Link in the USB ISR only if USB is enabled */
+-#if USB_SERIAL_CONF_ENABLE
+-void usb_isr(void);
+-#else
+-#define usb_isr default_handler
+-#endif
+-
+-/* Likewise for the UART[01] ISRs */
+-#if UART_CONF_ENABLE
+-void uart0_isr(void);
+-void uart1_isr(void);
+-#else /* UART_CONF_ENABLE */
+-#define uart0_isr default_handler
+-#define uart1_isr default_handler
+-#endif /* UART_CONF_ENABLE */
+-
+-/* Boot Loader Backdoor selection */
+-#if FLASH_CCA_CONF_BOOTLDR_BACKDOOR
+-/* Backdoor enabled */
++extern uint32_t _estack;
++extern uint8_t _sidata, _sdata, _edata, _sbss, _ebss;
++extern int main(void);
++void __libc_init_array(void);
++void Reset_Handler(void);
+ 
+-#if FLASH_CCA_CONF_BOOTLDR_BACKDOOR_ACTIVE_HIGH
+-#define FLASH_CCA_BOOTLDR_CFG_ACTIVE_LEVEL FLASH_CCA_BOOTLDR_CFG_ACTIVE_HIGH
+-#else
+-#define FLASH_CCA_BOOTLDR_CFG_ACTIVE_LEVEL 0
+-#endif
++void Default_Handler(void)
++{
++    for (;;) {
++        __asm__ volatile ("wfi");
++    }
++}
+ 
+-#if ((FLASH_CCA_CONF_BOOTLDR_BACKDOOR_PORT_A_PIN < 0) || (FLASH_CCA_CONF_BOOTLDR_BACKDOOR_PORT_A_PIN > 7))
+-#error Invalid boot loader backdoor pin. Please set FLASH_CCA_CONF_BOOTLDR_BACKDOOR_PORT_A_PIN between 0 and 7 (indicating PA0 - PA7).
+-#endif
++#define WEAK_HANDLER(handler) void handler(void) __attribute__((weak, alias("Default_Handler")))
++WEAK_HANDLER(NMI_Handler);
++WEAK_HANDLER(HardFault_Handler);
++WEAK_HANDLER(MemManage_Handler);
++WEAK_HANDLER(BusFault_Handler);
++WEAK_HANDLER(UsageFault_Handler);
++WEAK_HANDLER(SVC_Handler);
++WEAK_HANDLER(DebugMon_Handler);
++WEAK_HANDLER(PendSV_Handler);
++WEAK_HANDLER(SysTick_Handler);
++WEAK_HANDLER(GPIOA_IRQHandler);
++WEAK_HANDLER(GPIOB_IRQHandler);
++WEAK_HANDLER(GPIOC_IRQHandler);
++WEAK_HANDLER(GPIOD_IRQHandler);
++WEAK_HANDLER(UART0_IRQHandler);
++WEAK_HANDLER(UART1_IRQHandler);
++WEAK_HANDLER(SSI0_IRQHandler);
++WEAK_HANDLER(I2C_IRQHandler);
++WEAK_HANDLER(ADC_IRQHandler);
++WEAK_HANDLER(Watchdog_IRQHandler);
++WEAK_HANDLER(Timer0A_IRQHandler);
++WEAK_HANDLER(Timer0B_IRQHandler);
++WEAK_HANDLER(Timer1A_IRQHandler);
++WEAK_HANDLER(Timer1B_IRQHandler);
++WEAK_HANDLER(Timer2A_IRQHandler);
++WEAK_HANDLER(Timer2B_IRQHandler);
++WEAK_HANDLER(Comparator_IRQHandler);
++WEAK_HANDLER(RFCore_IRQHandler);
++WEAK_HANDLER(RFCoreError_IRQHandler);
++WEAK_HANDLER(SystemControl_IRQHandler);
++WEAK_HANDLER(FlashControl_IRQHandler);
++WEAK_HANDLER(AES_IRQHandler);
++WEAK_HANDLER(PKA_IRQHandler);
++WEAK_HANDLER(SleepTimer_IRQHandler);
++WEAK_HANDLER(MACTimer_IRQHandler);
++WEAK_HANDLER(SSI1_IRQHandler);
++WEAK_HANDLER(Timer3A_IRQHandler);
++WEAK_HANDLER(Timer3B_IRQHandler);
++WEAK_HANDLER(uDMA_IRQHandler);
++WEAK_HANDLER(uDMAError_IRQHandler);
++WEAK_HANDLER(USB_IRQHandler);
++#undef WEAK_HANDLER
+ 
+-#define FLASH_CCA_BOOTLDR_CFG (FLASH_CCA_BOOTLDR_CFG_ENABLE \
+-  | FLASH_CCA_BOOTLDR_CFG_ACTIVE_LEVEL \
+-  | (FLASH_CCA_CONF_BOOTLDR_BACKDOOR_PORT_A_PIN << FLASH_CCA_BOOTLDR_CFG_PORT_A_PIN_S))
+-#else
+-#define FLASH_CCA_BOOTLDR_CFG FLASH_CCA_BOOTLDR_CFG_DISABLE
+-#endif
+-/*---------------------------------------------------------------------------*/
+-/* Allocate stack space */
+-static uint64_t stack[256] __attribute__ ((section(".stack")));
+-/*---------------------------------------------------------------------------*/
+-__attribute__((__section__(".vectors")))
+-void(*const vectors[])(void) =
+-{
+-  (void (*)(void))((unsigned long)stack + sizeof(stack)),   /* Stack pointer */
+-  reset_handler,              /* Reset handler */
+-  nmi_handler,                /* The NMI handler */
+-  default_handler,            /* The hard fault handler */
+-  default_handler,            /* 4 The MPU fault handler */
+-  default_handler,            /* 5 The bus fault handler */
+-  default_handler,            /* 6 The usage fault handler */
+-  0,                          /* 7 Reserved */
+-  0,                          /* 8 Reserved */
+-  0,                          /* 9 Reserved */
+-  0,                          /* 10 Reserved */
+-  default_handler,             /* 11 SVCall handler */
+-  default_handler,            /* 12 Debug monitor handler */
+-  0,                          /* 13 Reserved */
+-  default_handler,             /* 14 The PendSV handler */
+-  clock_isr,                  /* 15 The SysTick handler */
+-  gpio_port_a_isr,            /* 16 GPIO Port A */
+-  gpio_port_b_isr,            /* 17 GPIO Port B */
+-  gpio_port_c_isr,            /* 18 GPIO Port C */
+-  gpio_port_d_isr,            /* 19 GPIO Port D */
+-  0,                          /* 20 none */
+-  uart0_isr,                  /* 21 UART0 Rx and Tx */
+-  uart1_isr,                  /* 22 UART1 Rx and Tx */
+-  default_handler,            /* 23 SSI0 Rx and Tx */
+-  default_handler,            /* 24 I2C Master and Slave */
+-  0,                          /* 25 Reserved */
+-  0,                          /* 26 Reserved */
+-  0,                          /* 27 Reserved */
+-  0,                          /* 28 Reserved */
+-  0,                          /* 29 Reserved */
+-  default_handler,            /* 30 ADC Sequence 0 */
+-  0,                          /* 31 Reserved */
+-  0,                          /* 32 Reserved */
+-  0,                          /* 33 Reserved */
+-  default_handler,            /* 34 Watchdog timer, timer 0 */
+-  default_handler,            /* 35 Timer 0 subtimer A */
+-  default_handler,            /* 36 Timer 0 subtimer B */
+-  default_handler,            /* 37 Timer 1 subtimer A */
+-  default_handler,            /* 38 Timer 1 subtimer B */
+-  default_handler,            /* 39 Timer 2 subtimer A */
+-  default_handler,            /* 40 Timer 2 subtimer B */
+-  default_handler,            /* 41 Analog Comparator 0 */
+-  default_handler,            /* 42 RFCore Rx/Tx (Alternate) */
+-  default_handler,            /* 43 RFCore Error (Alternate) */
+-  default_handler,            /* 44 System Control */
+-  default_handler,            /* 45 FLASH Control */
+-  default_handler,            /* 46 AES (Alternate) */
+-  default_handler,            /* 47 PKA (Alternate) */
+-  default_handler,            /* 48 SM Timer (Alternate) */
+-  default_handler,            /* 49 MacTimer (Alternate) */
+-  default_handler,            /* 50 SSI1 Rx and Tx */
+-  default_handler,            /* 51 Timer 3 subtimer A */
+-  default_handler,            /* 52 Timer 3 subtimer B */
+-  0,                          /* 53 Reserved */
+-  0,                          /* 54 Reserved */
+-  0,                          /* 55 Reserved */
+-  0,                          /* 56 Reserved */
+-  0,                          /* 57 Reserved */
+-  0,                          /* 58 Reserved */
+-  0,                          /* 59 Reserved */
+-  0,                          /* 60 Reserved */
+-  0,                          /* 61 Reserved */
+-  udma_isr,                   /* 62 uDMA */
+-  udma_err_isr,               /* 63 uDMA Error */
+-  0,                          /* 64 64-155 are not in use */
+-  0,                          /* 65 */
+-  0,                          /* 66 */
+-  0,                          /* 67 */
+-  0,                          /* 68 */
+-  0,                          /* 69 */
+-  0,                          /* 70 */
+-  0,                          /* 71 */
+-  0,                          /* 72 */
+-  0,                          /* 73 */
+-  0,                          /* 74 */
+-  0,                          /* 75 */
+-  0,                          /* 76 */
+-  0,                          /* 77 */
+-  0,                          /* 78 */
+-  0,                          /* 79 */
+-  0,                          /* 80 */
+-  0,                          /* 81 */
+-  0,                          /* 82 */
+-  0,                          /* 83 */
+-  0,                          /* 84 */
+-  0,                          /* 85 */
+-  0,                          /* 86 */
+-  0,                          /* 87 */
+-  0,                          /* 88 */
+-  0,                          /* 89 */
+-  0,                          /* 90 */
+-  0,                          /* 91 */
+-  0,                          /* 92 */
+-  0,                          /* 93 */
+-  0,                          /* 94 */
+-  0,                          /* 95 */
+-  0,                          /* 96 */
+-  0,                          /* 97 */
+-  0,                          /* 98 */
+-  0,                          /* 99 */
+-  0,                          /* 100 */
+-  0,                          /* 101 */
+-  0,                          /* 102 */
+-  0,                          /* 103 */
+-  0,                          /* 104 */
+-  0,                          /* 105 */
+-  0,                          /* 106 */
+-  0,                          /* 107 */
+-  0,                          /* 108 */
+-  0,                          /* 109 */
+-  0,                          /* 110 */
+-  0,                          /* 111 */
+-  0,                          /* 112 */
+-  0,                          /* 113 */
+-  0,                          /* 114 */
+-  0,                          /* 115 */
+-  0,                          /* 116 */
+-  0,                          /* 117 */
+-  0,                          /* 118 */
+-  0,                          /* 119 */
+-  0,                          /* 120 */
+-  0,                          /* 121 */
+-  0,                          /* 122 */
+-  0,                          /* 123 */
+-  0,                          /* 124 */
+-  0,                          /* 125 */
+-  0,                          /* 126 */
+-  0,                          /* 127 */
+-  0,                          /* 128 */
+-  0,                          /* 129 */
+-  0,                          /* 130 */
+-  0,                          /* 131 */
+-  0,                          /* 132 */
+-  0,                          /* 133 */
+-  0,                          /* 134 */
+-  0,                          /* 135 */
+-  0,                          /* 136 */
+-  0,                          /* 137 */
+-  0,                          /* 138 */
+-  0,                          /* 139 */
+-  0,                          /* 140 */
+-  0,                          /* 141 */
+-  0,                          /* 142 */
+-  0,                          /* 143 */
+-  0,                          /* 144 */
+-  0,                          /* 145 */
+-  0,                          /* 146 */
+-  0,                          /* 147 */
+-  0,                          /* 148 */
+-  0,                          /* 149 */
+-  0,                          /* 150 */
+-  0,                          /* 151 */
+-  0,                          /* 152 */
+-  0,                          /* 153 */
+-  0,                          /* 154 */
+-  0,                          /* 155 */
+-  usb_isr,                    /* 156 USB */
+-  cc2538_rf_rx_tx_isr,        /* 157 RFCORE RX/TX */
+-  cc2538_rf_err_isr,          /* 158 RFCORE Error */
+-  crypto_isr,                 /* 159 AES */
+-  pka_isr,                    /* 160 PKA */
+-  rtimer_isr,                 /* 161 SM Timer */
+-  default_handler,            /* 162 MACTimer */
+-};
+-/*---------------------------------------------------------------------------*/
+-__attribute__((__section__(".flashcca")))
+-const flash_cca_lock_page_t flash_cca_lock_page = {
+-  FLASH_CCA_BOOTLDR_CFG,        /* Boot loader backdoor configuration */
+-  FLASH_CCA_IMAGE_VALID,        /* Image valid */
+-  &vectors,                     /* Vector table */
+-  /* Unlock all pages and debug */
+-  { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
++/* Both silicon interrupt mappings use this table. Unassigned slots are reserved. */
++__attribute__((section(".isr_vector"), used))
++const uintptr_t cc2538_vectors[163] = {
++    [0] = (uintptr_t)&_estack,
++    [1] = (uintptr_t)Reset_Handler,
++    [2] = (uintptr_t)NMI_Handler,
++    [3] = (uintptr_t)HardFault_Handler,
++    [4] = (uintptr_t)MemManage_Handler,
++    [5] = (uintptr_t)BusFault_Handler,
++    [6] = (uintptr_t)UsageFault_Handler,
++    [11] = (uintptr_t)SVC_Handler,
++    [12] = (uintptr_t)DebugMon_Handler,
++    [14] = (uintptr_t)PendSV_Handler,
++    [15] = (uintptr_t)SysTick_Handler,
++    [16] = (uintptr_t)GPIOA_IRQHandler,
++    [17] = (uintptr_t)GPIOB_IRQHandler,
++    [18] = (uintptr_t)GPIOC_IRQHandler,
++    [19] = (uintptr_t)GPIOD_IRQHandler,
++    [21] = (uintptr_t)UART0_IRQHandler,
++    [22] = (uintptr_t)UART1_IRQHandler,
++    [23] = (uintptr_t)SSI0_IRQHandler,
++    [24] = (uintptr_t)I2C_IRQHandler,
++    [30] = (uintptr_t)ADC_IRQHandler,
++    [34] = (uintptr_t)Watchdog_IRQHandler,
++    [35] = (uintptr_t)Timer0A_IRQHandler,
++    [36] = (uintptr_t)Timer0B_IRQHandler,
++    [37] = (uintptr_t)Timer1A_IRQHandler,
++    [38] = (uintptr_t)Timer1B_IRQHandler,
++    [39] = (uintptr_t)Timer2A_IRQHandler,
++    [40] = (uintptr_t)Timer2B_IRQHandler,
++    [41] = (uintptr_t)Comparator_IRQHandler,
++    [42] = (uintptr_t)RFCore_IRQHandler,
++    [43] = (uintptr_t)RFCoreError_IRQHandler,
++    [44] = (uintptr_t)SystemControl_IRQHandler,
++    [45] = (uintptr_t)FlashControl_IRQHandler,
++    [46] = (uintptr_t)AES_IRQHandler,
++    [47] = (uintptr_t)PKA_IRQHandler,
++    [48] = (uintptr_t)SleepTimer_IRQHandler,
++    [49] = (uintptr_t)MACTimer_IRQHandler,
++    [50] = (uintptr_t)SSI1_IRQHandler,
++    [51] = (uintptr_t)Timer3A_IRQHandler,
++    [52] = (uintptr_t)Timer3B_IRQHandler,
++    [62] = (uintptr_t)uDMA_IRQHandler,
++    [63] = (uintptr_t)uDMAError_IRQHandler,
++    [156] = (uintptr_t)USB_IRQHandler,
++    [157] = (uintptr_t)RFCore_IRQHandler,
++    [158] = (uintptr_t)RFCoreError_IRQHandler,
++    [159] = (uintptr_t)AES_IRQHandler,
++    [160] = (uintptr_t)PKA_IRQHandler,
++    [161] = (uintptr_t)SleepTimer_IRQHandler,
++    [162] = (uintptr_t)MACTimer_IRQHandler,
+ };
+-/*---------------------------------------------------------------------------*/
+-/* Linker constructs indicating .data and .bss segment locations */
+-extern uint8_t _ldata;
+-extern uint8_t _data;
+-extern uint8_t _edata;
+-extern uint8_t _bss;
+-extern uint8_t _ebss;
+-/*---------------------------------------------------------------------------*/
+-/* Weak interrupt handlers. */
+-void
+-nmi_handler(void)
+-{
+-  reset_handler();
+-  while(1);
+-}
+-/*---------------------------------------------------------------------------*/
+-void
+-default_handler(void)
++
++void SystemInit(void)
+ {
+-  while(1);
++    /* SYS_CTRL.EMUOVR: restore the documented reset value from TI SWRU319C. */
++    *(volatile uint32_t *)UINT32_C(0x400D20B4) = UINT32_C(0xFF);
+ }
+-/*---------------------------------------------------------------------------*/
+-void
+-reset_handler(void)
+-{
+-  REG(SYS_CTRL_EMUOVR) = 0xFF;
+-
+-  /* Copy the data segment initializers from flash to SRAM. */
+-  rom_util_memcpy(&_data, &_ldata, &_edata - &_data);
+ 
+-  /* Zero-fill the bss segment. */
+-  rom_util_memset(&_bss, 0, &_ebss - &_bss);
++void Reset_Handler(void)
++{
++    memcpy(&_sdata, &_sidata, (uintptr_t)&_edata - (uintptr_t)&_sdata);
++    memset(&_sbss, 0, (uintptr_t)&_ebss - (uintptr_t)&_sbss);
+ 
+-  /* call the application's entry point. */
+-  main();
++    SystemInit();
++    *(volatile uint32_t *)UINT32_C(0xE000ED08) = (uintptr_t)cc2538_vectors;
++    __asm__ volatile ("dsb\nisb" ::: "memory");
+ 
+-  /* End here if main () returns */
+-  while(1);
++    __libc_init_array();
++    (void)main();
++    Default_Handler();
+ }
+-/*---------------------------------------------------------------------------*/
+-
+-/** @} */

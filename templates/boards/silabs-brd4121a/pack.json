@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "board/silabs-brd4121a",
+  "kind": "board",
+  "label": "Silicon Labs BRD4121A",
+  "files": [
+    {"source": "board.cmake", "destination": "board/board.cmake"}
+  ],
+  "provides": ["cpu/arm-cortex-m33", "board/log-hook"],
+  "cmake": "board/board.cmake",
+  "dependencies": ["support/silabs-mg26-board"],
+  "board": {
+    "target_kind": "mcu",
+    "chip": "EFR32MG26B420F3200IM68",
+    "core": {"id": "core0", "architecture": "arm-cortex-m33"},
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 19000000,
+    "memories": [
+      {"id": "app-flash", "kind": "flash", "address": 134217728, "size": 3268608},
+      {"id": "app-ram", "kind": "ram", "address": 536870912, "size": 524288}
+    ],
+    "arch": "efr32mg26"
+  }
+}

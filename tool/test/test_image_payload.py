@@ -114,6 +114,17 @@ class PayloadTests(unittest.TestCase):
         with self.assertRaisesRegex(payload.ArtifactError, "exceeds board flash"):
             payload.load_artifact(other["manifest_path"], memories=regions)
 
+    def test_ram_image_requires_explicit_loadable_region(self):
+        ram = {"kind": "ram", "address": 0x1000, "size": 160}
+        with self.assertRaisesRegex(payload.ArtifactError, "loadable RAM"):
+            self.package(memories=[ram])
+        regions = [dict(ram, loadable=True)]
+        created = self.package(memories=regions)
+        manifest = payload.load_artifact(created["manifest_path"], memories=regions)
+        self.assertEqual(int(manifest["partitions"][0]["address"], 16), ram["address"])
+        with self.assertRaisesRegex(payload.ArtifactError, "loadable RAM"):
+            payload.load_artifact(created["manifest_path"], memories=[ram])
+
     def test_target_and_type_are_distinct_and_current_is_pinned(self):
         release = self.package()
         debug = self.package(build_type="Debug")

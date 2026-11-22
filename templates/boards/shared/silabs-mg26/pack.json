@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "support/silabs-mg26-board",
+  "kind": "support",
+  "label": "Shared Silicon Labs EFR32MG26 board sources",
+  "files": [
+    {"source": "board.c", "destination": "board/board.c"},
+    {"source": "include/board.h", "destination": "board/include/board.h"},
+    {"source": "flash.ld.in", "destination": "board/flash.ld.in"},
+    {"source": "silabs-board.cmake", "destination": "board/silabs-board.cmake"}
+  ]
+}

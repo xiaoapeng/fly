@@ -1,0 +1,54 @@
+diff --git a/Libraries/CMSIS/Device/Maxim/MAX32650/Source/GCC/startup_max32650.S b/Libraries/CMSIS/Device/Maxim/MAX32650/Source/GCC/startup_max32650.S
+index 213514a..e8c1c09 100644
+--- a/Libraries/CMSIS/Device/Maxim/MAX32650/Source/GCC/startup_max32650.S
++++ b/Libraries/CMSIS/Device/Maxim/MAX32650/Source/GCC/startup_max32650.S
+@@ -1,6 +1,6 @@
+ /******************************************************************************
+  *
+- * Copyright (C) 2022-2023 Maxim Integrated Products, Inc. (now owned by 
++ * Copyright (C) 2022-2023 Maxim Integrated Products, Inc. (now owned by
+  * Analog Devices, Inc.),
+  * Copyright (C) 2023-2024 Analog Devices, Inc.
+  *
+@@ -20,7 +20,7 @@
+ 
+ 
+     .syntax unified
+-    .arch armv7-m
++    .cpu cortex-m4
+ 
+     .section .stack
+     .align 3
+@@ -158,7 +158,7 @@ __isr_vector:
+     .long DMA14_IRQHandler          /* 0x5E  0x0178  94: DMA14 */
+     .long DMA15_IRQHandler          /* 0x5F  0x017C  95: DMA15 */
+     .long USBDMA_IRQHandler         /* 0x60  0x0180  96: USBDMA */
+-    .text 	
++    .text
+     .thumb
+     .thumb_func
+     .align 2
+@@ -231,11 +231,11 @@ Reset_Handler:
+     /* Note: The linker file must have .data symbols for __X_array_start and __X_array_end */
+     /*        where X is {preinit, init, fini}                                             */
+     ldr     r0, =__libc_init_array
+-    blx     r0  
++    blx     r0
+ 
+     /* Transfer control to users main program */
+     ldr     r0, =main
+-    blx     r0 
++    blx     r0
+ 
+ .SPIN:
+     /* spin if main ever returns. */
+@@ -262,7 +262,8 @@ Reset_Handler:
+     def_irq_handler    SVC_Handler
+     def_irq_handler    DebugMon_Handler
+     def_irq_handler    PendSV_Handler
+-    /* SysTick_Handler is weakly defined in mxc_delay.c */
++    /* Provide the weak default when the MSDK delay driver is absent. */
++    def_irq_handler    SysTick_Handler
+     def_irq_handler    Default_Handler
+ 
+     /* Device-specific Interrupts */

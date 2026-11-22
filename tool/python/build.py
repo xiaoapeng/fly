@@ -70,11 +70,12 @@ def get_cmake_cache_value(build_dir, key):
     return None
 
 
-def write_generated_config(paths, kconf):
+def write_generated_config(paths, kconf, architecture):
     paths.generated.mkdir(parents=True, exist_ok=True)
     kconf.write_autoconf(str(paths.generated / 'autoconf.h'))
     config = paths.generated / '.config.cmake'
-    lines = ['# CMake config generated from Kconfig']
+    lines = ['# CMake config generated from Kconfig',
+             f'set(FLY_ARCH_RELATIVE_DIR "{architecture.relative_path}")']
     for line in paths.config.read_text(encoding='utf-8').splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
@@ -85,13 +86,21 @@ def write_generated_config(paths, kconf):
         config.write_text(content, encoding='utf-8')
 
 
+def _validate_project_config(kconf, architecture):
+    validate_choice(kconf, architecture)
+    for symbol in kconf.unique_defined_syms:
+        if symbol.choice is not None and symbol.choice.visibility and symbol.user_value == 2 and not symbol.visibility:
+            raise ValueError(f'CONFIG_{symbol.name}=y is unavailable for the selected configuration '
+                             f'({architecture.id}/{architecture.profile}).')
+
+
 def run_loadconfig(paths, input_file):
     kconf, architecture = paths.kconfig()
     kconf.load_config(str(input_file))
-    validate_choice(kconf, architecture)
+    _validate_project_config(kconf, architecture)
     paths.config.parent.mkdir(parents=True, exist_ok=True)
     kconf.write_config(str(paths.config))
-    write_generated_config(paths, kconf)
+    write_generated_config(paths, kconf, architecture)
 
 
 def refresh_config(paths):
@@ -124,8 +133,8 @@ def run_menuconfig(paths):
     # Use the saved .config, including when the user exits without saving.
     if paths.config.is_file():
         kconf.load_config(str(paths.config))
-        validate_choice(kconf, architecture)
-        write_generated_config(paths, kconf)
+        _validate_project_config(kconf, architecture)
+        write_generated_config(paths, kconf, architecture)
 
 
 def run_saveconfig(paths, output_file):
@@ -135,7 +144,7 @@ def run_saveconfig(paths, output_file):
         refresh_config(paths)
     kconf, architecture = paths.kconfig()
     kconf.load_config(str(paths.config))
-    validate_choice(kconf, architecture)
+    _validate_project_config(kconf, architecture)
     config_file = paths.project / output_file
     kconf.write_min_config(str(config_file))
     print(f'Defconfig saved to: {config_file}')

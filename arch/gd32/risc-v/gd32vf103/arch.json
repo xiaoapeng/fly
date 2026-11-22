@@ -1,5 +1,10 @@
 {
   "schema_version": 1,
   "id": "gd32vf103",
-  "config": "CONFIG_ARCH_GD32VF103X"
+  "config": "CONFIG_ARCH_GD32VF103X",
+  "isa": "riscv",
+  "toolchain": "gcc-riscv-none-embed",
+  "cpu": "riscv32-bumblebee-n200",
+  "march": "rv32imac",
+  "abi": "ilp32"
 }

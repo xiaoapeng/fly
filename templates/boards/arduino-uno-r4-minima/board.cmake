@@ -1,0 +1,16 @@
+set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(FLY_FLASH_ADDRESS "0x00004000")
+set(FLY_FLASH_SIZE "0x0003C000")
+
+function(fly_configure_board target)
+    if(NOT TARGET arch-ra4m1ab)
+        message(FATAL_ERROR "This board requires the RA4M1AB target.")
+    endif()
+
+    target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board.c")
+    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}/include")
+    target_link_libraries(${target} arch-ra4m1ab c m gcc)
+    set(linker_script "${FLY_BOARD_DIR}/flash.ld")
+    target_link_options(${target} PRIVATE "-T${linker_script}")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${linker_script}")
+endfunction()

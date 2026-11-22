@@ -1,0 +1,10 @@
+Keep the uint32_t declaration matching the FLASH_ROM_READ definition.
+
+--- a/EVT/EXAM/SRC/StdPeriphDriver/inc/CH58x_flash.h
++++ b/EVT/EXAM/SRC/StdPeriphDriver/inc/CH58x_flash.h
+@@ -27,5 +27,4 @@
+ void FLASH_ROM_READ(uint32_t StartAddr, void *Buffer, uint32_t len);
+ 
+-void FLASH_ROM_READ(UINT32 StartAddr, PVOID Buffer, UINT32 len); /* ∂¡»°Flash-ROM */
+ 
+ UINT8 UserOptionByteConfig(FunctionalState RESET_EN, FunctionalState BOOT_PIN, FunctionalState UART_NO_KEY_EN,

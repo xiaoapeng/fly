@@ -235,9 +235,9 @@ def _verify_partition(manifest_path, part, firmware_name, core_id, claimed):
 def _validate_ranges(partitions, memories):
     names = set()
     regions = []
-    flash = None if memories is None else [
+    loadable = None if memories is None else [
         (region["address"], region["address"] + region["size"])
-        for region in memories if region["kind"] == "flash"
+        for region in memories if region.get("loadable", region["kind"] == "flash") is True
     ]
     for part in partitions:
         _keys(part, "name core_id version address capacity raw bin trailer origin symbols objcopy", "partition")
@@ -247,9 +247,10 @@ def _validate_ranges(partitions, memories):
         names.add(name.casefold())
         address = int(_string(part["address"], f"{name} address", _HEX_ADDRESS), 16)
         capacity = _uint(part["capacity"], f"{name} capacity", 1)
-        if flash is not None and not any(start <= address and address + capacity <= end for start, end in flash):
-            raise ArtifactError(f"Partition {name}: [{address:#x}, {address + capacity:#x}) exceeds board flash",
-                                "ARTIFACT_MISMATCH", partition=name)
+        if loadable is not None and not any(start <= address and address + capacity <= end for start, end in loadable):
+            raise ArtifactError(
+                f"Partition {name}: [{address:#x}, {address + capacity:#x}) exceeds board flash or loadable RAM",
+                "ARTIFACT_MISMATCH", partition=name)
         regions.append((address, address + capacity, name))
     regions.sort()
     for previous, current in zip(regions, regions[1:]):

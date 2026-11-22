@@ -1,0 +1,20 @@
+// STM32F401CB startup model built on Renode's STM32F4 family platform.
+using "platforms/cpus/stm32f4.repl"
+
+flash:
+    size: 0x20000
+
+sram:
+    size: 0x10000
+
+fsmcBank1: @ none
+
+nvic:
+    systickFrequency: 16000000
+
+// Retain upstream register tags without downloading the optional SVD.
+sysbus:
+    init:
+        Tag <0x40021000, 0x40021003> "GPIOE_MODER" 0xFFFFFFFF
+        Tag <0x40021004, 0x40021007> "GPIOE_OTYPER" 0x00000008
+        Tag <0x50000010, 0x5000003F> "USB:RESET" 0x80000000

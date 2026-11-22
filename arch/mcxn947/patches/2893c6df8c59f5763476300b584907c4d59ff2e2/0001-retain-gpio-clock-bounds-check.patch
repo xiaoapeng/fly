@@ -1,0 +1,15 @@
+diff --git a/drivers/gpio/fsl_gpio.c b/drivers/gpio/fsl_gpio.c
+--- a/drivers/gpio/fsl_gpio.c
++++ b/drivers/gpio/fsl_gpio.c
+@@ -134,7 +134,10 @@
+     uint32_t instance = GPIO_GetInstance(base);
+ 
+     /* Ensure the instance index is within bounds of the s_gpioClockName array */
+-    assert(instance < ARRAY_SIZE(s_gpioClockName));
++    if (instance >= ARRAY_SIZE(s_gpioClockName))
++    {
++        return;
++    }
+ 
+     if (enable)
+     {

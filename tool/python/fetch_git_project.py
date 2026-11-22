@@ -1,246 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""Resolve and cache Git sources and manage the configured download mirrors."""
 
-import os
-import sys
-import subprocess
 import argparse
-import json
-import re
-import time
 import concurrent.futures
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
 import urllib.parse
+
 import requests
 
-# A full 40-hex commit SHA pinned as GIT_TAG. Checked BEFORE tag/branch logic
-# because `git tag --list <sha>` and the branch+pull path both mishandle SHAs.
-COMMIT_SHA_RE = re.compile(r'^[0-9a-f]{40}$')
-
-
-class GitProjectFetcher:
-    def __init__(self, source_dl_dir=None, package_info_file=None):
-        self.source_dl_dir = source_dl_dir
-        self.package_info_file = package_info_file
-        self._check_git_installed()
-        
-    def _check_git_installed(self):
-        """检查Git是否安装"""
-        try:
-            subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("[fetch_git_project] Git not found", file=sys.stderr)
-            sys.exit(1)
-
-    def _git_fetch_commit(self, git_project_name, git_repository, git_tag):
-        """Fetch a pinned commit SHA into the source repo (mirror first, then
-        plain origin). SHA fetch failure is FATAL (exit 1) — unlike branch/tag
-        fetch failures a missing pinned commit makes the build untrustworthy.
-        """
-        # 镜像代理可能不支持按 SHA fetch（uploadpack.allowAnySHA1InWant）；
-        # 使用原始 repository URL（origin）先尝试，失败再用镜像兜底一次。
-        raw_origin_url = subprocess.run(
-            ['git', '-C', self.source_dl_dir, 'remote', 'get-url', 'origin'],
-            capture_output=True, text=True
-        ).stdout.strip()
-
-        fetch_attempts = [
-            (raw_origin_url, ['--depth=1']),
-            (git_repository,  ['--unshallow']),
-        ]
-        for repo_url, extra_flags in fetch_attempts:
-            fetch_cmd = ['git', '-C', self.source_dl_dir, 'fetch'] + extra_flags + [repo_url, git_tag]
-            try:
-                subprocess.run(fetch_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                return True
-            except subprocess.CalledProcessError as e:
-                print(f"[fetch_git_project] Fetch commit {git_tag} from {repo_url} failed: {e.stderr.decode(errors='replace').strip()}", file=sys.stderr)
-        print(f"[fetch_git_project] Failed to fetch commit {git_tag} for {git_project_name}; pin is unbuildable — aborting", file=sys.stderr)
-        return False
-
-    
-    def fetch_git_project(self, git_project_name, git_repository, git_tag, deep_clone=False, auto_update=False):
-        """拉取或更新Git仓库到指定目录"""
-        # 检查必填参数
-        if not all([git_project_name, git_repository, git_tag, self.source_dl_dir]):
-            print("[fetch_git_project] Missing required parameters", file=sys.stderr)
-            return False
-        
-        # 确保下载目录存在
-        os.makedirs(os.path.dirname(self.source_dl_dir), exist_ok=True)
-
-        is_sha = bool(COMMIT_SHA_RE.match(git_tag)) if git_tag else False
-        # is_tag 必须在「新 clone」和「已存在」两条路径都可用，否则新 clone 一个
-        # tag 时会在下面的 `elif is_tag:` 触发 UnboundLocalError。
-        is_tag = False
-
-        # 检查源码和.git目录是否存在
-        if not os.path.exists(self.source_dl_dir) or not os.path.exists(os.path.join(self.source_dl_dir, '.git')):
-            print(f"[fetch_git_project] Cloning {git_repository} to {self.source_dl_dir}")
-
-            # 构建克隆命令。`git clone --branch <sha>` 不合法，SHA pin 走
-            # 普通 clone 之后 fetch 指定 commit 再 checkout --detach。
-            clone_cmd = ['git', 'clone']
-            if not is_sha and not deep_clone:
-                clone_cmd.extend(['--depth', '1'])
-            if not is_sha:
-                clone_cmd.extend(['--branch', git_tag])
-            clone_cmd.extend([git_repository, self.source_dl_dir])
-
-            # 执行克隆命令
-            try:
-                subprocess.run(clone_cmd, check=True)
-                print(f"[fetch_git_project] Cloned {git_project_name} successfully")
-            except subprocess.CalledProcessError as e:
-                print(f"[fetch_git_project] Failed to clone {git_repository}: {e}", file=sys.stderr)
-                return False
-
-            if is_sha:
-                if not self._git_fetch_commit(git_project_name, git_repository, git_tag):
-                    return False
-                try:
-                    subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'checkout', '--quiet', '--detach', git_tag],
-                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
-                    print(f"[fetch_git_project] Checked out commit {git_tag}")
-                except subprocess.CalledProcessError as e:
-                    print(f"[fetch_git_project] Failed to checkout commit {git_tag}: {e.stderr.decode(errors='replace').strip()}", file=sys.stderr)
-                    return False
-
-            if not is_sha:
-                # 新 clone 使用 `--branch <git_tag>`；判断它是否为 tag，
-                # 供后续 tag/HEAD 一致性校验使用。
-                tag_output = subprocess.run(
-                    ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', f'refs/tags/{git_tag}'],
-                    capture_output=True, text=True
-                ).stdout.strip()
-                is_tag = len(tag_output) > 0
-        else:
-            # Source already cloned. Sync to the requested ref on every build so
-            # that switching PACKAGE_FREERTOS_GIT_TAG in Kconfig (or a branch
-            # change) propagates without manual `rm -rf dl/` cleanup.
-            print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} already cloned; syncing to {git_tag}")
-
-            # 同步 remote origin URL（如果不一致）
-            origin_url = subprocess.run(
-                ['git', '-C', self.source_dl_dir, 'remote', 'get-url', 'origin'],
-                capture_output=True, text=True
-            ).stdout.strip()
-            if origin_url.rstrip('/') != git_repository.rstrip('/'):
-                print(f"[fetch_git_project] {git_project_name}:{git_repository}@{git_tag} remote origin URL is {origin_url}, not {git_repository}")
-                print(f"[fetch_git_project] Updating origin URL to {git_repository}")
-                subprocess.run(
-                    ['git', '-C', self.source_dl_dir, 'remote', 'set-url', 'origin', git_repository],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
-
-            # 分派顺序（共识计划）：40-hex SHA 必须先于 tag / branch 逻辑。
-            is_sha = bool(COMMIT_SHA_RE.match(git_tag))
-
-            # 拉取最新内容（含 tag 列表）。SHA 分支跳过这次通用 fetch：
-            # _git_fetch_commit() 自行负责拉取指定 commit（含镜像回退）。
-            is_tag = False
-            if not is_sha:
-                try:
-                    subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'fetch', '--all', '--tags'],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-                    )
-                except subprocess.CalledProcessError as e:
-                    # 不返回：仓库已存在，只是 fetch 失败（例如离线/镜像不可达）。
-                    # 继续用本地已有的 ref 完成 tag/branch 对齐，并写出
-                    # package_info.txt，否则 CMake 读取 package_info 时会失败。
-                    print(f"[fetch_git_project] Failed to fetch updates: {e}", file=sys.stderr)
-
-                # 检查是否为 tag
-                try:
-                    tag_output = subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'tag', '--list', git_tag],
-                        capture_output=True, text=True
-                    ).stdout.strip()
-                    is_tag = len(tag_output) > 0
-                except subprocess.CalledProcessError:
-                    pass
-
-        if is_sha:
-            # Pinned commit SHA: HEAD must land on this exact commit. Branch
-            # checkout/pull logic must NOT run here (a SHA is not a ref).
-            head_sha = subprocess.run(
-                ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', 'HEAD'],
-                capture_output=True, text=True
-            ).stdout.strip()
-            if head_sha == git_tag:
-                print(f"[fetch_git_project] HEAD already at commit {git_tag}")
-            else:
-                if not self._git_fetch_commit(git_project_name, git_repository, git_tag):
-                    return False
-                try:
-                    subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'checkout', '--quiet', '--detach', git_tag],
-                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
-                    print(f"[fetch_git_project] Checked out commit {git_tag}")
-                except subprocess.CalledProcessError as e:
-                    print(f"[fetch_git_project] Failed to checkout commit {git_tag}: {e.stderr.decode(errors='replace').strip()}", file=sys.stderr)
-                    return False
-        elif is_tag:
-            # Tag：任何 sync 必须把 HEAD 落在该 tag 上；这是 build 一致性的保证。
-            head_sha = subprocess.run(
-                ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', 'HEAD'],
-                capture_output=True, text=True
-            ).stdout.strip()
-            tag_sha = subprocess.run(
-                ['git', '-C', self.source_dl_dir, 'rev-parse', '--verify', f'refs/tags/{git_tag}'],
-                capture_output=True, text=True
-            ).stdout.strip()
-            if tag_sha and head_sha != tag_sha:
-                print(f"[fetch_git_project] HEAD {head_sha[:10]} != {git_tag} ({tag_sha[:10]}); checking out")
-                try:
-                    subprocess.run(
-                        ['git', '-C', self.source_dl_dir, 'checkout', '--quiet', git_tag],
-                        check=True
-                    )
-                    print(f"[fetch_git_project] Checked out {git_tag}")
-                except subprocess.CalledProcessError as e:
-                    print(f"[fetch_git_project] Failed to checkout {git_tag}: {e}", file=sys.stderr)
-                    return True  # 仓库存在；让 build 自己报缺符号
-            else:
-                print(f"[fetch_git_project] HEAD already at {git_tag}")
-        elif auto_update:
-            # 分支 + AUTO_UPDATE：原行为（checkout + pull）
-            print(f"[fetch_git_project] Switching to branch {git_tag} and pulling latest")
-            try:
-                subprocess.run(
-                    ['git', '-C', self.source_dl_dir, 'checkout', git_tag],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
-                subprocess.run(
-                    ['git', '-C', self.source_dl_dir, 'pull'],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
-                print(f"[fetch_git_project] Updated {git_project_name} successfully")
-            except subprocess.CalledProcessError as e:
-                print(f"[fetch_git_project] Failed to update branch {git_tag}: {e}", file=sys.stderr)
-                return True  # 仓库存在；让 build 自己报缺符号
-        else:
-            # 分支 + AUTO_UPDATE OFF：保留本地可能存在的改动，不强制 sync。
-            # 用户改 GIT_TAG = 切到另一分支时，下次 build 仍可能读到旧分支；
-            # 但这与 AUTO_UPDATE OFF 的"我不想被自动覆盖"语义一致。
-            pass
-        
-        # 创建package_info.txt文件
-        if self.package_info_file:
-            # 确保package_info_file的目录存在
-            os.makedirs(os.path.dirname(self.package_info_file), exist_ok=True)
-            current_package_info = f"{git_project_name}:\n    tag: {git_tag}\n    remote: {git_repository}\n"
-            try:
-                with open(self.package_info_file, 'w') as f:
-                    f.write(current_package_info)
-                print(f"[fetch_git_project] Created package info file: {self.package_info_file}")
-            except Exception as e:
-                print(f"[fetch_git_project] Failed to create package info file: {e}", file=sys.stderr)
-        
-        return True
+from git_source_cache import GitSourceCache, write_if_changed
 
 
 class MirrorSourceManager:
@@ -402,39 +175,43 @@ class MirrorSourceManager:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Fetch Git projects')
-    
-    # 添加所有必要的参数
-    parser.add_argument('--project-name', required=True, help='Name of the project')
-    parser.add_argument('--repository', required=True, help='Git repository URL')
-    parser.add_argument('--tag', required=True, help='Git tag or branch')
-    parser.add_argument('--source-dl-dir', required=True, help='Source download directory (from CMAKE)')
-    parser.add_argument('--package-info-file', required=True, help='Path to package info file (from CMAKE)')
-    parser.add_argument('--deep-clone', action='store_true', help='Perform a deep clone')
-    parser.add_argument('--auto-update', action='store_true', help='Auto update if already cloned')
-    parser.add_argument('--mirror-source-json-file', required=True, help='Path to mirror source JSON file')
-    
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project-name", required=True)
+    parser.add_argument("--repository", required=True)
+    parser.add_argument("--tag", required=True, help="Git commit, tag or branch")
+    parser.add_argument("--cache-dir", required=True, type=Path)
+    parser.add_argument("--result-file", required=True, type=Path)
+    parser.add_argument("--package-info-file", required=True, type=Path)
+    parser.add_argument("--mirror-source-json-file", required=True, type=Path)
+    parser.add_argument("--patch-dir", type=Path)
+    parser.add_argument("--project-patch-dir", type=Path)
+    parser.add_argument("--sparse-path", action="append", default=[])
+    parser.add_argument("--deep-clone", action="store_true")
+    parser.add_argument("--auto-update", action="store_true", help="Refresh a branch or tag")
     args = parser.parse_args()
-    
-    # 初始化镜像源管理器并测试找到最佳镜像源
-    mirror_manager = MirrorSourceManager(args.mirror_source_json_file)
-    # 使用force_update参数调用find_best_mirror_source
-    mirror_manager.find_best_mirror_source()
-    
-    # 使用最佳镜像源包装仓库URL
-    mirrored_repository = mirror_manager.wrap_url_with_mirror(args.repository)
-    
-    fetcher = GitProjectFetcher(args.source_dl_dir, args.package_info_file)
-    success = fetcher.fetch_git_project(
-        args.project_name,
-        mirrored_repository,  # 使用镜像后的URL
-        args.tag,
-        args.deep_clone,
-        args.auto_update
-    )
-    
-    sys.exit(0 if success else 1)
+
+    manager = MirrorSourceManager(args.mirror_source_json_file)
+    patches = [directory for directory in (args.patch_dir, args.project_patch_dir) if directory is not None]
+    try:
+        result = GitSourceCache(args.cache_dir).fetch(
+            args.project_name, args.repository, args.tag,
+            result_file=args.result_file, patch_dirs=patches, sparse_paths=args.sparse_path,
+            deep=args.deep_clone, refresh=args.auto_update, mirror=manager.wrap_url_with_mirror,
+        )
+        info = (f"{args.project_name}:\n"
+                f"    ref: {args.tag}\n"
+                f"    commit: {result['commit']}\n"
+                f"    remote: {args.repository}\n"
+                f"    source: {result['source_dir']}\n")
+        if result["patch_id"]:
+            info += f"    patches: {result['patch_id']}\n"
+        write_if_changed(args.package_info_file, info)
+        print(f"[fly_fetch_git_project] {args.project_name} {result['commit']} → {result['source_dir']}")
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"[fly_fetch_git_project] {args.project_name}: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main())

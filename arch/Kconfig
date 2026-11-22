@@ -5,6 +5,51 @@ config $(FLY_ARCH_SYMBOL)
 
 config ARCH
     string
-    default "$(FLY_ARCH_PATH)"
+    default "$(FLY_ARCH_ID)"
+
+config ARCH_PROFILE
+    string
+    default "$(FLY_ARCH_PROFILE)"
+
+config ARCH_CORE
+    string
+    default "$(FLY_ARCH_CORE)"
+
+config ARCH_ISA
+    string
+    default "$(FLY_ARCH_ISA)"
+
+config ARCH_TOOLCHAIN
+    string
+    default "$(FLY_ARCH_TOOLCHAIN)"
+
+config ARCH_FPU
+    string
+    default "$(FLY_ARCH_FPU)"
+
+config ARCH_FLOAT_ABI
+    string
+    default "$(FLY_ARCH_FLOAT_ABI)"
+
+config ARCH_MARCH
+    string
+    default "$(FLY_ARCH_MARCH)"
+
+config ARCH_ABI
+    string
+    default "$(FLY_ARCH_ABI)"
+
+config ARCH_CPU_FAMILY_CORTEX_M
+    bool
+    default $(FLY_ARCH_IS_CORTEX_M)
+
+config ARCH_HAS_HARD_FPU
+    bool
+    default $(FLY_ARCH_HAS_HARD_FPU)
 
 osource "$(FLY_ARCH_KCONFIG)"
+
+# Families with an implemented interrupt priority model override this default.
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 0

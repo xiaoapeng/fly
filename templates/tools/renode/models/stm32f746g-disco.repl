@@ -1,0 +1,12 @@
+// Use Renode's F7 Discovery board with the F746NG's internal Flash/SRAM
+// sizes and the FLY reset HSI clock.
+using "platforms/boards/stm32f7_discovery-bb.repl"
+
+flash:
+    size: 0x100000
+
+sram:
+    size: 0x50000
+
+nvic:
+    systickFrequency: 16000000

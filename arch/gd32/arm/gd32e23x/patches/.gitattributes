@@ -1,0 +1,2 @@
+# Keep the original context spacing in vendor patches.
+*.patch -text whitespace=-blank-at-eol

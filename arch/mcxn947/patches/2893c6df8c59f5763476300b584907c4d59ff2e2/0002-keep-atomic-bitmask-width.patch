@@ -1,0 +1,53 @@
+diff --git a/drivers/common/fsl_common_arm.h b/drivers/common/fsl_common_arm.h
+--- a/drivers/common/fsl_common_arm.h
++++ b/drivers/common/fsl_common_arm.h
+@@ -177,21 +177,21 @@
+ {
+     uint8_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_1BYTE(addr, s_val, s_val &= ~bits);
++    _SDK_ATOMIC_LOCAL_OPS_1BYTE(addr, s_val, s_val &= (uint8_t)~bits);
+ }
+ 
+ static inline void _SDK_AtomicLocalClear2Byte(volatile uint16_t *addr, uint16_t bits)
+ {
+     uint16_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_2BYTE(addr, s_val, s_val &= ~bits);
++    _SDK_ATOMIC_LOCAL_OPS_2BYTE(addr, s_val, s_val &= (uint16_t)~bits);
+ }
+ 
+ static inline void _SDK_AtomicLocalClear4Byte(volatile uint32_t *addr, uint32_t bits)
+ {
+     uint32_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_4BYTE(addr, s_val, s_val &= ~bits);
++    _SDK_ATOMIC_LOCAL_OPS_4BYTE(addr, s_val, s_val &= (uint32_t)~bits);
+ }
+ 
+ static inline void _SDK_AtomicLocalToggle1Byte(volatile uint8_t *addr, uint8_t bits)
+@@ -219,21 +219,21 @@
+ {
+     uint8_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_1BYTE(addr, s_val, s_val = (s_val & ~clearBits) | setBits);
++    _SDK_ATOMIC_LOCAL_OPS_1BYTE(addr, s_val, s_val = (uint8_t)(s_val & ~clearBits) | setBits);
+ }
+ 
+ static inline void _SDK_AtomicLocalClearAndSet2Byte(volatile uint16_t *addr, uint16_t clearBits, uint16_t setBits)
+ {
+     uint16_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_2BYTE(addr, s_val, s_val = (s_val & ~clearBits) | setBits);
++    _SDK_ATOMIC_LOCAL_OPS_2BYTE(addr, s_val, s_val = (uint16_t)(s_val & ~clearBits) | setBits);
+ }
+ 
+ static inline void _SDK_AtomicLocalClearAndSet4Byte(volatile uint32_t *addr, uint32_t clearBits, uint32_t setBits)
+ {
+     uint32_t s_val;
+ 
+-    _SDK_ATOMIC_LOCAL_OPS_4BYTE(addr, s_val, s_val = (s_val & ~clearBits) | setBits);
++    _SDK_ATOMIC_LOCAL_OPS_4BYTE(addr, s_val, s_val = (uint32_t)(s_val & ~clearBits) | setBits);
+ }
+ 
+ #define SDK_ATOMIC_LOCAL_ADD(addr, val)                                                                                        \

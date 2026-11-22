@@ -2,5 +2,8 @@
   "schema_version": 1,
   "id": "x64-linux",
   "config": "CONFIG_ARCH_X64_LINUX",
-  "host_system": "Linux"
+  "host_system": "Linux",
+  "isa": "host",
+  "toolchain": "gcc-host-linux",
+  "cpu": "x86_64"
 }

@@ -100,7 +100,7 @@ J-Link 工具包的 SDK 资源位于 `templates/tools/jlink/assets/`，包括 Wi
 
 ### 6. 准备 Renode
 
-如果选择了 `tool/renode`，请将 Renode 加入 PATH，或运行时用 `--tool renode=/path/to/renode` 指定。当前模型用于 FRDM-MCXN947 Core 0 的启动、CRC、RTT 和 nanosig 心跳验证。
+如果选择了 `tool/renode`，请安装 Renode 1.17.0 并将它加入 PATH，也可运行时用 `--tool renode=/path/to/renode` 指定。模型的板卡、模板组合和限制由工具包声明。在生成菜单中选择板卡和 APP 后查看可用工具。 [模型与仿真验证](templates/README.md#renode-验证)
 
 ### 7. 在应用目录构建、打包和烧写
 
@@ -245,7 +245,7 @@ Windows 使用 `build.bat setup` 和 `build.bat build Debug`。首次安装需�
 
 从旧版迁移时，如果构建缓存或 VS Code 配置里的 `FLY_SDK_DIR` 是旧工具自动写入的，清除该项后再配置。应用可继续通过 `-DFLY_SDK_DIR=/path/to/fly` 显式固定 CMake 使用的路径。
 
-应用使用 `#include "board.h"` 调用板级接口。随板卡生成的头文件位于 `board/include/`，CMake 从 `board/board.cmake` 加载板级构建设置。配置和依赖分别位于应用的 `build/config/` 和 `build/deps/`，打包产物放在应用根目录的 `image/`。维护指南见[模板目录说明](templates/README.md)。
+应用使用 `#include "board.h"` 调用板级接口。随板卡生成的头文件位于 `board/include/`，CMake 从 `board/board.cmake` 加载板级构建设置。配置位于应用的 `build/config/`，打包产物位于应用根目录的 `image/`。板卡支持与组件的 Git 源码缓存于 FLY SDK 自己的 `dl/`，使用同一个 SDK 的多个应用可复用缓存。 [模板目录说明](templates/README.md)
 
 应用根目录的 `CMakeLists.txt` 是构建入口，负责设置固件名称和版本，并定义固件、调试和打包目标。`app/CMakeLists.txt` 向固件目标登记应用源码、头文件目录和可选的应用配置。SDK 在 `project()` 启用编译语言前选择工具链。使用应用构建脚本时，嵌入式 ELF 和 BIN 分别生成到 `build/cmake/fly_app` 和 `build/cmake/fly_app.bin`。
 
@@ -260,9 +260,13 @@ cmake --build build/cmake
 
 Windows 下直接使用 MinGW-w64 和 Ninja 时，首次配置加上 `-G Ninja`。如果使用 `build.bat`，脚本会选择已安装的生成器。
 
-CI 每次从模板生成工程，覆盖七个 Cortex-M 架构和 Linux、macOS、Windows 三种宿主平台，同时验证 FRDM-MCXN947 的三种模板打包。两个 RISC-V 目标暂不纳入 CI。见 [CI 流程](docs/CI.md)。
+CI 每次从模板生成工程，覆盖板卡清单中已注册的 ARM 目标和 Linux、macOS、Windows 三种宿主平台，同时验证 FRDM-MCXN947 的三种模板打包。Renode 启动回归可在装有 Renode 的机器上单独运行。 [CI 流程](docs/CI.md)
 
 ### 9. 在独立应用中使用 SDK 源码包
+
+Git 依赖首次构建时解析到完整提交。使用 `./build.sh package_update -l` 查看当前应用实际使用的提交和源码目录。若依赖选择的是分支或标签，执行 `./build.sh package_update <依赖名>` 可刷新当前应用的选择。使用完整 commit 可以固定依赖版本。
+
+应用自己的补丁放在 `patches/<依赖名>/<完整提交>/`，按文件名顺序应用。例如 `patches/nanosig/<完整提交>/010-local.patch`。同一提交可有多套补丁，每套都在 `dl/` 生成自己的源码目录。`distclean` 清理应用输出，`dl/` 仍可供其他板卡复用。 [补丁与依赖注册](templates/README.md#git-源码与补丁)
 
 SDK 从 `package/` 加载包的 CMake 和 Kconfig 设置。下面用一个求和函数演示如何把包注册到 SDK，再从生成的 FRDM-MCXN947 裸机应用调用它。
 

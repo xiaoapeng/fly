@@ -1,0 +1,2 @@
+# Preserve whitespace from the upstream source in patch context.
+*.patch -text whitespace=-blank-at-eol

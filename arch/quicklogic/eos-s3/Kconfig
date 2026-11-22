@@ -1,0 +1,7 @@
+if ARCH_QUICKLOGIC_EOS_S3
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 3
+
+endif

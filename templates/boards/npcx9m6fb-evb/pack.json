@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "id": "board/npcx9m6fb-evb",
+  "kind": "board",
+  "label": "Nuvoton NPCX9M6FB EVB (SRAM application)",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "sram.ld",
+      "destination": "board/sram.ld"
+    },
+    {
+      "source": "LICENSE.cmsis",
+      "destination": "board/LICENSE.cmsis"
+    }
+  ],
+  "provides": [
+    "cpu/arm-cortex-m4",
+    "board/log-hook"
+  ],
+  "cmake": "board/board.cmake",
+  "board": {
+    "target_kind": "mcu",
+    "chip": "NPCX9M6FB",
+    "core": {
+      "id": "core0",
+      "architecture": "arm-cortex-m4"
+    },
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": null,
+    "memories": [
+      {
+        "id": "app-code",
+        "kind": "ram",
+        "loadable": true,
+        "address": 269025280,
+        "size": 196608
+      },
+      {
+        "id": "app-ram",
+        "kind": "ram",
+        "address": 537657344,
+        "size": 65536
+      }
+    ],
+    "arch": "nuvoton-npcx9"
+  }
+}

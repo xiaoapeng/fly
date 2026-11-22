@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "support/nrf52840-board",
+  "kind": "support",
+  "label": "Shared nRF52840 board sources",
+  "files": [
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    },
+    {
+      "source": "flash.ld.in",
+      "destination": "board/flash.ld.in"
+    },
+    {
+      "source": "nrf52840-board.cmake",
+      "destination": "board/nrf52840-board.cmake"
+    }
+  ]
+}

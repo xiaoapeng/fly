@@ -1,0 +1,42 @@
+diff --git a/Firmware/CMSIS/GD/GD32E23x/Source/GCC/startup_gd32e23x.S b/Firmware/CMSIS/GD/GD32E23x/Source/GCC/startup_gd32e23x.S
+index 716e89a..e4007e5 100644
+--- a/Firmware/CMSIS/GD/GD32E23x/Source/GCC/startup_gd32e23x.S
++++ b/Firmware/CMSIS/GD/GD32E23x/Source/GCC/startup_gd32e23x.S
+@@ -43,7 +43,9 @@
+ 
+ /* reset Handler */
+ Reset_Handler:
+-    ldr   r0, =_sp
++    /* Keep interrupts masked until the board enables them. */
++    cpsid i
++    ldr   r0, =_estack
+     mov   sp, r0
+ /* copy the data segment into ram */
+     movs  r1, #0
+@@ -79,7 +81,9 @@ Zerobss:
+     bl __libc_init_array
+ /*Call the main function */
+   bl  main
+-  bx lr
++
++LoopForever:
++  b   LoopForever
+ .size  Reset_Handler, .-Reset_Handler
+ 
+ .section  .text.Default_Handler,"ax",%progbits
+@@ -89,11 +93,13 @@ Infinite_Loop:
+     b  Infinite_Loop
+     .size  Default_Handler, .-Default_Handler
+ 
+-   .section  .vectors,"a",%progbits
++   .section  .isr_vector,"a",%progbits
+    .global __gVectors
++   .global g_pfnVectors
++   .set g_pfnVectors, __gVectors
+ 
+ __gVectors:
+-                    .word _sp                                   /* Top of Stack */
++                    .word _estack                                   /* Top of Stack */
+                     .word Reset_Handler                         /* 1:Reset Handler */
+                     .word NMI_Handler                           /* 2:NMI Handler */
+                     .word HardFault_Handler                     /* 3:Hard Fault Handler */

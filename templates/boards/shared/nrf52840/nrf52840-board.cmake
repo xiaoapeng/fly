@@ -1,0 +1,15 @@
+include_guard(GLOBAL)
+
+function(fly_configure_board target)
+    if(NOT TARGET arch-nrf52840)
+        message(FATAL_ERROR "The board requires arch-nrf52840. Load its defconfig.")
+    endif()
+
+    target_sources(${target} PRIVATE "${FLY_BOARD_DIR}/board.c")
+    target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}/include")
+    target_link_libraries(${target} arch-nrf52840)
+    set(linker_script "${CMAKE_CURRENT_BINARY_DIR}/${target}.ld")
+    configure_file("${FLY_BOARD_DIR}/flash.ld.in" "${linker_script}" @ONLY)
+    target_link_options(${target} PRIVATE "-T${linker_script}")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${linker_script}")
+endfunction()

@@ -6,11 +6,17 @@ import clr
 
 clr.AddReference("System.Security.Cryptography")
 from System import Convert
+from System.IO import File
 from System.Security.Cryptography import SHA256
 from System.Threading import Timer, TimerCallback
 
 
 _gdb_timers = {}
+
+
+def _emit(message):
+    sys.stdout.write(message + '\n')
+    sys.stdout.flush()
 
 
 def mc_fly_watch_gdb(port):
@@ -21,13 +27,13 @@ def mc_fly_watch_gdb(port):
         active = machine.IsGdbConnectedToServer(port)
         if active and not connected[0]:
             connected[0] = True
-            print('FLY_GDB_CONNECTED')
+            _emit('FLY_GDB_CONNECTED')
         elif not active and connected[0]:
             _gdb_timers.pop(port).Dispose()
-            print('FLY_GDB_DISCONNECTED')
+            _emit('FLY_GDB_DISCONNECTED')
 
     _gdb_timers[port] = Timer(TimerCallback(poll), None, 50, 50)
-    print('FLY_GDB_WATCH_READY')
+    _emit('FLY_GDB_WATCH_READY')
 
 
 def mc_fly_verify_binary(address, size, expected):
@@ -39,13 +45,12 @@ def mc_fly_verify_binary(address, size, expected):
         hasher.Dispose()
     if actual != expected:
         raise ValueError('Memory digest mismatch at %x: %s' % (address, actual))
-    print('FLY_BIN_VERIFIED %x %s' % (address, actual))
+    _emit('FLY_BIN_VERIFIED %x %s' % (address, actual))
 
 
-def mc_fly_run(duration_ms):
+def mc_fly_run(duration_ms, completion_file):
     duration_ms = int(duration_ms)
-    print('FLY_RENODE_RUN_STARTED')
-    sys.stdout.flush()
+    _emit('FLY_RENODE_RUN_STARTED')
     remaining = duration_ms
     while duration_ms == 0 or remaining > 0:
         chunk = min(50, remaining) if duration_ms else 50
@@ -54,8 +59,9 @@ def mc_fly_run(duration_ms):
         mc_fly_drain_rtt()
         if duration_ms:
             remaining -= chunk
-    print('FLY_RENODE_RUN_COMPLETE')
-    sys.stdout.flush()
+    # Completion must survive truncation or interleaving in the console log.
+    File.WriteAllText(completion_file, str(duration_ms))
+    _emit('FLY_RENODE_RUN_COMPLETE')
 
 
 def mc_fly_drain_rtt():
@@ -79,10 +85,9 @@ def mc_fly_drain_rtt():
     if read == write:
         return
     if read < write:
-        print('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer + read, write - read)))
+        _emit('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer + read, write - read)))
     else:
-        print('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer + read, size - read)))
+        _emit('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer + read, size - read)))
         if write:
-            print('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer, write)))
-    sys.stdout.flush()
+            _emit('FLY_RTT64 ' + Convert.ToBase64String(bus.ReadBytes(buffer, write)))
     bus.WriteDoubleWord(block + 40, write)

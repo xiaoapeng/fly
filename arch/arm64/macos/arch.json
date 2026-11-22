@@ -2,5 +2,8 @@
   "schema_version": 1,
   "id": "arm64-macos",
   "config": "CONFIG_ARCH_ARM64_MACOS",
-  "host_system": "Darwin"
+  "host_system": "Darwin",
+  "isa": "host",
+  "toolchain": "clang-host-darwin",
+  "cpu": "arm64"
 }

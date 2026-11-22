@@ -1,0 +1,7 @@
+if ARCH_CC2538
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 3
+
+endif

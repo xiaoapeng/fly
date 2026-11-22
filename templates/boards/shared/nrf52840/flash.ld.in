@@ -1,0 +1,8 @@
+/* Application regions for the selected board and Nordic MDK section layout. */
+MEMORY
+{
+    FLASH (rx) : ORIGIN = @FLY_FLASH_ADDRESS@, LENGTH = @FLY_FLASH_SIZE@
+    RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 256K
+}
+
+INCLUDE "nrf_common.ld"

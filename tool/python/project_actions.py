@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from action_protocol import (ActionError, endpoint, read_json, validate_request,
                              validate_result, validate_session, write_json)
+from file_lock import LockBusy, file_lock as lock_file
 from template_packs import load_project
 
 
@@ -118,39 +119,11 @@ def verify_build_symbols(project, build_type, elf, debug_file):
 
 @contextmanager
 def file_lock(path, *, blocking=True):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('a+b') as stream:
-        if os.name == 'nt':
-            import msvcrt
-
-            if path.stat().st_size == 0:
-                stream.write(b'\0')
-                stream.flush()
-            while True:
-                stream.seek(0)
-                try:
-                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-                    break
-                except OSError:
-                    if not blocking:
-                        raise ActionError('SESSION_BUSY', 'Debug configuration is already active') from None
-                    sleep(0.1)
-            try:
-                yield
-            finally:
-                stream.seek(0)
-                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
-        else:
-            import fcntl
-
-            try:
-                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
-            except BlockingIOError:
-                raise ActionError('SESSION_BUSY', 'Debug configuration is already active') from None
-            try:
-                yield
-            finally:
-                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+    try:
+        with lock_file(path, blocking=blocking):
+            yield
+    except LockBusy:
+        raise ActionError('SESSION_BUSY', 'Debug configuration is already active') from None
 
 
 def build_tree_lock(project):

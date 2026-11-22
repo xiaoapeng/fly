@@ -1,0 +1,15 @@
+if ARCH_EFR32MG26
+
+config ARCH_HAS_TRUSTZONE
+    bool
+    default y
+
+config ARCH_TRUSTZONE_MODE
+    string
+    default "unified"
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 4
+
+endif

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "cc2538",
+  "config": "CONFIG_ARCH_CC2538",
+  "isa": "arm",
+  "toolchain": "gcc-arm-none-eabi",
+  "cpu": "cortex-m3",
+  "float_abi": "soft"
+}

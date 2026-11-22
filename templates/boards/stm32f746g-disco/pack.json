@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "board/stm32f746g-disco",
+  "kind": "board",
+  "label": "STM32F746G Discovery",
+  "files": [
+    {"source": "board.cmake", "destination": "board/board.cmake"}
+  ],
+  "provides": ["cpu/arm-cortex-m7", "board/log-hook"],
+  "cmake": "board/board.cmake",
+  "dependencies": ["support/stm32-board"],
+  "board": {
+    "target_kind": "mcu",
+    "chip": "STM32F746NGH6",
+    "core": {"id": "core0", "architecture": "arm-cortex-m7"},
+    "toolchain": "arm-none-eabi-gcc",
+    "clock_hz": 16000000,
+    "memories": [
+      {"id": "app-flash", "kind": "flash", "address": 134217728, "size": 1048576},
+      {"id": "app-ram", "kind": "ram", "address": 536870912, "size": 327680}
+    ],
+    "arch": "stm32f7xx",
+    "arch_profile": "cm7-sp"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "support/eos-s3-board",
+  "kind": "support",
+  "label": "Shared QuickLogic EOS S3 SRAM application",
+  "files": [
+    {
+      "source": "board.cmake",
+      "destination": "board/board.cmake"
+    },
+    {
+      "source": "board.c",
+      "destination": "board/board.c"
+    },
+    {
+      "source": "sram.ld",
+      "destination": "board/sram.ld"
+    },
+    {
+      "source": "LICENSE.qorc-sdk",
+      "destination": "board/LICENSE.qorc-sdk"
+    },
+    {
+      "source": "include/board.h",
+      "destination": "board/include/board.h"
+    }
+  ]
+}

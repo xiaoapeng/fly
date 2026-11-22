@@ -1,0 +1,5 @@
+// Renode 1.17.0 board platform with FLY application memory bounds.
+using "platforms/boards/stm32h747-disco.repl"
+
+nvic:
+    systickFrequency: 64000000

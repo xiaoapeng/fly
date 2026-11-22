@@ -1,6 +1,6 @@
 # CI 流程
 
-CI 在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应用根目录运行构建。固件包和已拉取的依赖保存在各自应用的构建目录。
+板卡矩阵在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应用根目录运行构建。固件包保存在各应用的 `image/`，源码依赖共用 SDK 的 `dl/` 缓存。
 
 ## 检查与触发
 
@@ -16,14 +16,16 @@ CI 在临时目录中用 `fly.sh new` 或 `fly.bat new` 生成应用，再从应
 | 检查名 | Runner | 覆盖 |
 |---|---|---|
 | `kconfig` | Ubuntu x64 | 为受测板卡的各模板组合生成工程，确认配置无警告并选中对应架构和调度器 |
-| `arm-build` | Ubuntu x64 | 构建七类 Cortex-M 架构对应的最小工程。FRDM-MCXN947 的三个模板还检查 SDK 锁定安装、VS Code 配置和固件打包 |
+| `arm-build` | Ubuntu x64 | 按架构清单中的 `isa=arm` 构建工程。检查 H750 的编译参数、ELF 浮点属性和打包，以及 FRDM 三个模板的 SDK 锁定安装、VS Code 配置和打包 |
 | `host-linux` | Ubuntu x64 | 用系统 GCC 构建生成的 Linux 应用 |
 | `host-macos` | macOS arm64 | 用 Apple Clang 构建生成的 macOS 应用 |
 | `host-windows` | Windows x64 | 用 MinGW-w64 构建生成的 Windows 应用，另测批处理入口、SDK 锁定安装和 NTFS 目录链接 |
 
-ARM 覆盖 MCXN947、STM32F0/F1/F4/H7、GD32F10x 和 GD32E23x。CH58x 和 GD32VF103 的 RISC-V 交叉编译暂不纳入 CI。配置检查会根据板卡和架构清单验证板卡绑定、工具链选择和 APP 所需的 Kconfig 配置。
+ARM 构建矩阵读取板卡清单和架构 ISA。配置检查适用于所有生成模板，验证板卡绑定、CPU 构建配置和 APP 所需的 Kconfig，并检查架构目录移动后原配置仍可加载。
 
-FreeRTOS 和 nanosig 等外部包在 CMake 配置时拉取，保存到各应用的 `build/deps/`。CI 的打包检查验证应用根目录 `image/` 下的固件产物和 各目标与构建类型的 `CURRENT.json`，并确认 `distclean` 后仍可访问固件包。实板烧录与 RTT 运行需要单独验证。
+芯片源码、FreeRTOS 和 nanosig 等外部依赖在 CMake 配置时按版本拉取到 SDK 的 `dl/`。同一个 CI 工作区生成的多个应用复用下载结果，各自保留配置与构建产物。CI 的打包检查验证应用根目录 `image/` 下的固件产物和各目标与构建类型的 `CURRENT.json`，并确认 `distclean` 后仍可访问固件包。
+
+在安装 Renode 1.17.0 的机器上运行 `python3 tool/test/check_standalone_projects.py --matrix renode --build-type Release`，可为工具包声明的每个板卡与模板组合生成独立工程，并验证实际运行的最终 BIN、固件 CRC 和 RTT。 [回归参数](../tool/test/README.md)
 
 ## 分支保护（必需检查 + rebase 合并）
 

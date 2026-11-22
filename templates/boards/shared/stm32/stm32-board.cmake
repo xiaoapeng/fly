@@ -5,17 +5,17 @@ function(fly_configure_board target)
         message(FATAL_ERROR "The board requires ${FLY_STM32_ARCH_TARGET}. Load its defconfig.")
     endif()
 
-    string(TOLOWER "${FLY_STM32_FAMILY}" family_lower)
-    set(sdk_family "${FLY_TOP_DIR}/arch/stm32/${family_lower}")
-    set(system_source "${sdk_family}/Device/ST/${FLY_STM32_FAMILY}/Source/Templates/system_${family_lower}.c")
+    get_property(device_header TARGET ${FLY_STM32_ARCH_TARGET} PROPERTY FLY_STM32_DEVICE_HEADER)
+    if(NOT device_header)
+        message(FATAL_ERROR "The chip target ${FLY_STM32_ARCH_TARGET} does not expose an STM32 device header.")
+    endif()
 
     target_include_directories(${FLY_STM32_ARCH_TARGET} PRIVATE "${FLY_BOARD_DIR}/include")
     target_include_directories(${target} PRIVATE "${FLY_BOARD_DIR}/include")
-    target_compile_definitions(${target} PRIVATE FLY_STM32_DEVICE_HEADER="${family_lower}.h")
+    target_compile_definitions(${target} PRIVATE FLY_STM32_DEVICE_HEADER="${device_header}")
     target_sources(${target} PRIVATE
         "${FLY_BOARD_DIR}/board.c"
         "${FLY_BOARD_DIR}/log.c"
-        "${system_source}"
     )
     target_link_libraries(${target} ${FLY_STM32_ARCH_TARGET} c m gcc)
 
