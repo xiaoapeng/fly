@@ -101,7 +101,7 @@ def execute(paths, args, *, cache, configure, build_target):
         address = args.endpoint
         catalogue = dispatcher.capabilities(target, gdb_hint=cache(paths.cmake, 'CMAKE_GDB'), address=address)
         if args.json:
-            print(json.dumps(catalogue, ensure_ascii=False, indent=2))
+            print(json.dumps(catalogue, indent=2))
         else:
             print('Packages')
             for pack in catalogue['packages']:
@@ -191,7 +191,7 @@ def execute(paths, args, *, cache, configure, build_target):
         data = (dispatcher.flash_run(action, request, artifact) if name == 'flash-run'
                 else dispatcher.invoke(action, request))
     if name != 'log':
-        print(json.dumps(data, ensure_ascii=False))
+        print(json.dumps(data))
 
 
 def _execute_binding(paths, dispatcher, binding_id):

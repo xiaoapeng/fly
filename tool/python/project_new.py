@@ -15,7 +15,7 @@ import sys
 import tempfile
 from urllib.parse import urlsplit
 
-from build_environment import prepare_python
+from build_environment import configure_cli_output, prepare_python
 from mk_mcu_firmware_factory_data import FC_FIRMWARE_NAME_MAX_SIZE
 from template_packs import (
     ACTIONS, DEFCONFIG_TOKEN, WINDOWS_RESERVED, AvailablePacks, assignment, board_values,
@@ -481,6 +481,7 @@ def run(sdk_dir, registry, args):
 
 
 def main():
+    configure_cli_output()
     sdk_dir = Path(__file__).resolve().parents[2]
     try:
         registry = discover(sdk_dir / "templates")
