@@ -51,6 +51,42 @@ jobs:
       - name: Build generated ARM projects and package FRDM templates
         run: .venv/bin/python tool/test/check_standalone_projects.py --matrix arm
 
+  rv32-build:
+    name: rv32-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake git ninja-build
+      - name: Install WCH GCC 15.2.0
+        # Linux x86_64 asset from openwch/board_manager_files@1ca9500eef50846b88af4a638a9bbc308b5d4b0d.
+        env:
+          WCH_GCC_URL: https://github.com/medtty/board_manager_files/releases/download/riscv-wch-gcc-15.2.0/riscv-wch-gcc-15.2.0-linux-x86_64.tar.gz
+          WCH_GCC_SHA256: d58478f91c134edfb76d73cd82e9a7fff4c74dd9369c591e92567757f4a153cf
+        run: |
+          archive="$RUNNER_TEMP/riscv-wch-gcc.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error --output "$archive" "$WCH_GCC_URL"
+          printf '%s  %s\n' "$WCH_GCC_SHA256" "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          toolchain_bin="$RUNNER_TEMP/riscv-wch-gcc/bin"
+          compiler="$toolchain_bin/riscv32-wch-elf-gcc"
+          "$compiler" --version
+          test "$("$compiler" -dumpfullversion)" = 15.2.0
+          test "$("$compiler" -dumpmachine)" = riscv32-wch-elf
+          printf '%s\n' "$toolchain_bin" >> "$GITHUB_PATH"
+      - name: Bootstrap Python venv
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install kconfiglib requests
+      - name: Build and package CH582 firmware
+        run: .venv/bin/python tool/test/check_ch582.py
+
   host-linux:
     name: host-linux
     runs-on: ubuntu-latest

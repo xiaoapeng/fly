@@ -73,7 +73,7 @@ cd fly
 |平台|交叉编译器前缀|下载链接|
 | --- | --- | --- |
 |stm32fx<br>gd32fx<br>mcxn947<br>gd32e23x|arm-none-eabi|[下载](https://developer.arm.com/downloads/-/gnu-rm)|
-|ch58x|riscv-none-elf|[下载](http://www.mounriver.com/download/)|
+|ch58x|riscv32-wch-elf 或 riscv-none-elf（旧版 MounRiver）|[WCH 工具链索引](https://github.com/openwch/board_manager_files/blob/main/package_ch32v_index.json) · [MounRiver 下载](https://www.mounriver.com/download/)|
 |gd32vfx|riscv-none-embed|[下载](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/tag/v10.2.0-1.2)|
 
 ### 5. 根据项目需要下载调试器-Jlink
@@ -260,7 +260,7 @@ cmake --build build/cmake
 
 Windows 下直接使用 MinGW-w64 和 Ninja 时，首次配置加上 `-G Ninja`。如果使用 `build.bat`，脚本会选择已安装的生成器。
 
-CI 每次从模板生成工程，覆盖板卡清单中已注册的 ARM 目标和 Linux、macOS、Windows 三种宿主平台，同时验证 FRDM-MCXN947 的三种模板打包。Renode 启动回归可在装有 Renode 的机器上单独运行。 [CI 流程](docs/CI.md)
+CI 每次从模板生成工程，覆盖板卡清单中已注册的 ARM 目标和 Linux、macOS、Windows 三种宿主平台，同时验证 FRDM-MCXN947 的三种模板打包。CH582 的 RV32 编译和打包由独立 CI 作业验证。Renode 启动回归可在装有 Renode 的机器上单独运行。 [CI 流程](docs/CI.md)
 
 ### 9. 在独立应用中使用 SDK 源码包
 
