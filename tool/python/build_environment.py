@@ -9,6 +9,12 @@ import sys
 DEPENDENCIES = ("kconfiglib", "requests")
 
 
+def configure_cli_output():
+    """Escape characters that the current output encoding cannot represent."""
+    if hasattr(sys.stdout, "reconfigure") and sys.stdout.errors == "strict":
+        sys.stdout.reconfigure(errors="backslashreplace")
+
+
 def prepare_python(build_dir, *, output=None):
     """Return an application interpreter if the current one needs dependencies."""
     missing = [module for module in DEPENDENCIES if find_spec(module) is None]

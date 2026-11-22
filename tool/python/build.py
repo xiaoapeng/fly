@@ -11,7 +11,7 @@ from pathlib import Path
 
 from action_protocol import ActionError, write_json
 from arch_registry import for_board, validate_choice
-from build_environment import prepare_python
+from build_environment import configure_cli_output, prepare_python
 from build_actions import add_commands, execute as execute_action
 from project_actions import build_tree_lock, parse_endpoint, project_fingerprint
 from template_packs import load_project
@@ -334,6 +334,7 @@ def load_env(source_dir):
 
 
 def main():
+    configure_cli_output()
     parser = argparse.ArgumentParser(description='Build a FLY application.')
     parser.add_argument('--project-dir', type=Path, required=True, help='Path to the application repository.')
     
