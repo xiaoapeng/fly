@@ -37,7 +37,12 @@ int app_runtime_init(void)
         return status;
     }
 
-    status = ns_loop_create(&app_loop, NULL);
+    ns_loop_config_t loop_config = NS_LOOP_CONFIG_DEFAULT();
+#if defined(CONFIG_PACKAGE_SCHEDULER_FREERTOS)
+    /* The demo only queues the periodic heartbeat. */
+    loop_config.queue_byte_capacity = NS_CAPACITY_256;
+#endif
+    status = ns_loop_create(&app_loop, &loop_config);
     if (status != NS_OK) {
         (void)ns_shutdown();
     }

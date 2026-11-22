@@ -15,11 +15,14 @@
   ],
   "provides": [
     "cpu/arm-cortex-m7",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "dependencies": [
-    "support/stm32-board"
+    "support/stm32-board",
+    "support/cortex-m-timebase"
   ],
   "board": {
     "target_kind": "mcu",

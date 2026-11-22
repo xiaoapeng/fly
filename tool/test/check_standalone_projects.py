@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import struct
 import subprocess
@@ -886,17 +887,8 @@ def check_h750_build(project, build_type, cache):
     config = config_path.read_text(encoding="utf-8")
     required = {'CONFIG_ARCH_CORE="cortex-m7"', 'CONFIG_ARCH_PROFILE="cm7"',
                 'CONFIG_ARCH_FPU="fpv5-d16"', 'CONFIG_ARCH_FLOAT_ABI="hard"'}
-    if not required.issubset(config.splitlines()) or "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y" in config:
-        raise RuntimeError("H750 did not select the Cortex-M7 hard-float profile with a supported scheduler")
-    requested = project / "build/unsupported-scheduler.config"
-    requested.write_text(config.replace("CONFIG_PACKAGE_SCHEDULER_NONE=y", "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y"),
-                         encoding="utf-8")
-    rejected = subprocess.run(entrypoint(project, "build", "loadconfig", str(requested)), cwd=project,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
-    if rejected.returncode == 0 or "CONFIG_PACKAGE_SCHEDULER_FREERTOS=y is unavailable" not in rejected.stdout:
-        raise RuntimeError(f"Explicit H750 FreeRTOS choice was not rejected:\n{rejected.stdout}")
-    if config_path.read_text(encoding="utf-8") != config:
-        raise RuntimeError("Rejected scheduler request replaced the current H750 config")
+    if not required.issubset(config.splitlines()):
+        raise RuntimeError("H750 did not select the Cortex-M7 hard-float profile")
     cmake_dir = project / "build/cmake"
     commands = json.loads((cmake_dir / "compile_commands.json").read_text(encoding="utf-8"))
     flags = ("-mcpu=cortex-m7", "-mfpu=fpv5-d16", "-mfloat-abi=hard")
@@ -924,7 +916,7 @@ def check_board_build(sdk, workspace, board, template, build_type):
     generate(sdk, project, name, board["id"], template)
     run(entrypoint(project, "build", "build", build_type, "-j", "2"), project)
     cache = check_build_outputs(sdk, project, host=board["target_kind"] == "host")
-    if board["id"] == "gd32f103rc":
+    if board["id"] == "gd32f103rc" and template == "baremetal":
         check_gd32f10x_variants(project)
     if board["id"] == "stm32h750vb":
         check_h750_build(project, build_type, cache)
@@ -942,7 +934,9 @@ def check_renode_project(sdk, workspace, board, template, build_type, renode):
     with ZipFile(package.with_suffix(".zip")) as archive:
         check_partition(package, archive, app, (project / "build/cmake/fly_app.bin").read_bytes())
 
-    duration = 3200
+    expected_log = template_manifest(sdk, template)["app"]["expected_log"]
+    needs_heartbeat = "heartbeat" in expected_log
+    duration = 4200 if needs_heartbeat else 3200
     options = ["--tool", f"renode={renode.resolve()}"] if renode else []
     output = run(entrypoint(project, "build", "flash-run", "--via", "renode",
                             "--duration-ms", str(duration), *options), project)
@@ -952,11 +946,17 @@ def check_renode_project(sdk, workspace, board, template, build_type, renode):
     rtt = record_path.with_name(record["rtt_log"]).read_text(encoding="utf-8")
     expected_app = {"name": app["name"], "address": app["address"], "sha256": app["bin"]["sha256"]}
     boot_markers = [f"Firmware {name} v0.1.0", f"CRC32 0x{int(app['trailer']['crc32'], 16):08X} (OK)",
-                    *template_manifest(sdk, template)["app"]["expected_log"]]
+                    *expected_log]
     if (record["status"] != "ok" or record["virtual_ms"] != duration
             or record["partitions"] != [expected_app]
             or not all(marker in rtt and marker in output for marker in boot_markers)):
         raise RuntimeError(f"{project.name} did not report a verified boot in Renode:\n{output}")
+    if needs_heartbeat:
+        times = [float(timestamp) for timestamp in
+                 re.findall(r"^\[\s*(\d+\.\d+)\]\s+\[\s*SYS\]\s+heartbeat$", rtt, re.MULTILINE)]
+        if not 3 <= len(times) <= 4 or any(abs(next_time - time - 1.0) > 0.02
+                                          for time, next_time in zip(times, times[1:])):
+            raise RuntimeError(f"{project.name} did not emit consecutive one-second heartbeats in {duration} ms:\n{rtt}")
     print(f"{project.name}: Renode boot and {boot_markers[1]} PASS", flush=True)
 
 

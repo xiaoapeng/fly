@@ -1,2 +1,6 @@
 // PCA10056, using the stock Renode nRF52840 DK platform.
 using "platforms/boards/nrf52840dk_nrf52840.repl"
+
+nvic:
+    priorityMask: 0xE0
+    systickFrequency: 64000000

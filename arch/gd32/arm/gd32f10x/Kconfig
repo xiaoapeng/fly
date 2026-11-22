@@ -1,0 +1,7 @@
+if ARCH_GD32F10X
+
+config ARCH_NVIC_PRIO_BITS
+    int
+    default 4
+
+endif

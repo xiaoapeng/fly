@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/timebase.cmake")
 
 function(fly_configure_board target)
     if(NOT TARGET "${FLY_STM32_ARCH_TARGET}")

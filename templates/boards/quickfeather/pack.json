@@ -5,11 +5,14 @@
   "label": "QuickLogic QuickFeather (SRAM application)",
   "files": [],
   "dependencies": [
-    "support/eos-s3-board"
+    "support/eos-s3-board",
+    "support/cortex-m-timebase"
   ],
   "provides": [
     "cpu/arm-cortex-m4",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "board": {
@@ -20,7 +23,7 @@
       "architecture": "arm-cortex-m4"
     },
     "toolchain": "arm-none-eabi-gcc",
-    "clock_hz": null,
+    "clock_hz": 48000000,
     "memories": [
       {
         "id": "app-code",

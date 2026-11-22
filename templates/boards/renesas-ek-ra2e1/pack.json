@@ -21,9 +21,14 @@
       "destination": "board/flash.ld"
     }
   ],
+  "dependencies": [
+    "support/cortex-m-timebase"
+  ],
   "provides": [
     "cpu/arm-cortex-m23",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "board": {

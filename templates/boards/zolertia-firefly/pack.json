@@ -25,9 +25,14 @@
       "destination": "board/README.md"
     }
   ],
+  "dependencies": [
+    "support/cortex-m-timebase"
+  ],
   "provides": [
     "cpu/arm-cortex-m3",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "board": {

@@ -25,9 +25,14 @@
       "destination": "board/LICENSE.cmsis"
     }
   ],
+  "dependencies": [
+    "support/cortex-m-timebase"
+  ],
   "provides": [
     "cpu/arm-cortex-m4",
-    "board/log-hook"
+    "board/log-hook",
+    "board/timebase",
+    "board/freertos-clock"
   ],
   "cmake": "board/board.cmake",
   "board": {
@@ -38,7 +43,7 @@
       "architecture": "arm-cortex-m4"
     },
     "toolchain": "arm-none-eabi-gcc",
-    "clock_hz": null,
+    "clock_hz": 15000000,
     "memories": [
       {
         "id": "app-code",

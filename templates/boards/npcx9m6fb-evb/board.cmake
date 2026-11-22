@@ -1,4 +1,5 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+include("${CMAKE_CURRENT_LIST_DIR}/timebase.cmake")
 
 # NPCX9M6F enters the application in code SRAM after ROM boot.
 set(FLY_FLASH_ADDRESS "0x10090000")

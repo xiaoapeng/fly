@@ -17,10 +17,6 @@
       "destination": "board/board.cmake"
     },
     {
-      "source": "board_time.c",
-      "destination": "board/board_time.c"
-    },
-    {
       "source": "clock_config.c",
       "destination": "board/clock_config.c"
     },
@@ -29,13 +25,12 @@
       "destination": "board/include/board.h"
     },
     {
-      "source": "include/board_time.h",
-      "destination": "board/include/board_time.h"
-    },
-    {
       "source": "include/clock_config.h",
       "destination": "board/include/clock_config.h"
     }
+  ],
+  "dependencies": [
+    "support/cortex-m-timebase"
   ],
   "provides": [
     "cpu/arm-cortex-m33",

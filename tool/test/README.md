@@ -6,9 +6,9 @@
 |---|---|
 | 无 | FRDM-MCXN947 三个模板的生成、SDK 锁定安装、CMake 入口、编译、VS Code 配置和固件包 |
 | `--matrix config` | 校验生成配置、架构与调度器，以及包清单发现和工具菜单的默认提供者规则 |
-| `--matrix arm` | 构建每个 Cortex-M 板卡的裸机模板，并对三个 FRDM-MCXN947 模板执行完整检查 |
+| `--matrix arm` | 构建所有 ARM 板卡与 APP 的兼容组合，并对三个 FRDM-MCXN947 模板执行完整检查 |
 | `--matrix host` | 生成并构建当前宿主平台的最小工程 |
-| `--matrix renode` | 为工具包声明的板卡与模板生成工程，编译打包并在真实 Renode 进程中验证最终 BIN、固件 CRC 与 RTT 启动日志 |
+| `--matrix renode` | 为工具包声明的板卡与模板生成工程，编译打包并在真实 Renode 进程中验证最终 BIN、固件 CRC、RTT 启动日志与适用的连续心跳 |
 | `--build-type Release` | 矩阵和模板构建使用 Release，默认使用 Debug |
 | `--sdk-setup-only` | 验证独立 Git 工程的 SDK 安装、版本更新和应用启动脚本 |
 | `--image-links-only` | 验证现有镜像链接辅助函数 |

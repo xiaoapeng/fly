@@ -1,4 +1,5 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+include("${CMAKE_CURRENT_LIST_DIR}/timebase.cmake")
 
 # The application executes in SRAM after the loader hands off at address zero.
 set(FLY_FLASH_ADDRESS "0x00000000")

@@ -3,7 +3,12 @@
   "id": "support/nanosig-app",
   "kind": "support",
   "label": "Shared nanosig application runtime",
+  "cmake": "app/size.cmake",
   "files": [
+    {
+      "source": "app/size.cmake",
+      "destination": "app/size.cmake"
+    },
     {
       "source": "app/biz/heartbeat.c",
       "destination": "app/biz/heartbeat.c"

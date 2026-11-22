@@ -1,4 +1,5 @@
 set(FLY_BOARD_DIR "${CMAKE_CURRENT_LIST_DIR}")
+include("${CMAKE_CURRENT_LIST_DIR}/timebase.cmake")
 set(FLY_FLASH_ADDRESS 0x08000000)
 # Use the first 399 pages for the image, as mapped by the supported model.
 set(FLY_FLASH_SIZE 0x0031E000)
